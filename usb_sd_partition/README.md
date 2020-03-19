@@ -9,12 +9,12 @@ It will have 2 partions:
 2. ext3 partion that can hold a Linux file system.
 
 ## Partion Sizes
-The **500MB partition** size is recomended because it doesn't really hold anything else other than the kernel and device tree. But, you might want to copy something into this partition (like an MP3, a JPG or maybe a demo app) from a Windows machine so that you can use access it on your board after it boots up.
+The **500MB partition** size is recommended because it doesn't really hold anything else other than the kernel and device tree. But, you might want to copy something into this partition (like an MP3, a JPG or maybe a demo app) from a Windows machine so that you can use access it on your board after it boots up.
 
-The **max** partition size is default because it will alwasy work for any size drive. However you don't really need a lot of space, and the bigger you make it, the longer it takes to format. I woudl say **2GB** is about as much as you need for the file system.
+The **max** partition size is default because it will always work for any size drive. However you don't really need a lot of space, and the bigger you make it, the longer it takes to format. I would say **2GB** is about as much as you need for the file system.
 
-## Partion Lables
-The script also assigns volume labels to the partions: **RZ_FAT ** and **RZ_ext**.
+## Partition Lables
+The script also assigns volume labels to the partitions: **RZ_FAT ** and **RZ_ext**.
 This makes the partitions easy to identify in your Linux host machine.
 In Ubuntu, when you plug this formatted drive in, they partitions should automatically get mapped to the following locations:
 
@@ -23,13 +23,28 @@ In Ubuntu, when you plug this formatted drive in, they partitions should automat
 
 (of course, 'chris' will be your username instead)
 
-
 ## Usage
-* Plug in a USB Flash drive
-
+* Plug in a USB Flash drive (or USB SD card reader)
 * Run:   $ sudo ./usb_partition.sh
-
 * Remove the drive (first, right click on USB icon on Desktop and select "Eject")
-
 * Insert the drive back in
+
+## How to copy the RZ/G file
+Since the partitions have labels and should show up in your system under /media, you can use the commands below to install your files.
+The FAT partition will need the Device Tree Blob/binary (.dtb file) and the Linux kernel.
+The ext partition should contain the root file system files. Yocto will output a single file with all the file system files tar-ed ('zipped') up, so you will actually be decompressing and copying in the same command.
+The files you need to copy will be in: **rzg2_bsp_eva_v10x/build/tmp/deploy/images/ek874/**
+
+Execute the follow commands from that directory.
+Copy Device Tree
+
+    $ cp -av Image-r8a774c0-ek874.dtb  /media/chris/RZ_FAT
+
+Copy Kernel
+
+    $ cp -av Image-ek874.bin  /media/chris/RZ_FAT
+
+Copy/expand Root File System
+
+    $ sudo tar -xvf core-image-weston-ek874.tar.gz -C /media/chris/RZ_ext
 
