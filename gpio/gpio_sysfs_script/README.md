@@ -2,7 +2,7 @@
 # GPIO Script
 **gpio.sh**
 This script makes it easier to access GPIOs on and RZ/G board using the sysfs (/sys) interface.
-Simple execute the script without any paramters (./gpio.sh) in order to veiw the help text.
+Simple execute the script without any parameters (./gpio.sh) in order to view the help text.
 
 
 ## Example on EK874 RZ/G2E board

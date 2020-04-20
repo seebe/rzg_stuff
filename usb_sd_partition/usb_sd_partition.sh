@@ -2,9 +2,9 @@
 
 # This script will erase and reformat a USB Flash drive (or USB SD Card reader)
 # to be used for RZ/G Linux systems.
-# It will have 2 partions:
+# It will have 2 partitions:
 #   1.  FAT16 partition (that can be access by Windows)
-#   2.  ext3 partion that can hold a Linux file system.
+#   2.  ext3 partition that can hold a Linux file system.
 
 #defaults
 FAT_SZ=+500M

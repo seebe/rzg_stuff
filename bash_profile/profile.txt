@@ -15,7 +15,7 @@ alias lll='ls -lph'
 
 export LS_COLORS
 
-# Simple comamnd prompt (becuase having a long path as part of the command prompt is annoying)
+# Simple command prompt (because having a long path as part of the command prompt is annoying)
 #PS1='$ '
 
 # Advanced Command prompt (current path on 1 line, command prompt on next line)

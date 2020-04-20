@@ -3,17 +3,17 @@ This script will erase and reformat a **USB Flash drive** or **SD Card** (via US
 
 
 ## Partion Types
-It will have 2 partions:
+It will have 2 partitions:
 
 1. FAT16 partition (that can be access by Windows)
 2. ext3 partion that can hold a Linux file system.
 
-## Partion Sizes
+## Partition Sizes
 The **500MB partition** size is recommended because it doesn't really hold anything else other than the kernel and device tree. But, you might want to copy something into this partition (like an MP3, a JPG or maybe a demo app) from a Windows machine so that you can use access it on your board after it boots up.
 
 The **max** partition size is default because it will always work for any size drive. However you don't really need a lot of space, and the bigger you make it, the longer it takes to format. I would say **2GB** is about as much as you need for the file system.
 
-## Partition Lables
+## Partition Labels
 The script also assigns volume labels to the partitions: **RZ_FAT ** and **RZ_ext**.
 This makes the partitions easy to identify in your Linux host machine.
 In Ubuntu, when you plug this formatted drive in, they partitions should automatically get mapped to the following locations:

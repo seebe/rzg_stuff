@@ -1,13 +1,13 @@
 ## Program Bootloaders using internal ROM and Flashwriter
 
 ### Description
-The RZ/G2 has a bult-in ROM for downloading a binary to internal RAM and then executing it.
+The RZ/G2 has a built-in ROM for downloading a binary to internal RAM and then executing it.
 
 That downloaded binary is call "Flash Writer" and is supplied with the VLP64 BSP.
 
 This script helps automate the process of programming a SPI flash but download image over a serial port to the board.
 
-If using a Renesas evaluation board, you can use teh 'switches' command to print out how you need to modify the on-board switches to get into the correct modes.
+If using a Renesas evaluation board, you can use the 'switches' command to print out how you need to modify the on-board switches to get into the correct modes.
 
 ### Commands
     ./scif_loader flashwriter       # Must be run first
@@ -25,12 +25,12 @@ If using a Renesas evaluation board, you can use teh 'switches' command to print
 
 2. Power off the board
 
-3. In a termnal window, run the follow command to determine the correct switch settings to put the device into SCIF downlaod mode.
+3. In a terminal window, run the follow command to determine the correct switch settings to put the device into SCIF download mode.
 `$ ./scif_loader  switches`
 
 4. Power the board
 
-5. Open a 2nd terminal window and type "cat /dev/ttyUSB0" in order to montitor the output from the board. If you press the RESET button the board, you should see a text message "SCIF Download mode .......  please send !"
+5. Open a 2nd terminal window and type "cat /dev/ttyUSB0" in order to monitor the output from the board. If you press the RESET button the board, you should see a text message "SCIF Download mode .......  please send !"
 
 6. Execute the follow command to download the flash writer binary
 `./scif_loader flashwriter`
