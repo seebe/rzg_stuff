@@ -29,11 +29,12 @@ In Ubuntu, when you plug this formatted drive in, they partitions should automat
 * Remove the drive (first, right click on USB icon on Desktop and select "Eject")
 * Insert the drive back in
 
-## How to copy the RZ/G file
+## How to copy the RZ/G files
 Since the partitions have labels and should show up in your system under /media, you can use the commands below to install your files.
 The FAT partition will need the Device Tree Blob/binary (.dtb file) and the Linux kernel.
 The ext partition should contain the root file system files. Yocto will output a single file with all the file system files tar-ed ('zipped') up, so you will actually be decompressing and copying in the same command.
-The files you need to copy will be in: **rzg2_bsp_eva_v10x/build/tmp/deploy/images/ek874/**
+The files you need to copy will be in:  
+**rzg2_bsp_eva_v10x/build/tmp/deploy/images/ek874/**
 
 Execute the follow commands from that directory.
 
