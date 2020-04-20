@@ -36,15 +36,18 @@ The ext partition should contain the root file system files. Yocto will output a
 The files you need to copy will be in: **rzg2_bsp_eva_v10x/build/tmp/deploy/images/ek874/**
 
 Execute the follow commands from that directory.
-Copy Device Tree
+
+**Copy Device Tree**
 
     $ cp -av Image-r8a774c0-ek874.dtb  /media/chris/RZ_FAT
 
-Copy Kernel
+**Copy Kernel**
 
     $ cp -av Image-ek874.bin  /media/chris/RZ_FAT
 
-Copy/expand Root File System
+**Copy/Expand Root File System**  
+(don't forget the -C before the target directory)
 
-    $ sudo tar -xvf core-image-weston-ek874.tar.gz -C /media/chris/RZ_ext
+    $ sudo tar -xvf core-image-weston-ek874.tar.gz   -C /media/chris/RZ_ext
+
 
