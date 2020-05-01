@@ -51,4 +51,9 @@ Execute the follow commands from that directory.
 
     $ sudo tar -xvf core-image-weston-ek874.tar.gz   -C /media/chris/RZ_ext
 
+**Sync**
+(makes sure all files are written out before disconnecting)
+
+    $ sync
+    $ eject /media/chris/RZ_FAT
 
