@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # pass a file that contains all the settings
-# For example: ./create_image.sh example_config.txt
+# For example: ./create_image.sh example_config.ini
 
 if [ "$1" == "" ] ; then
 	echo "ERROR: Please pass the location of a config file on the command line"

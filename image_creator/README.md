@@ -16,13 +16,13 @@ This script instead will:
 
 ## Instructions
 
-Simple copy/paste a copy of 'example_config.txt' and edit it as needed. All the settings are explained inside that example file.
+Simple copy/paste a copy of 'example_config.ini' and edit it as needed. All the settings are explained inside that example file.
 To run the program, pass your configuration file that you just created on the command line of the script.
 Example:
 
-    $ cp example_config.txt my_demo_config.txt
-    $ gedit my_demo_config.txt
-    $ ./create_image.sh my_demo_config.txt
+    $ cp example_config.ini my_demo_config.ini
+    $ gedit my_demo_config.ini
+    $ ./create_image.sh my_demo_config.ini
 
 Note that the script uses 'sudo', so you might be prompted to enter your account password.
 
