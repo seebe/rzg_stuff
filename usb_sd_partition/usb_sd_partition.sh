@@ -192,10 +192,10 @@ sync
 # 500MB (FAT16) + 6GB (ext3)
 echo -e "\n== Creating partitions =="
 sleep 1
-echo -e "n\n p\n 1\n \n ${FAT_SZ}\n"\
-        "n\n p\n 2\n \n ${EXT_SZ}\n"\
-        "t\n 1\n 6\n"\
-        "p\n w\n" | fdisk -u ${DISK}
+echo -e "n\np\n1\n\n${FAT_SZ}\n"\
+        "n\np\n2\n\n${EXT_SZ}\n"\
+        "t\n1\n6\n"\
+        "p\nw\n" | fdisk -u ${DISK}
 
 echo -e "\n== Formatting FAT16 partition =="
 mkfs.vfat -F16 -n RZ_FAT ${DISK}1
