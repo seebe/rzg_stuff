@@ -53,14 +53,37 @@ Find_Drives
 # Add exit at the end of the array
 TEXT=("${TEXT[@]}" "EXIT" "Cancel and exit the script")
 
-DISK=$(
-whiptail --title "Select your Drive" --menu "Below is a list of Removable Media found on your system" 0 0 0 \
-	"${TEXT[1]}" "${TEXT[2]}"\
-	"${TEXT[3]}" "${TEXT[4]}"\
-	"${TEXT[5]}" "${TEXT[6]}"\
-	"${TEXT[7]}" "${TEXT[8]}"\
-	 3>&2 2>&1 1>&3	
-)
+if [ "${TEXT[7]}" != "" ] ; then
+	DISK=$(
+	whiptail --title "Select your Drive" --menu "Below is a list of Removable Media found on your system" 0 0 0 \
+		"${TEXT[1]}" "${TEXT[2]}"\
+		"${TEXT[3]}" "${TEXT[4]}"\
+		"${TEXT[5]}" "${TEXT[6]}"\
+		"${TEXT[7]}" "${TEXT[8]}"\
+		 3>&2 2>&1 1>&3
+	)
+elif [ "${TEXT[5]}" != "" ] ; then
+	DISK=$(
+	whiptail --title "Select your Drive" --menu "Below is a list of Removable Media found on your system" 0 0 0 \
+		"${TEXT[1]}" "${TEXT[2]}"\
+		"${TEXT[3]}" "${TEXT[4]}"\
+		"${TEXT[5]}" "${TEXT[6]}"\
+		 3>&2 2>&1 1>&3
+	)
+elif [ "${TEXT[3]}" != "" ] ; then
+	DISK=$(
+	whiptail --title "Select your Drive" --menu "Below is a list of Removable Media found on your system" 0 0 0 \
+		"${TEXT[1]}" "${TEXT[2]}"\
+		"${TEXT[3]}" "${TEXT[4]}"\
+		 3>&2 2>&1 1>&3
+	)
+else
+	DISK=$(
+	whiptail --title "Select your Drive" --menu "Below is a list of Removable Media found on your system" 0 0 0 \
+		"${TEXT[1]}" "${TEXT[2]}"\
+		 3>&2 2>&1 1>&3
+	)
+fi
 
 if [ "$DISK" == "" ] || [ "$DISK" == "EXIT" ] ; then
   echo "script canceled"
