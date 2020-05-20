@@ -250,7 +250,11 @@ unset LD
 make distclean
 make -j $BUILD_THREADS bl2 bl31 dummytool PLAT=${PLATFORM} ${ATFW_OPT} ${ECC_OPTS} ${RCAR_LOSSY_ENABLE} O=$OUT
 
-DEPLOYDIR=z_deploy
+if [ "$EMMC_BOOT" == "1" ] ; then
+	DEPLOYDIR=z_deploy_emmc
+else
+	DEPLOYDIR=z_deploy_spi
+fi
 mkdir -p $DEPLOYDIR
 
 # Copy IPL to deploy folder
