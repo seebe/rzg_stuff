@@ -128,6 +128,15 @@ if [ "$CREATE_BZ2" == "yes" ] ; then
 	bzip2 -v -k $OUTFILE
 fi
 
+# Create gzip
+if [ "$CREATE_GZIP" == "yes" ] ; then
+	message "Compressing image (gzip)"
+	if [ -e ${OUTFILE}.gz ] ; then
+	  rm ${OUTFILE}.gz
+	fi
+	gzip -v -k $OUTFILE
+fi
+
 # Create zip
 if [ "$CREATE_ZIP" == "yes" ] ; then
 	message "Compressing image (zip)"
