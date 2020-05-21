@@ -99,63 +99,188 @@ if [ "$BOARD" == "ek874" ] || [ "$BOARD" == "hihope-rzg2m" ] || \
 	if [ "$FLASHWRITER" == "" ] ; then
 		FLASHWRITER=$FILES_DIR/AArch64_Flash_writer_SCIF_DUMMY_CERT_E6300400_${BOARD}.mot
 	fi
-	if [ "$SA0_SREC" == "" ] ; then
-		SA0_SREC=$FILES_DIR/bootparam_sa0.srec
+	if [ "$SA0_FILE" == "" ] ; then
+		SA0_FILE=$FILES_DIR/bootparam_sa0.srec
 	fi
-	if [ "$BL2_SREC" == "" ] ; then
-		BL2_SREC=$FILES_DIR/bl2-${BOARD}.srec
+	if [ "$BL2_FILE" == "" ] ; then
+		BL2_FILE=$FILES_DIR/bl2-${BOARD}.bin
 	fi
-	if [ "$SA6_SREC" == "" ] ; then
-		SA6_SREC=$FILES_DIR/cert_header_sa6.srec
+	if [ "$SA6_FILE" == "" ] ; then
+		SA6_FILE=$FILES_DIR/cert_header_sa6.srec
 	fi
-	if [ "$BL31_SREC" == "" ] ; then
-		BL31_SREC=$FILES_DIR/bl31-${BOARD}.srec
+	if [ "$BL31_FILE" == "" ] ; then
+		BL31_FILE=$FILES_DIR/bl31-${BOARD}.bin
 	fi
-	if [ "$UBOOT_SREC" == "" ] ; then
-		UBOOT_SREC=$FILES_DIR/u-boot-elf-${BOARD}.srec
+	if [ "$UBOOT_FILE" == "" ] ; then
+		#UBOOT_FILE=$FILES_DIR/u-boot-elf-${BOARD}.srec
+		UBOOT_FILE=$FILES_DIR/u-boot.bin
 	fi
 fi
 
+# do_xls2
+# $1 = string
+# $2 = RAM address to download to
+# $3 = SPI address to write to
+# $4 = filename
 do_xls2() {
-	#Note: Need to send a CR + NL (\r\n) at the end of each command
+	# Flash writer just looks for CR. If it see LF, it ignores it.
 	echo "Writting $1 ($4)"
 	echo "Sending XLS2 command..."
-	echo -en "XLS2\r\n" > /dev/ttyUSB0
+	echo -en "XLS2\r" > /dev/ttyUSB0
 	sleep 1
-	echo -en "$2\r\n" > /dev/ttyUSB0
+	echo -en "$2\r" > /dev/ttyUSB0
 	sleep 1
-	echo -en "$3\r\n" > /dev/ttyUSB0
+	echo -en "$3\r" > /dev/ttyUSB0
 	sleep 1
 	echo "Sending file..."
 	#cat $4 > /dev/ttyUSB0
-	stat --printf="%s bytes\n" $4
+	stat -L --printf="%s bytes\n" $4
 	dd if=$4 of=/dev/ttyUSB0 bs=1k status=progress
 	sleep 1
-	echo -en "y\r\n" > /dev/ttyUSB0
+
+	# You only need to send a 'y', not the 'y' + CR. But, if the flash is already
+	# blank, flash writer will not ask you to confirm, so we send y + CR
+	# just in case. So if the flash is already blank you will just see an
+	# extra 'command not found' message which does not hurt anything.
+	echo -en "y\r" > /dev/ttyUSB0
 	sleep 1
 	echo ""
 }
 
+# do_xls3
+# $1 = string
+# $2 = SPI address to write to
+# $3 = filename
+do_xls3() {
+	# Flash writer just looks for CR. It ignores LF characters.
+	echo "Writting $1 ($3)"
+	echo "Sending XLS3 command..."
+	echo -en "XLS3\r" > /dev/ttyUSB0
+	sleep 1
+
+	# get the file size of our binary
+	SIZE_DEC=$(stat -L --printf="%s" $3)
+	SIZE_HEX=$(printf '%X' $SIZE_DEC)
+	echo -en "$SIZE_HEX\r" > /dev/ttyUSB0
+	sleep 1
+
+	echo -en "$2\r" > /dev/ttyUSB0
+	sleep 1
+
+	echo "Sending file..."
+	#cat $3 > /dev/ttyUSB0
+	stat -L --printf="%s bytes\n" $3
+	dd if=$3 of=/dev/ttyUSB0 bs=1k status=progress
+	sleep 1
+
+	# You only need to send a 'y', not the 'y' + CR. But, if the flash is already
+	# blank, flash writer will not ask you to confirm, so we send y + CR
+	# just in case. So if the flash is already blank you will just see an
+	# extra 'command not found' message which does not hurt anything.
+	echo -en "y\r" > /dev/ttyUSB0
+	sleep 1
+	echo ""
+}
+
+# do_em_w
+# $1 = string
+# $2 = partition number
+# $3 = eMMC block address to write to
+# $4 = RAM address to download to
+# $5 = filename
 do_em_w() {
-	#Note: Need to send a CR + NL (\r\n) at the end of each command
+	# Flash writer just looks for CR. It ignores LF characters.
 	echo "Writting $1 ($5)"
 	echo "Sending EM_W command..."
-	echo -en "EM_W\r\n" > /dev/ttyUSB0
+	echo -en "EM_W\r" > /dev/ttyUSB0
 	sleep 1
-	echo -en "$2\r\n" > /dev/ttyUSB0
+	echo -en "$2\r" > /dev/ttyUSB0
 	sleep 1
-	echo -en "$3\r\n" > /dev/ttyUSB0
+	echo -en "$3\r" > /dev/ttyUSB0
 	sleep 1
-	echo -en "$4\r\n" > /dev/ttyUSB0
+	echo -en "$4\r" > /dev/ttyUSB0
 	sleep 1
 	echo "Sending file..."
 	#cat $5 > /dev/ttyUSB0
-	stat --printf="%s bytes\n" $5
+	stat -L --printf="%s bytes\n" $5
 	dd if=$5 of=/dev/ttyUSB0 bs=1k status=progress
 	sleep 1
 	echo ""
 }
 
+# do_em_wb
+# $1 = string
+# $2 = partition number
+# $3 = eMMC block address to write to
+# $4 = filename
+do_em_wb() {
+	# Flash writer just looks for CR. It ignores LF characters.
+	echo "Writting $1 ($4)"
+	echo "Sending EM_WB command..."
+	echo -en "EM_WB\r" > /dev/ttyUSB0
+	sleep 1
+	echo -en "$2\r" > /dev/ttyUSB0
+	sleep 1
+	echo -en "$3\r" > /dev/ttyUSB0
+	sleep 1
+
+	# get the file size of our binary
+	SIZE_DEC=$(stat -L --printf="%s" $4)
+	SIZE_HEX=$(printf '%X' $SIZE_DEC)
+	echo -en "$SIZE_HEX\r" > /dev/ttyUSB0
+	sleep 1
+
+	echo "Sending file..."
+	#cat $4 > /dev/ttyUSB0
+	stat -L --printf="%s bytes\n" $4
+	dd if=$4 of=/dev/ttyUSB0 bs=1k status=progress
+	sleep 1
+	echo ""
+}
+
+# do_spi_write
+# $1 = string
+# $2 = RAM address to download to
+# $3 = SPI address to write to
+# $4 = filename
+do_spi_write() {
+
+	# Send a CR (\r) just to make sure there are not extra characters left over from the last transfer
+	#echo -en "\r" > /dev/ttyUSB0
+
+	# Check if file is SREC or bin
+	FILENAME=$(basename $4)
+	FILENAME_EXT=`echo ${FILENAME: -5}`
+	if [ "$FILENAME_EXT" == ".srec" ] ; then
+		# S-Record Write
+		do_xls2 "$1" $2 $3 $4
+	else
+		# Binary Write (RAM address not needed)
+		do_xls3 "$1" $3 $4
+	fi
+}
+
+# do_emmc_write
+# $1 = string
+# $2 = partition number
+# $3 = eMMC starting block to write
+# $4 = RAM address to download to
+# $5 = filename
+do_emmc_write() {
+	# Send a CR (\r) just to make sure there are not extra characters left over from the last transfer
+	#echo -en "\r" > /dev/ttyUSB0
+
+	# Check if file is SREC or bin
+	FILENAME=$(basename $5)
+	FILENAME_EXT=`echo ${FILENAME: -5}`
+	if [ "$FILENAME_EXT" == ".srec" ] ; then
+		# S-Record Write
+		do_em_w "$1" $2 $3 $4 $5
+	else
+		# Binary Write
+		do_em_wb "$1" $2 $3 $5
+	fi
+}
 
 # Usage is displayed when no arguments on comamnd line
 if [ "$1" == "" ] ; then
@@ -195,12 +320,12 @@ if [ "$1" == "fw" ] ; then
 	echo "-----------------------------------------------------------------"
 	read dummy
 	echo "Sending Flash Writter Binary ($FLASHWRITER)"
-	stat --printf="%s bytes\n" $FLASHWRITER
+	stat -L --printf="%s bytes\n" $FLASHWRITER
 	#cat $FLASHWRITER > /dev/ttyUSB0
 	dd if=$FLASHWRITER of=/dev/ttyUSB0 bs=1k status=progress
 	sleep 1
 	# Clear out the extra left over characters
-	echo -en "\r\n" > /dev/ttyUSB0
+	echo -en "\r" > /dev/ttyUSB0
 	echo "Complete"
 	exit
 fi
@@ -216,78 +341,78 @@ if [ "$1" == "emmc_config" ] ; then
 
 	# Set the EXT_CSD register byte179, PARTITION_CONFIG bit[6] = H??0(No boot acknowledge sent).
 	# Set the EXT_CSD register byte179, PARTITION_CONFIG bit[5:3] = H??1 (Boot Area partition1).
-	echo -en "EM_SECSD\r\n" > /dev/ttyUSB0
+	echo -en "EM_SECSD\r" > /dev/ttyUSB0
 	sleep 1
-	echo -en "b1\r\n" > /dev/ttyUSB0
+	echo -en "b1\r" > /dev/ttyUSB0
 	sleep 1
-	echo -en "0a\r\n" > /dev/ttyUSB0
+	echo -en "0a\r" > /dev/ttyUSB0
 	sleep 1
 
 	# Set the EXT_CSD register byte177, BOOT_BUS_CONDITIONS bit[4:3] = H??1(50MHz SDR).
 	# Set the EXT_CSD register byte177, BOOT_BUS_CONDITIONS bit[1:0] = H??2(x8 bus widths).
 	echo "Setting EXT_CSD regiser 177..."
-	echo -en "EM_SECSD\r\n" > /dev/ttyUSB0
+	echo -en "EM_SECSD\r" > /dev/ttyUSB0
 	sleep 1
-	echo -en "b3\r\n" > /dev/ttyUSB0
+	echo -en "b3\r" > /dev/ttyUSB0
 	sleep 1
-	echo -en "08\r\n" > /dev/ttyUSB0
+	echo -en "08\r" > /dev/ttyUSB0
 	sleep 1
 fi
 
 
 if [ "$1" == "sa0" ] || [ "$1" == "all" ] ; then
 	if [ "$2" != "" ] ; then
-		SA0_SREC=$2
+		SA0_FILE=$2
 	fi
 
 	if [ "$FLASH" == "0" ] ; then
-		do_xls2 "bootparam SA0" E6320000 000000 $SA0_SREC
+		do_spi_write "bootparam SA0" E6320000 000000 $SA0_FILE
 	else
-		do_em_w "bootparam SA0" 1 000000 E6320000 $SA0_SREC
+		do_emmc_write "bootparam SA0" 1 000000 E6320000 $SA0_FILE
 	fi
 fi
 
 if [ "$1" == "bl2" ] || [ "$1" == "all" ] ; then
 	if [ "$2" != "" ] ; then
-		BL2_SREC=$2
+		BL2_FILE=$2
 	fi
 	if [ "$FLASH" == "0" ] ; then
-		do_xls2 "BL2" E6304000 040000 $BL2_SREC
+		do_spi_write "BL2" E6304000 040000 $BL2_FILE
 	else
-		do_em_w "BL2" 1 00001E E6304000 $BL2_SREC
+		do_emmc_write "BL2" 1 00001E E6304000 $BL2_FILE
 	fi
 fi
 
 if [ "$1" == "sa6" ] || [ "$1" == "all" ] ; then
 	if [ "$2" != "" ] ; then
-		SA6_SREC=$2
+		SA6_FILE=$2
 	fi
 	if [ "$FLASH" == "0" ] ; then
-		do_xls2 "Cert Header SA6" E6320000 180000 $SA6_SREC
+		do_spi_write "Cert Header SA6" E6320000 180000 $SA6_FILE
 	else
-		do_em_w "Cert Header SA6" 1 000180 E6320000 $SA6_SREC
+		do_emmc_write "Cert Header SA6" 1 000180 E6320000 $SA6_FILE
 	fi
 fi
 
 if [ "$1" == "bl31" ] || [ "$1" == "all" ] ; then
 	if [ "$2" != "" ] ; then
-		BL31_SREC=$2
+		BL31_FILE=$2
 	fi
 	if [ "$FLASH" == "0" ] ; then
-		do_xls2 "BL31" 44000000 1C0000 $BL31_SREC
+		do_spi_write "BL31" 44000000 1C0000 $BL31_FILE
 	else
-		do_em_w "BL31" 1 000200 44000000 $BL31_SREC
+		do_emmc_write "BL31" 1 000200 44000000 $BL31_FILE
 	fi
 fi
 
 if [ "$1" == "uboot" ] || [ "$1" == "all" ] ; then
 	if [ "$2" != "" ] ; then
-		UBOOT_SREC=$2
+		UBOOT_FILE=$2
 	fi
 	if [ "$FLASH" == "0" ] ; then
-		do_xls2 "u-boot" 50000000 300000 $UBOOT_SREC
+		do_spi_write "u-boot" 50000000 300000 $UBOOT_FILE
 	else
-		do_em_w "u-boot" 2 000000 50000000 $UBOOT_SREC
+		do_emmc_write "u-boot" 2 000000 50000000 $UBOOT_FILE
 	fi
 fi
 
