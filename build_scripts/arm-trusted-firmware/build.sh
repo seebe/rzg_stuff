@@ -1,8 +1,12 @@
 #!/bin/bash
 
+#---------------------------------------------------------------------------
+# Please read the README.md file first for proper setup
+#---------------------------------------------------------------------------
+
 # HiHope RZ/G2M
-#MACHINE=hihope-rzg2m
-#EMMC_BOOT=1
+MACHINE=hihope-rzg2m
+EMMC_BOOT=1
 
 # HiHope RZ/G2N
 #MACHINE=hihope-rzg2n
@@ -32,12 +36,65 @@ fi
 # VLP64 v1.0.3rt
 # (optional) $ cd z_patches/meta-rzg2 ; git checkout BSP-1.0.3-RT ; cd ../..
 # $ git checkout -b vlp64_v103rt c8b88aa5dc11be44dee1f67a894bb0076fb5f1db
-# $ ./build make_patches
-DIR=vlp64_v103rt
+# $ ./build.sh make_patches
+
 if [ "$1" == "make_patches" ] ; then
+
+  if [ ! -e z_patches/meta-rzg2 ] ; then
+    echo "ERROR: Directory z_patches/meta-rzg2 does not exist"
+    exit
+  fi
+  BRANCH=
+  if [ "$2" == "master" ] ; then
+    ATF_SHA=master
+    BRANCH="master"
+    DIR="vlp64_master"
+  fi
+  if [ "$2" == "BSP-1.0.2" ] ; then
+    ATF_SHA="236f8fbb57af"
+    BRANCH="BSP-1.0.2"
+    DIR="vlp64_v102"
+  fi
+  if [ "$2" == "BSP-1.0.3" ] ; then
+    ATF_SHA="c8b88aa5dc11"
+    BRANCH="BSP-1.0.3"
+    DIR="vlp64_v103"
+  fi
+  if [ "$2" == "BSP-1.0.3-RT" ] ; then
+    ATF_SHA="c8b88aa5dc11"
+    BRANCH="BSP-1.0.3-RT"
+    DIR="vlp64_v103rt"
+  fi
+  if [ "$BRANCH" == "" ] ; then
+    echo "Please choose a VLP64 release version:"
+    echo ""
+    echo "./build.sh make_patches master"
+    echo "./build.sh make_patches BSP-1.0.2"
+    echo "./build.sh make_patches BSP-1.0.3"
+    echo "./build.sh make_patches BSP-1.0.3-RT"
+    exit
+  fi
+
+  # Check out the branch that we want
+  cd z_patches/meta-rzg2
+  CURRENT_BRANCH=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+  if [ "$BRANCH" != "$CURRENT_BRANCH" ] ; then
+    git checkout $BRANCH
+  fi
+  cd ../..
+
+  #BRANCH=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')   # Get current branch name (no need to)
+  #DIR=$BRANCH     # Use branch name as output directory name
+
   # Some patches are just diff, so turn them all into diff, then into mailbox patches
-  mkdir -p z_patches/$DIR
-  rm z_patches/$DIR/*
+  # so we can apply them with 'git am'
+
+  if [ -e z_patches/$DIR ] ; then
+    rm z_patches/$DIR/*
+  else
+    mkdir -p z_patches/$DIR
+  fi
+
   cp z_patches/meta-rzg2/recipes-bsp/arm-trusted-firmware/files/*.patch z_patches/$DIR
   cd z_patches/$DIR
   for filename in *.patch ; do
@@ -57,8 +114,15 @@ if [ "$1" == "make_patches" ] ; then
     sed -i "5 i\ $filename" $filename
     sed -i "6 i\---" $filename
   done
-  echo "To Check: meld z_patches/meta-rzg2/recipes-bsp/arm-trusted-firmware/files z_patches/$DIR"
-  echo "To Apply: git am z_patches/$DIR/*"
+
+  # For checking that the conversion worked: meld z_patches/meta-rzg2/recipes-bsp/arm-trusted-firmware/files z_patches/$DIR"
+  echo "------------------------- Complete ----------------------------------"
+  echo ""
+  echo "To create a new branch of your current arm-trusted-firmware repository and then"
+  echo "apply these patches on top, copy/paste the following command:"
+  echo ""
+  echo "git checkout -b $DIR $ATF_SHA ; git am z_patches/$DIR/*"
+  echo ""
   exit
 fi
 
@@ -82,24 +146,6 @@ fi
 BUILD_THREADS=$(expr $NPROC + $NPROC)
 
 PLATFORM=rcar
-#ATFW_OPT_LOSSY = "${@base_conditional("USE_MULTIMEDIA", "1", "RCAR_LOSSY_ENABLE=1", "", d)}"
-#ATFW_OPT_r8a774c0 = "LSI=G2E RCAR_SA0_SIZE=0 RCAR_AVS_SETTING_ENABLE=0 RZG_EK874=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 RCAR_DRAM_DDR3L_MEMCONF=1 RCAR_DRAM_DDR3L_MEMDUAL=1 SPD="none""
-
-#ATFW_OPT_r8a774a1 = "LSI=G2M RCAR_DRAM_SPLIT=2 RCAR_AVS_SETTING_ENABLE=0 RZG_HIHOPE_RZG2M=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 RCAR_SECURE_BOOT=0 SPD="none""
-
-#ATFW_OPT_r8a774b1 = "LSI=G2N RCAR_AVS_SETTING_ENABLE=0 RZG_HIHOPE_RZG2N=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 SPD="none""
-
-#ATFW_OPT_append_r8a774c0 = "${@base_conditional("USE_ECC", "1", " LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_EK874_ECC=1 ", "",d)}"
-
-#ATFW_OPT_append_r8a774a1 = "${@base_conditional("USE_ECC", "1", " LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_HIHOPE_RZG2M_ECC=1 RCAR_DRAM_SPLIT=0", " ${ATFW_OPT_LOSSY} ",d)}"
-
-#ATFW_OPT_append_r8a774b1 = "${@base_conditional("USE_ECC", "1", " LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_HIHOPE_RZG2N_ECC=1", " ${ATFW_OPT_LOSSY} ",d)}"
-
-#ATFW_OPT_append = "${@base_conditional("ECC_FULL", "1", " RZG_DRAM_ECC_FULL=1 ", "",d)}"
-
-
-# (USE_MULTIMEDIA, do not set if using ECC
-#RCAR_LOSSY_ENABLE=1
 
 # PLAT
 #	Set string is "rcar"
