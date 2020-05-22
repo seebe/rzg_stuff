@@ -41,13 +41,6 @@ $ git checkout rcar_gen3
 $ cp ../rzg_stuff/build_scripts/arm-trusted-firmware/build.sh  .
 ```
 
-### Check out meta-rzg2 layer (contains VLP64 patches)
-```
-$ mkdir z_patches
-$ cd z_patches
-$ git clone https://github.com/renesas-rz/meta-rzg2
-$ cd ..
-```
 ### Choose a specific VLP64 version that you want to build
 You can choose to build using the master (latest and greatest) patches, or reproduce a specific VLP64 release.
 What we will do is in the arm-trusted-firmware git repository, we will make a new separate branch in order to keep track of what VLP64 version we are trying to reproduce. Also, we will check out and use the same arm-trusted-firmware commit point that the VLP64 Yocto recipe used since we are trying to replicate that as close as we can.
@@ -66,9 +59,9 @@ Pay attention to the output of this script
 
 ### Apply your patches
 The command "$ ./build.sh make_patches xxx " will output a command that you will need to copy/paste and run on the command line. This will create a new branch of your current arm-trusted-firmware repository and then apply these patches on top.
-For example, if you selected "master", it will output the command line:
+For example, if you selected "BSP-1.0.3", it will output the command line:
 ```
-git checkout -b vlp64_master master ; git am z_patches/vlp64_master/*
+git checkout -b vlp64_v103 c8b88aa5dc11 ; git am z_patches/vlp64_v103/*
 ```
 
 ## Select the board and boot method

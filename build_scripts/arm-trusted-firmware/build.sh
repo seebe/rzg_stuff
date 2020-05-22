@@ -41,12 +41,15 @@ fi
 if [ "$1" == "make_patches" ] ; then
 
   if [ ! -e z_patches/meta-rzg2 ] ; then
-    echo "ERROR: Directory z_patches/meta-rzg2 does not exist"
-    exit
+    mkdir -p z_patches
+    cd z_patches
+    git clone https://github.com/renesas-rz/meta-rzg2
+    cd ..
   fi
+
   BRANCH=
   if [ "$2" == "master" ] ; then
-    ATF_SHA=master
+    ATF_SHA="rcar_gen3"
     BRANCH="master"
     DIR="vlp64_master"
   fi
@@ -75,6 +78,14 @@ if [ "$1" == "make_patches" ] ; then
     exit
   fi
 
+  if [ -e z_patches/$DIR ] ; then
+    echo "ERROR: You have already created patches for that version and probably already"
+    echo "have a branch named \"$DIR\""
+    echo "Please check by entering the command line: "
+    echo "    $ git branch"
+    exit
+  fi
+
   # Check out the branch that we want
   cd z_patches/meta-rzg2
   CURRENT_BRANCH=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
@@ -86,7 +97,7 @@ if [ "$1" == "make_patches" ] ; then
   #BRANCH=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')   # Get current branch name (no need to)
   #DIR=$BRANCH     # Use branch name as output directory name
 
-  # Some patches are just diff, so turn them all into diff, then into mailbox patches
+  # Some patches are just diff, so turn them into mailbox patches
   # so we can apply them with 'git am'
 
   if [ -e z_patches/$DIR ] ; then
@@ -101,9 +112,11 @@ if [ "$1" == "make_patches" ] ; then
     #echo $filename
     LINE=`grep --line-number --max-count=1 "diff --git" $filename | sed 's/:.*//'`
     #echo LINE=$LINE
+
     if [ "$LINE" != "1" ] ; then
       LINE=`expr $LINE - 1`
-      sed -i -e "1,${LINE}d" $filename
+      #sed -i -e "1,${LINE}d" $filename   # remove the entire header
+      continue    # skip this file, it already has a good format
     fi
     # Add in git git mailbox header at begining of file
     SUBJECT=${filename::-6}
@@ -126,6 +139,11 @@ if [ "$1" == "make_patches" ] ; then
   exit
 fi
 
+if [ ! -e z_patches/meta-rzg2 ] ; then
+  echo "ERROR: Directory z_patches/meta-rzg2 does not exist yet"
+  echo "       Please run \"./build.sh make_patches\" first"
+  exit
+fi
 
 # Check for Yocto SDK setup
 if [ "$TARGET_PREFIX" == "" ] ; then
@@ -312,6 +330,11 @@ cp build/${PLATFORM}/release/bl31.bin ${DEPLOYDIR}/bl31-${MACHINE}.bin
 cp build/${PLATFORM}/release/bl31.srec ${DEPLOYDIR}/bl31-${MACHINE}.srec
 cp tools/dummy_create/bootparam_sa0.srec ${DEPLOYDIR}/bootparam_sa0.srec
 cp tools/dummy_create/cert_header_sa6.srec ${DEPLOYDIR}/cert_header_sa6.srec
+
+# Save what build this was
+CURRENT_BRANCH=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+echo "Built from branch \"$CURRENT_BRANCH\"" > ${DEPLOYDIR}/build_version.txt
+
 
 echo "-------------------------------------"
 echo "    Files copied to ${DEPLOYDIR}"
