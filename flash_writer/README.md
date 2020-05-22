@@ -30,22 +30,30 @@ If using a Renesas evaluation board, you can use the 'sw' command to print out h
 2. Power off the board
 
 3. In a terminal window, run the follow command to determine the correct switch settings to put the device into SCIF download mode.
-`$ ./flash_writer.sh  sw`
+```
+$ ./flash_writer.sh  sw
+```
 
 4. Power the board
 
 5. Open a 2nd terminal window and type "cat /dev/ttyUSB0" in order to monitor the output from the board. If you press the RESET button the board, you should see a text message "SCIF Download mode .......  please send !"
 
 6. Execute the follow command to download the flash writer binary. The must be done first after RESET.
-`./flash_writer.sh fw`
+```
+$ ./flash_writer.sh fw
+```
 
 7. Execute the following commands:
-`$ ./flash_writer.sh  sa0`
-`$ ./flash_writer.sh  bl2`
-`$ ./flash_writer.sh  sa6`
-`$ ./flash_writer.sh  bl31`
-`$ ./flash_writer.sh  uboot`
+```
+$ ./flash_writer.sh  sa0
+$ ./flash_writer.sh  bl2
+$ ./flash_writer.sh  sa6
+$ ./flash_writer.sh  bl31
+$ ./flash_writer.sh  uboot
+```
 
 Or, just use this command to program everything at once:
-`$ ./flash_writer.sh  all              # programs sa0,bl2,sa6,bl31,uboot all at once`
+```
+$ ./flash_writer.sh  all              # programs sa0,bl2,sa6,bl31,uboot all at once
+```
 
