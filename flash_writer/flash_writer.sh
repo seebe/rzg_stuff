@@ -19,6 +19,17 @@ if [ "$FLASH" == "" ] ; then
 	exit
 fi
 
+# Set default tty interface if not set
+if [ "$SERIAL_DEVICE_INTERFACE" == "" ] ; then
+	SERIAL_DEVICE_INTERFACE=/dev/ttyUSB0
+	#SERIAL_DEVICE_INTERFACE=/dev/ttyACM0
+fi
+
+# Turn off some conversions that disrupt sending binary files over tty connections.
+# These are already the defaults for /dev/ttyUSB0, so this requirement is really only for
+# when using /dev/ttyACM0
+stty -icrnl -onlcr -isig -icanon -echoe -opost -F $SERIAL_DEVICE_INTERFACE
+
 if [ "$BOARD" == "ek874" ] ; then
 
 	BOARD_NAME="Silicon Linux RZ/G2E evaluation kit (EK874)"
@@ -126,23 +137,23 @@ do_xls2() {
 	# Flash writer just looks for CR. If it see LF, it ignores it.
 	echo "Writting $1 ($4)"
 	echo "Sending XLS2 command..."
-	echo -en "XLS2\r" > /dev/ttyUSB0
+	echo -en "XLS2\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
-	echo -en "$2\r" > /dev/ttyUSB0
+	echo -en "$2\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
-	echo -en "$3\r" > /dev/ttyUSB0
+	echo -en "$3\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
 	echo "Sending file..."
-	#cat $4 > /dev/ttyUSB0
+	#cat $4 > $SERIAL_DEVICE_INTERFACE
 	stat -L --printf="%s bytes\n" $4
-	dd if=$4 of=/dev/ttyUSB0 bs=1k status=progress
+	dd if=$4 of=$SERIAL_DEVICE_INTERFACE bs=1k status=progress
 	sleep 1
 
 	# You only need to send a 'y', not the 'y' + CR. But, if the flash is already
 	# blank, flash writer will not ask you to confirm, so we send y + CR
 	# just in case. So if the flash is already blank you will just see an
 	# extra 'command not found' message which does not hurt anything.
-	echo -en "y\r" > /dev/ttyUSB0
+	echo -en "y\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
 	echo ""
 }
@@ -155,29 +166,29 @@ do_xls3() {
 	# Flash writer just looks for CR. It ignores LF characters.
 	echo "Writting $1 ($3)"
 	echo "Sending XLS3 command..."
-	echo -en "XLS3\r" > /dev/ttyUSB0
+	echo -en "XLS3\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
 
 	# get the file size of our binary
 	SIZE_DEC=$(stat -L --printf="%s" $3)
 	SIZE_HEX=$(printf '%X' $SIZE_DEC)
-	echo -en "$SIZE_HEX\r" > /dev/ttyUSB0
+	echo -en "$SIZE_HEX\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
 
-	echo -en "$2\r" > /dev/ttyUSB0
+	echo -en "$2\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
 
 	echo "Sending file..."
-	#cat $3 > /dev/ttyUSB0
+	#cat $3 > $SERIAL_DEVICE_INTERFACE
 	stat -L --printf="%s bytes\n" $3
-	dd if=$3 of=/dev/ttyUSB0 bs=1k status=progress
+	dd if=$3 of=$SERIAL_DEVICE_INTERFACE bs=1k status=progress
 	sleep 1
 
 	# You only need to send a 'y', not the 'y' + CR. But, if the flash is already
 	# blank, flash writer will not ask you to confirm, so we send y + CR
 	# just in case. So if the flash is already blank you will just see an
 	# extra 'command not found' message which does not hurt anything.
-	echo -en "y\r" > /dev/ttyUSB0
+	echo -en "y\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
 	echo ""
 }
@@ -192,18 +203,18 @@ do_em_w() {
 	# Flash writer just looks for CR. It ignores LF characters.
 	echo "Writting $1 ($5)"
 	echo "Sending EM_W command..."
-	echo -en "EM_W\r" > /dev/ttyUSB0
+	echo -en "EM_W\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
-	echo -en "$2\r" > /dev/ttyUSB0
+	echo -en "$2\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
-	echo -en "$3\r" > /dev/ttyUSB0
+	echo -en "$3\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
-	echo -en "$4\r" > /dev/ttyUSB0
+	echo -en "$4\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
 	echo "Sending file..."
-	#cat $5 > /dev/ttyUSB0
+	#cat $5 > $SERIAL_DEVICE_INTERFACE
 	stat -L --printf="%s bytes\n" $5
-	dd if=$5 of=/dev/ttyUSB0 bs=1k status=progress
+	dd if=$5 of=$SERIAL_DEVICE_INTERFACE bs=1k status=progress
 	sleep 1
 	echo ""
 }
@@ -217,23 +228,23 @@ do_em_wb() {
 	# Flash writer just looks for CR. It ignores LF characters.
 	echo "Writting $1 ($4)"
 	echo "Sending EM_WB command..."
-	echo -en "EM_WB\r" > /dev/ttyUSB0
+	echo -en "EM_WB\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
-	echo -en "$2\r" > /dev/ttyUSB0
+	echo -en "$2\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
-	echo -en "$3\r" > /dev/ttyUSB0
+	echo -en "$3\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
 
 	# get the file size of our binary
 	SIZE_DEC=$(stat -L --printf="%s" $4)
 	SIZE_HEX=$(printf '%X' $SIZE_DEC)
-	echo -en "$SIZE_HEX\r" > /dev/ttyUSB0
+	echo -en "$SIZE_HEX\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
 
 	echo "Sending file..."
-	#cat $4 > /dev/ttyUSB0
+	#cat $4 > $SERIAL_DEVICE_INTERFACE
 	stat -L --printf="%s bytes\n" $4
-	dd if=$4 of=/dev/ttyUSB0 bs=1k status=progress
+	dd if=$4 of=$SERIAL_DEVICE_INTERFACE bs=1k status=progress
 	sleep 1
 	echo ""
 }
@@ -246,7 +257,7 @@ do_em_wb() {
 do_spi_write() {
 
 	# Send a CR (\r) just to make sure there are not extra characters left over from the last transfer
-	#echo -en "\r" > /dev/ttyUSB0
+	#echo -en "\r" > $SERIAL_DEVICE_INTERFACE
 
 	# Check if file is SREC or bin
 	FILENAME=$(basename $4)
@@ -268,7 +279,7 @@ do_spi_write() {
 # $5 = filename
 do_emmc_write() {
 	# Send a CR (\r) just to make sure there are not extra characters left over from the last transfer
-	#echo -en "\r" > /dev/ttyUSB0
+	#echo -en "\r" > $SERIAL_DEVICE_INTERFACE
 
 	# Check if file is SREC or bin
 	FILENAME=$(basename $5)
@@ -321,11 +332,11 @@ if [ "$1" == "fw" ] ; then
 	read dummy
 	echo "Sending Flash Writter Binary ($FLASHWRITER)"
 	stat -L --printf="%s bytes\n" $FLASHWRITER
-	#cat $FLASHWRITER > /dev/ttyUSB0
-	dd if=$FLASHWRITER of=/dev/ttyUSB0 bs=1k status=progress
+	#cat $FLASHWRITER > $SERIAL_DEVICE_INTERFACE
+	dd if=$FLASHWRITER of=$SERIAL_DEVICE_INTERFACE bs=1k status=progress
 	sleep 1
 	# Clear out the extra left over characters
-	echo -en "\r" > /dev/ttyUSB0
+	echo -en "\r" > $SERIAL_DEVICE_INTERFACE
 	echo "Complete"
 	exit
 fi
@@ -341,21 +352,21 @@ if [ "$1" == "emmc_config" ] ; then
 
 	# Set the EXT_CSD register byte179, PARTITION_CONFIG bit[6] = H??0(No boot acknowledge sent).
 	# Set the EXT_CSD register byte179, PARTITION_CONFIG bit[5:3] = H??1 (Boot Area partition1).
-	echo -en "EM_SECSD\r" > /dev/ttyUSB0
+	echo -en "EM_SECSD\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
-	echo -en "b1\r" > /dev/ttyUSB0
+	echo -en "b1\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
-	echo -en "0a\r" > /dev/ttyUSB0
+	echo -en "0a\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
 
 	# Set the EXT_CSD register byte177, BOOT_BUS_CONDITIONS bit[4:3] = H??1(50MHz SDR).
 	# Set the EXT_CSD register byte177, BOOT_BUS_CONDITIONS bit[1:0] = H??2(x8 bus widths).
 	echo "Setting EXT_CSD regiser 177..."
-	echo -en "EM_SECSD\r" > /dev/ttyUSB0
+	echo -en "EM_SECSD\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
-	echo -en "b3\r" > /dev/ttyUSB0
+	echo -en "b3\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
-	echo -en "08\r" > /dev/ttyUSB0
+	echo -en "08\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
 fi
 

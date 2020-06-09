@@ -57,3 +57,10 @@ Or, just use this command to program everything at once:
 $ ./flash_writer.sh  all              # programs sa0,bl2,sa6,bl31,uboot all at once
 ```
 
+## Notes on USB Download mode
+USB Download mode is supported for RZ/G2E, RZ/G2N and RZ/G2H devices.
+In this mode, the RZ/G USB Function port is used as a USB CDC class USB-serial device when plugged into a host machine.
+The HiHope boards were designed to support this.
+In Windows, this works fine. However with a Linux PC, there are issues.
+
+Please refer to file [USB_Download_Mode.md](USB_Download_Mode.md)
