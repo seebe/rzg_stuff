@@ -93,11 +93,24 @@ Mount USB Flash Drive on HiHope:
 
 9. Boot kernel using eMMC file system
 Reset your board (power switch) and once again stop it in u-boot by pressing the space bar (or any keyboard key).
-Enter the commands below to boot your system. They are actually almost the same as the default commands, but we need to change bootargs so root will be mmcblk0p2 (instead of the default mmcblk1p2)
-
-    => fatload mmc 0:1 0x48080000 Image-hihope-rzg2m.bin; fatload mmc 0:1 0x48000000 Image-r8a774a1-hihope-rzg2m-ex.dtb
+Enter the commands below to boot your system:
+```
+    => fatload mmc 1:1 0x48080000 Image-hihope-rzg2m.bin; fatload mmc 1:1 0x48000000 Image-r8a774a1-hihope-rzg2m-ex.dtb
     => setenv bootargs 'root=/dev/mmcblk0p2 rootwait'
     => booti 0x48080000 - 0x48000000
+```
+If you don't want to type this every time, you can do this:
+```
+    => setenv mmc_boot1 'setenv bootargs root=/dev/mmcblk0p2 rootwait'
+    => setenv mmc_boot2 'fatload mmc 1:1 0x48080000 Image-hihope-rzg2m.bin ; fatload mmc 1:1 0x48000000 Image-r8a774a1-hihope-rzg2m-ex.dtb'
+    => setenv mmc_boot 'run mmc_boot1 mmc_boot2 ; booti 0x48080000 - 0x48000000'
+    => saveenv
+```
+Then to boot your system after reset, you only need to type this:
+```
+    => run mmc_boot
+```
+
 
 10. done. enjoy.
 
