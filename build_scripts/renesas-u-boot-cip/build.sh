@@ -57,12 +57,18 @@ unset LD
 # Add '-s' for silent Build
 MAKE="make -j$BUILD_THREADS O=$OUT"
 
+# While the Yocto SDK setup script (environment-setup-aarch64-poky-linux) sets CC, and includes
+# the --sysroot parameter, we have to explictly put CC= on the make command line because of how
+# the u-boot Makefile was written and looks for thigns like libgcc.a
+MAKE="make CC=\""$CC"\" -j$BUILD_THREADS O=$OUT"
+
 # If this is the first time building, we need to configure first
 if [ ! -e "$OUT/.config" ] ; then
   echo $MAKE $DEFCONFIG
-  $MAKE $DEFCONFIG
+  eval $MAKE $DEFCONFIG
 fi
 
 CMD="$MAKE $1 $2 $3"
-echo $CMD ; $CMD
+echo $CMD
+eval $CMD
 
