@@ -1,4 +1,4 @@
-# arm-trusted-firmware Build script
+# arm-trusted-firmware Build Script
 
 This script lets you build the Initial Program Loader (IPL), which is basically the arm-trusted-firmware code base that has been modified for RZ/G **outside** of the Yocto environment.
 
@@ -29,7 +29,7 @@ For example:
 ```
 
 ## Build Instructions
-### Check out R-Car ARM Trusted Firmware repository
+### Clone and check out R-Car ARM Trusted Firmware repository
 ```
 $ cd /home/chris/rzg2
 $ git clone git://github.com/renesas-rcar/arm-trusted-firmware.git
