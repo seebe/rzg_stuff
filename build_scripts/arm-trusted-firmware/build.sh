@@ -68,6 +68,11 @@ if [ "$1" == "make_patches" ] ; then
     BRANCH="BSP-1.0.3-RT"
     DIR="vlp64_v103rt"
   fi
+  if [ "$2" == "BSP-1.0.4" ] ; then
+    ATF_SHA="af9f429a48b4"
+    BRANCH="BSP-1.0.4"
+    DIR="vlp64_v104"
+  fi
   if [ "$BRANCH" == "" ] ; then
     echo "Please choose a VLP64 release version:"
     echo ""
@@ -75,6 +80,7 @@ if [ "$1" == "make_patches" ] ; then
     echo "./build.sh make_patches BSP-1.0.2"
     echo "./build.sh make_patches BSP-1.0.3"
     echo "./build.sh make_patches BSP-1.0.3-RT"
+    echo "./build.sh make_patches BSP-1.0.4"
     exit
   fi
 

@@ -53,6 +53,7 @@ Therefore the build script 'make_patches' command will convert them all to the s
 $ ./build.sh make_patches master
 $ ./build.sh make_patches BSP-1.0.2
 $ ./build.sh make_patches BSP-1.0.3
+$ ./build.sh make_patches BSP-1.0.4
 $ ./build.sh make_patches BSP-1.0.3-RT
 ```    
 Pay attention to the output of this script
