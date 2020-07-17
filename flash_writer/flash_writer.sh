@@ -293,6 +293,17 @@ do_emmc_write() {
 	fi
 }
 
+# Print current selected board
+if [ "$FLASH" == "0" ] ; then
+	FLASH_TEXT="SPI Flash"	# 0 = SPI Flash
+else
+	FLASH_TEXT="eMMC Flash"	# 1 = eMMC
+fi
+echo "----------------------------------------------------"
+echo "   Board: $BOARD_NAME"
+echo "  Target: $FLASH_TEXT"
+echo "----------------------------------------------------"
+
 # Usage is displayed when no arguments on comamnd line
 if [ "$1" == "" ] ; then
 	echo "Usage:"
@@ -313,10 +324,6 @@ if [ "$1" == "" ] ; then
 	echo "         Example: $ $0 sa0 ../../arm-trusted-firmware/tools/dummy_create/bootparam_sa0.srec"
 	exit
 fi
-
-# Print current selected board
-echo "Board: $BOARD_NAME"
-echo ""
 
 if [ "$1" == "fw" ] ; then
 
