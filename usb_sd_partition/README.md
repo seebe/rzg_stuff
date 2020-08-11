@@ -6,7 +6,7 @@ This script will erase and reformat a **USB Flash drive** or **SD Card** (via US
 It will have 2 partitions:
 
 1. FAT16 partition (that can be access by Windows)
-2. ext3 partion that can hold a Linux file system.
+2. ext2/3/4 partion that can hold a Linux file system.
 
 ## Partition Sizes
 The **500MB partition** size is recommended because it doesn't really hold anything else other than the kernel and device tree. But, you might want to copy something into this partition (like an MP3, a JPG or maybe a demo app) from a Windows machine so that you can use access it on your board after it boots up.

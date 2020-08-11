@@ -10,6 +10,7 @@
 FAT_SZ=+500M
 #EXT_SZ=+6G
 EXT_SZ=
+EXT_VER=ext4
 
 # This script must run as root
 if [[ $EUID -ne 0 ]]; then
@@ -94,7 +95,7 @@ fi
 
 
 FAT_SZ=$(
-whiptail --title "Select Size of FAT Partition" --menu "What would you like the size of the FAT partiion to be?\nThis will hold the kernel and Device Tree" 0 0 0 \
+whiptail --title "Select Size of FAT Partition" --menu "What would you like the size of the FAT partition to be?\nThis will hold the kernel and Device Tree" 0 0 0 \
 	"250M" ""\
 	"500M" "(recomended)"\
 	"750M" ""\
@@ -112,7 +113,7 @@ else
 fi
 
 EXT_SZ=$(
-whiptail --title "Select Size of EXT Partition" --menu "What would you like the size of the EXT partiion to be?\n\
+whiptail --title "Select Size of EXT Partition" --menu "What would you like the size of the EXT partition to be?\n\
 This will hold the entire file system.\n\
 You can select only a portion (2GB) of the remaining space in case you would\n\
 like to keep multiple images on this disk.\n\
@@ -140,6 +141,21 @@ else
   fi
   echo EXT_SZ=$EXT_SZ
 fi
+
+EXT_VER=$(
+whiptail --title "Select EXT Partition filesystem" --menu "What filesystem would you like the EXT partition to be?\n\
+" 0 0 0 \
+	"ext2" ""\
+	"ext3" ""\
+	"ext4" "(recomended) "\
+	"EXIT" "Cancel and exit the script" \
+	 3>&2 2>&1 1>&3	
+)
+if [ "$EXT_VER" == "" ] || [ "$EXT_VER" == "EXIT" ] ; then
+  echo "script canceled"
+  exit
+fi
+
 
 #echo "==== Attached USB Drives ====="
 #DISK_LIST=
@@ -224,8 +240,8 @@ echo -e "\n== Formatting FAT16 partition =="
 mkfs.vfat -F16 -n RZ_FAT ${DISK}1
 sleep 1
 
-echo -e "\n== Formatting ext3 partition =="
-mkfs.ext3 -F -L RZ_ext ${DISK}2
+echo -e "\n== Formatting $EXT_VER partition =="
+mkfs.${EXT_VER} -F -L RZ_ext ${DISK}2
 sleep 1
 
 #echo -e "\n== Finished ==\nPlease unplug the USB drive and then plug it back in\n"
