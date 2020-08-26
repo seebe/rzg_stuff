@@ -355,10 +355,10 @@ fi
 
 if [ "$1" == "emmc_config" ] ; then
 
-	echo "Setting EXT_CSD regiser 179..."
-
-	# Set the EXT_CSD register byte179, PARTITION_CONFIG bit[6] = H??0(No boot acknowledge sent).
-	# Set the EXT_CSD register byte179, PARTITION_CONFIG bit[5:3] = H??1 (Boot Area partition1).
+	# Set the EXT_CSD register 177 (0xB1) BOOT_BUS_CONDITIONS:
+	#  * BOOT_MODE bit[4:3] = 0x1 (Use single data rate + High Speed timings in boot operation mode)(50MHz SDR)
+	#  * BOOT_BUS_WIDTH bit[1:0] = 0x2 (x8 bus width in boot operation mode)
+	echo "Setting EXT_CSD regiser 177..."
 	echo -en "EM_SECSD\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
 	echo -en "b1\r" > $SERIAL_DEVICE_INTERFACE
@@ -366,9 +366,10 @@ if [ "$1" == "emmc_config" ] ; then
 	echo -en "0a\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
 
-	# Set the EXT_CSD register byte177, BOOT_BUS_CONDITIONS bit[4:3] = H??1(50MHz SDR).
-	# Set the EXT_CSD register byte177, BOOT_BUS_CONDITIONS bit[1:0] = H??2(x8 bus widths).
-	echo "Setting EXT_CSD regiser 177..."
+	# Set the EXT_CSD register 179 (0xB3) PARTITION_CONFIG:
+	#   * BOOT_ACK bit[6] = 0x0 (No boot acknowledge sent)
+	#   * BOOT_PARTITION_ENABLE bit[5:3] = 0x1 (Boot partition 1 enabled for boot)
+	echo "Setting EXT_CSD regiser 179..."
 	echo -en "EM_SECSD\r" > $SERIAL_DEVICE_INTERFACE
 	sleep 1
 	echo -en "b3\r" > $SERIAL_DEVICE_INTERFACE
