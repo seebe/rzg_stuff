@@ -16,23 +16,34 @@ For example:
 
 
 ## Build Instructions
-### Clone and check out the linux-cip.repository
+
+### Install a Toolchain
+You can use the Yocto SDK toolchain from VLP64 v1.0.4 or later.
+Or, you can use an external toolchain such as Linaro.
+For example:
+    **Linaro AArch64 2019.12**
+     https://releases.linaro.org/components/toolchain/binaries/
 ```
-$ git clone git://git.kernel.org/pub/scm/linux/kernel/git/cip/linux-cip.git
-$ cd linux-cip
-$ git checkout linux-4.19.y-cip
+$ sudo -p mkdir /opt/linaro
+$ cd /opt/linaro
+$ sudo https://releases.linaro.org/components/toolchain/binaries/7.5-2019.12/aarch64-linux-gnu/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
+$ sudo tar xf gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
 ```
 
-### Copy in our custom build.sh script
+### Clone and patch the kernel repository
+Use the script **rzg_stuff/vlp64_util.sh** with the "create" command.
+
+For example:
 ```
-$ cp ../rzg_stuff/build_scripts/linux-cip/build.sh  .
+$ cd /home/chris/rzg2/rzg_stuff/build_scripts
+$ ./vlp64_util.sh create kernel /home/chris/rzg2
+```
+### Copy in our custom build.sh script (if not already there)
+```
+$ cp /home/chris/rzg2/rzg_stuff/build_scripts/kernel/build.sh  /home/chris/rzg2/linux-cip
 ```
 
 ### Then run:
-```
-$ ./build.sh make_patches
-```
-(then copy and paste and execute the git am command the make_patches commands outputs)
 ```
 $ ./build.sh make_config
 $ ./build.sh _all

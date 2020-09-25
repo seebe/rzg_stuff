@@ -1,0 +1,3 @@
+Patch "0007-plat-renesas-bl2_fusa-Add-mem-initialization-b-f-and.patch" was modifed to fix 'git am' failure.
+
+

@@ -2,10 +2,18 @@
 
 This script lets you build the Initial Program Loader (IPL), which is basically the arm-trusted-firmware code base that has been modified for RZ/G **outside** of the Yocto environment.
 
+**BSP-1.0.0 to BSP-1.0.4:**
 ARM publishes the arm-trusted-firmware code base. The Renesas R-Car team adds patches on top of that to support Renesas devices and posts that to github. The RZ/G team adds patches on top of the R-Car patches to support RZ/G devices and supplies them inside the Yocto meta layer meta-rzg also on github.
 Therefore, in order to reproduce what is being built inside of Yocto, we have to:
 1. Clone the r-car repository
 2. Clone the meta-rzg2 repository and extract the patch files, then apply them to the r-car code base
+3. Reproduce the same configuration options that were outlined in the Yocto build receipt.
+
+**BSP-1.0.5:**
+ARM publishes the arm-trusted-firmware code base. The RZ/G team adds patches including the R-Car patches to support RZ/G devices and supplies them inside the Yocto meta layer meta-rzg on github.
+Therefore, in order to reproduce what is being built inside of Yocto, we have to:
+1. Clone the official ARM Trusted Firmware repository
+2. Clone the meta-rzg2 repository and extract the patch files, then apply them to the code base
 3. Reproduce the same configuration options that were outlined in the Yocto build receipt.
 
 That is basically what this script is designed to do.
@@ -29,40 +37,31 @@ For example:
 ```
 
 ## Build Instructions
-### Clone and check out R-Car ARM Trusted Firmware repository
+
+### Install a Toolchain
+You can use the Yocto SDK toolchain from VLP64 v1.0.4 or later.
+Or, you can use an external toolchain such as Linaro.
+For example:
+    **Linaro AArch64 2019.12**
+     https://releases.linaro.org/components/toolchain/binaries/
 ```
-$ cd /home/chris/rzg2
-$ git clone git://github.com/renesas-rcar/arm-trusted-firmware.git
-$ cd arm-trusted-firmware
-$ git checkout rcar_gen3
-```
-### Copy in our custom build.sh script
-```
-$ cp ../rzg_stuff/build_scripts/arm-trusted-firmware/build.sh  .
+$ sudo -p mkdir /opt/linaro
+$ cd /opt/linaro
+$ sudo https://releases.linaro.org/components/toolchain/binaries/7.5-2019.12/aarch64-linux-gnu/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
+$ sudo tar xf gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
 ```
 
-### Choose a specific VLP64 version that you want to build
-You can choose to build using the master (latest and greatest) patches, or reproduce a specific VLP64 release.
-What we will do is in the arm-trusted-firmware git repository, we will make a new separate branch in order to keep track of what VLP64 version we are trying to reproduce. Also, we will check out and use the same arm-trusted-firmware commit point that the VLP64 Yocto recipe used since we are trying to replicate that as close as we can.
+### Clone and patch the ARM Trusted Firmware repository
+Use the script **rzg_stuff/vlp64_util.sh** with the "create" command.
 
-Also note, when the VLP64 BSPs are released from Renesas, they are released as Yocto build. The Yocto recipes include patch files that get applied on top of publicly available repositories. However, these 'patch files' are not all in the same format, so they cannot just be applied to our local git repositories.
-Therefore the build script 'make_patches' command will convert them all to the same format.
-
-**Choose one** of the following commands:
+For example:
 ```
-$ ./build.sh make_patches master
-$ ./build.sh make_patches BSP-1.0.2
-$ ./build.sh make_patches BSP-1.0.3
-$ ./build.sh make_patches BSP-1.0.4
-$ ./build.sh make_patches BSP-1.0.3-RT
-```    
-Pay attention to the output of this script
-
-### Apply your patches
-The command "$ ./build.sh make_patches xxx " will output a command that you will need to copy/paste and run on the command line. This will create a new branch of your current arm-trusted-firmware repository and then apply these patches on top.
-For example, if you selected "BSP-1.0.3", it will output the command line:
+$ cd /home/chris/rzg2/rzg_stuff/build_scripts
+$ ./vlp64_util.sh create arm-trusted-firmware /home/chris/rzg2
 ```
-git checkout -b vlp64_v103 c8b88aa5dc11 ; git am z_patches/vlp64_v103/*
+### Copy in our custom build.sh script (if not already there)
+```
+$ cp /home/chris/rzg2/rzg_stuff/build_scripts/arm-trusted-firmware/build.sh  /home/chris/rzg2/arm-trusted-firmware
 ```
 
 ## Select the board and boot method

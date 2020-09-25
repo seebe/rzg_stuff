@@ -17,17 +17,31 @@ For example:
 ```
 
 ## Build Instructions
-### Clone and check out the u-boot repository
+
+### Install a Toolchain
+You can use the Yocto SDK toolchain from VLP64 v1.0.4 or later.
+Or, you can use an external toolchain such as Linaro.
+For example:
+    **Linaro AArch64 2019.12**
+     https://releases.linaro.org/components/toolchain/binaries/
 ```
-$ cd /home/chris/rzg2
-$ git clone git://github.com/renesas-rz/renesas-u-boot-cip.git
-$ cd renesas-u-boot-cip
-$ git checkout v2018.09/rzg2
+$ sudo -p mkdir /opt/linaro
+$ cd /opt/linaro
+$ sudo https://releases.linaro.org/components/toolchain/binaries/7.5-2019.12/aarch64-linux-gnu/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
+$ sudo tar xf gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
 ```
 
-### Copy in our custom build.sh script
+### Clone and patch the u-boot repository
+Use the script **rzg_stuff/vlp64_util.sh** with the "create" command.
+
+For example:
 ```
-$ cp ../rzg_stuff/build_scripts/renesas-u-boot-cip/build.sh  .
+$ cd /home/chris/rzg2/rzg_stuff/build_scripts
+$ ./vlp64_util.sh create u-boot /home/chris/rzg2
+```
+### Copy in our custom build.sh script (if not already there)
+```
+$ cp /home/chris/rzg2/rzg_stuff/build_scripts/u-boot/build.sh  /home/chris/rzg2/renesas-u-boot-cip
 ```
 
 

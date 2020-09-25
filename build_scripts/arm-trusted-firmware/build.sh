@@ -7,156 +7,39 @@
 # HiHope RZ/G2M
 MACHINE=hihope-rzg2m
 EMMC_BOOT=1
+#ECC_FULL=0    # 0=no ECC, 1=ECC dual channel, 2=ECC single channel
 
 # HiHope RZ/G2N
 #MACHINE=hihope-rzg2n
 #EMMC_BOOT=1
+#ECC_FULL=0   # 0=no ECC, 1=ECC dual channel, 2=ECC single channel
+
+# HiHope RZ/G2H
+#MACHINE=hihope-rzg2h
+#EMMC_BOOT=1
+#ECC_FULL=0   # 0=no ECC, 1=ECC dual channel, 2=ECC single channel
 
 # Silicon Linux RZ/G2E
 #MACHINE=ek874
+#ECC_FULL=0   # 0=no ECC, 1=ECC dual channel, 2=ECC single channel
+
 
 if [ "$MACHINE" == "" ] ; then
   echo "You need to set MACHINE first"
   exit
 fi
 
-# Check out ATF repository
-# $ git clone git://github.com/renesas-rcar/arm-trusted-firmware.git
-# $ cd arm-trusted-firmware
-# $ git checkout rcar_gen3
-
-# Check out meta-rzg2 layer (contains VLP64 patches)
-# $ mkdir z_patches
-# $ cd z_patches
-# $ git clone https://github.com/renesas-rz/meta-rzg2
-# $ cd meta-rzg2
-# $ git checkout master
-# $ cd ../..
-
-# VLP64 v1.0.3rt
-# (optional) $ cd z_patches/meta-rzg2 ; git checkout BSP-1.0.3-RT ; cd ../..
-# $ git checkout -b vlp64_v103rt c8b88aa5dc11be44dee1f67a894bb0076fb5f1db
-# $ ./build.sh make_patches
-
-if [ "$1" == "make_patches" ] ; then
-
-  if [ ! -e z_patches/meta-rzg2 ] ; then
-    mkdir -p z_patches
-    cd z_patches
-    git clone https://github.com/renesas-rz/meta-rzg2
-    cd ..
-  fi
-
-  BRANCH=
-  if [ "$2" == "master" ] ; then
-    ATF_SHA="rcar_gen3"
-    BRANCH="master"
-    DIR="vlp64_master"
-  fi
-  if [ "$2" == "BSP-1.0.2" ] ; then
-    ATF_SHA="236f8fbb57af"
-    BRANCH="BSP-1.0.2"
-    DIR="vlp64_v102"
-  fi
-  if [ "$2" == "BSP-1.0.3" ] ; then
-    ATF_SHA="c8b88aa5dc11"
-    BRANCH="BSP-1.0.3"
-    DIR="vlp64_v103"
-  fi
-  if [ "$2" == "BSP-1.0.3-RT" ] ; then
-    ATF_SHA="c8b88aa5dc11"
-    BRANCH="BSP-1.0.3-RT"
-    DIR="vlp64_v103rt"
-  fi
-  if [ "$2" == "BSP-1.0.4" ] ; then
-    ATF_SHA="af9f429a48b4"
-    BRANCH="BSP-1.0.4"
-    DIR="vlp64_v104"
-  fi
-  if [ "$BRANCH" == "" ] ; then
-    echo "Please choose a VLP64 release version:"
-    echo ""
-    echo "./build.sh make_patches master"
-    echo "./build.sh make_patches BSP-1.0.2"
-    echo "./build.sh make_patches BSP-1.0.3"
-    echo "./build.sh make_patches BSP-1.0.3-RT"
-    echo "./build.sh make_patches BSP-1.0.4"
-    exit
-  fi
-
-  if [ -e z_patches/$DIR ] ; then
-    echo "ERROR: You have already created patches for that version and probably already"
-    echo "have a branch named \"$DIR\""
-    echo "Please check by entering the command line: "
-    echo "    $ git branch"
-    exit
-  fi
-
-  # Check out the branch that we want
-  cd z_patches/meta-rzg2
-  CURRENT_BRANCH=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
-  if [ "$BRANCH" != "$CURRENT_BRANCH" ] ; then
-    git checkout $BRANCH
-  fi
-  cd ../..
-
-  #BRANCH=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')   # Get current branch name (no need to)
-  #DIR=$BRANCH     # Use branch name as output directory name
-
-  # Some patches are just diff, so turn them into mailbox patches
-  # so we can apply them with 'git am'
-
-  if [ -e z_patches/$DIR ] ; then
-    rm z_patches/$DIR/*
-  else
-    mkdir -p z_patches/$DIR
-  fi
-
-  cp z_patches/meta-rzg2/recipes-bsp/arm-trusted-firmware/files/*.patch z_patches/$DIR
-  cd z_patches/$DIR
-  for filename in *.patch ; do
-    #echo $filename
-    LINE=`grep --line-number --max-count=1 "diff --git" $filename | sed 's/:.*//'`
-    #echo LINE=$LINE
-
-    if [ "$LINE" != "1" ] ; then
-      LINE=`expr $LINE - 1`
-      #sed -i -e "1,${LINE}d" $filename   # remove the entire header
-      continue    # skip this file, it already has a good format
-    fi
-    # Add in git git mailbox header at begining of file
-    SUBJECT=${filename::-6}
-    sed -i "1 i\From: vlp64@renesas.com" $filename
-    sed -i "2 i\Date: $(date -R)" $filename
-    sed -i "3 i\Subject: $SUBJECT" $filename
-    sed -i "4 i\ " $filename
-    sed -i "5 i\ $filename" $filename
-    sed -i "6 i\---" $filename
-  done
-
-  # For checking that the conversion worked: meld z_patches/meta-rzg2/recipes-bsp/arm-trusted-firmware/files z_patches/$DIR"
-  echo "------------------------- Complete ----------------------------------"
-  echo ""
-  echo "To create a new branch of your current arm-trusted-firmware repository and then"
-  echo "apply these patches on top, copy/paste the following command:"
-  echo ""
-  echo "git checkout -b $DIR $ATF_SHA ; git am z_patches/$DIR/*"
-  echo ""
-  exit
-fi
-
-if [ ! -e z_patches/meta-rzg2 ] ; then
-  echo "ERROR: Directory z_patches/meta-rzg2 does not exist yet"
-  echo "       Please run \"./build.sh make_patches\" first"
-  exit
-fi
+#PATH=/opt/linaro/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin:$PATH
+#export CROSS_COMPILE="aarch64-linux-gnu-"
+#export ARCH=arm64
 
 # Check for Yocto SDK setup
-if [ "$TARGET_PREFIX" == "" ] ; then
+if [ "$TARGET_PREFIX" == "" ] && [ "$CROSS_COMPILE" == "" ] ; then
   echo "Yocto SDK environment not set up"
   echo "source /opt/poky/2.4.3/environment-setup-aarch64-poky-linux"
   exit
 fi
+
 
 # As for GCC 4.9, you can get a colorized output
 export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
@@ -169,10 +52,14 @@ if [ "$(which nproc)" != "" ] ; then  # make sure nproc is installed
 fi
 BUILD_THREADS=$(expr $NPROC + $NPROC)
 
-PLATFORM=rcar
+if [ -e plat/renesas/rzg ] ; then
+  PLATFORM=rzg
+else
+  PLATFORM=rcar
+fi
 
 # PLAT
-#	Set string is "rcar"
+#	Set string is "rcar" (VLP v1.0.0-4) or "rzg" (VLP v1.0.5+)
 
 # LOG_LEVEL
 #	The IPL provides logging functions ERROR(), NOTICE(), WARN(), INFO() and VERBOSE().
@@ -283,33 +170,73 @@ PLATFORM=rcar
 # RZ/G2E
 if [ "$MACHINE" == "ek874" ] ; then
   ATFW_OPT="LSI=G2E RCAR_SA0_SIZE=0 RCAR_AVS_SETTING_ENABLE=0 RZG_EK874=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 RCAR_DRAM_DDR3L_MEMCONF=1 RCAR_DRAM_DDR3L_MEMDUAL=1 SPD="none""
+  if [ "$ECC_FULL" != "0" ] ; then
+    ATFW_OPTS_ECC=" LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_EK874_ECC=1 "
+  fi
 fi
 
 #RZ/G2M
 if [ "$MACHINE" == "hihope-rzg2m" ] ; then
   # The RZ/G2M v1.3 device mounted on the HiHope-RZG2M board has been found to be unable to boot unless "RCAR_SECURE_BOOT=0"
   ATFW_OPT="LSI=G2M RCAR_DRAM_SPLIT=2 RCAR_AVS_SETTING_ENABLE=0 RZG_HIHOPE_RZG2M=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 RCAR_SECURE_BOOT=0 SPD="none""
+  if [ "$ECC_FULL" != "0" ] ; then
+    ATFW_OPTS_ECC=" LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_HIHOPE_RZG2M_ECC=1 RCAR_DRAM_SPLIT=0"
+  else
+    # Reserve Lossy Decompression area for multimedia (only be used if no ECC)
+    ATFW_OPT_LOSSY="RCAR_LOSSY_ENABLE=1"
+  fi
 fi
 
 # RZ/G2N
 if [ "$MACHINE" == "hihope-rzg2n" ] ; then
-ATFW_OPT="LSI=G2N RCAR_AVS_SETTING_ENABLE=0 RZG_HIHOPE_RZG2N=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 SPD="none""
+  ATFW_OPT="LSI=G2N RCAR_AVS_SETTING_ENABLE=0 RZG_HIHOPE_RZG2N=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 SPD="none""
+  if [ "$ECC_FULL" != "0" ] ; then
+    ATFW_OPTS_ECC=" LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_HIHOPE_RZG2N_ECC=1"
+  else
+    # Reserve Lossy Decompression area for multimedia (only be used if no ECC)
+    ATFW_OPT_LOSSY="RCAR_LOSSY_ENABLE=1"
+  fi
 fi
+
+# RZ/G2H
+if [ "$MACHINE" == "hihope-rzg2h" ] ; then
+  ATFW_OPT="LSI=G2H RCAR_DRAM_SPLIT=2 RCAR_DRAM_LPDDR4_MEMCONF=1 RCAR_DRAM_CHANNEL=5 RCAR_AVS_SETTING_ENABLE=0 RZG_HIHOPE_RZG2H=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 SPD="none""
+  if [ "$ECC_FULL" != "0" ] ; then
+    ATFW_OPTS_ECC= " LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_HIHOPE_RZG2H_ECC=1 RCAR_DRAM_SPLIT=0"
+  else
+    # Reserve Lossy Decompression area for multimedia (only be used if no ECC)
+    ATFW_OPT_LOSSY="RCAR_LOSSY_ENABLE=1"
+  fi
+fi
+
+# MBED is required for VLP v1.0.5+
+if [ "$PLATFORM" == "rzg" ] &&  [ "$MBEDTLS_DIR" == "" ] ; then
+  if [ -e mbedtls ] ; then
+    MBEDTLS_DIR=mbedtls
+  elif [ -e ../mbedtls ] ; then
+    MBEDTLS_DIR=../mbedtls
+  else
+    echo "ERROR: You need to have the mbed TLS repo to build"
+    exit
+  fi
+fi
+
+# Cert tool was changed from dummy_tool to rzg for VLP64 v1.0.5+
+if [ "$PLATFORM" == "rzg" ] ; then
+  TOOL=rzg
+else
+  TOOL=dummytool
+fi
+
 
 # For eMMC boot, you need to set RCAR_SA6_TYPE=1
 if [ "$EMMC_BOOT" == "1" ] ; then
   ATFW_OPT="$ATFW_OPT RCAR_SA6_TYPE=1"
 fi
 
-
-#ECC
-#ECC_OPTS="LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_EK874_ECC=1 "
-#ECC_OPTS="LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_HIHOPE_RZG2M_ECC=1 RCAR_DRAM_SPLIT=0"
-#ECC_OPTS="LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_HIHOPE_RZG2N_ECC=1"
-
-#ATFW_OPT_LOSSY = "${@base_conditional("USE_MULTIMEDIA", "1", "RCAR_LOSSY_ENABLE=1", "", d)}"
-
-#export CROSS_COMPILE="${TARGET_PREFIX}"
+if [ "${ECC_FULL}" == "" ] ; then
+  ECC_FULL=0
+fi
 
 # Let the Makefile handle setting up the CFLAGS and LDFLAGS as it is a standalone application
 unset CFLAGS
@@ -318,29 +245,46 @@ unset AS
 unset LD
 
 make distclean
-make -j $BUILD_THREADS bl2 bl31 dummytool PLAT=${PLATFORM} ${ATFW_OPT} ${ECC_OPTS} ${RCAR_LOSSY_ENABLE} O=$OUT
+make -j $BUILD_THREADS bl2 bl31 ${TOOL} PLAT=${PLATFORM} ${ATFW_OPT} ${ATFW_OPTS_ECC} RZG_DRAM_ECC_FULL=${ECC_FULL} ${ATFW_OPT_LOSSY} \
+	RCAR_RPC_HYPERFLASH_LOCKED=0 \
+	MBEDTLS_DIR=$MBEDTLS_DIR \
+	O=$OUT $1 $2 $3
+
+# Copy file to deploy folder
+if [ ! -e "build/${PLATFORM}/release/bl2/bl2.elf" ] ; then
+  exit
+fi
 
 if [ "$EMMC_BOOT" == "1" ] ; then
 	DEPLOYDIR=z_deploy_emmc
 else
 	DEPLOYDIR=z_deploy_spi
 fi
+
 mkdir -p $DEPLOYDIR
 
-# Copy IPL to deploy folder
 cp build/${PLATFORM}/release/bl2/bl2.elf ${DEPLOYDIR}/bl2-${MACHINE}.elf
 cp build/${PLATFORM}/release/bl2.bin ${DEPLOYDIR}/bl2-${MACHINE}.bin
 cp build/${PLATFORM}/release/bl2.srec ${DEPLOYDIR}/bl2-${MACHINE}.srec
 cp build/${PLATFORM}/release/bl31/bl31.elf ${DEPLOYDIR}/bl31-${MACHINE}.elf
 cp build/${PLATFORM}/release/bl31.bin ${DEPLOYDIR}/bl31-${MACHINE}.bin
 cp build/${PLATFORM}/release/bl31.srec ${DEPLOYDIR}/bl31-${MACHINE}.srec
-cp tools/dummy_create/bootparam_sa0.srec ${DEPLOYDIR}/bootparam_sa0.srec
-cp tools/dummy_create/cert_header_sa6.srec ${DEPLOYDIR}/cert_header_sa6.srec
+
+# VLP 1.0.4
+if [ -e tools/dummy_create/bootparam_sa0.srec ] ; then
+	cp tools/dummy_create/bootparam_sa0.srec ${DEPLOYDIR}/bootparam_sa0.srec
+	cp tools/dummy_create/cert_header_sa6.srec ${DEPLOYDIR}/cert_header_sa6.srec
+fi
+
+# VLP 1.0.5
+if [ -e tools/renesas/rzg_layout_create/bootparam_sa0.srec ] ; then
+	cp tools/renesas/rzg_layout_create/bootparam_sa0.srec ${DEPLOYDIR}/bootparam_sa0.srec
+	cp tools/renesas/rzg_layout_create/cert_header_sa6.srec ${DEPLOYDIR}/cert_header_sa6.srec
+fi
 
 # Save what build this was
 CURRENT_BRANCH=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
 echo "Built from branch \"$CURRENT_BRANCH\"" > ${DEPLOYDIR}/build_version.txt
-
 
 echo "-------------------------------------"
 echo "    Files copied to ${DEPLOYDIR}"
