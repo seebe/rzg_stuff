@@ -72,7 +72,10 @@ MAKE="make -j$BUILD_THREADS O=$OUT"
 # While the Yocto SDK setup script (environment-setup-aarch64-poky-linux) sets CC, and includes
 # the --sysroot parameter, we have to explictly put CC= on the make command line because of how
 # the u-boot Makefile was written and looks for thigns like libgcc.a
-MAKE="make CC=\""$CC"\" -j$BUILD_THREADS O=$OUT"
+if [ "$TARGET_PREFIX" != "" ] ; then
+	# Yocto SDK Toolchain build
+	MAKE="make CC=\""$CC"\" -j$BUILD_THREADS O=$OUT"
+fi
 
 # If this is the first time building, we need to configure first
 if [ ! -e "$OUT/.config" ] ; then
