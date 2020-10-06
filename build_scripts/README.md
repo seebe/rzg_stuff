@@ -11,8 +11,8 @@ For example:
     **Linaro AArch64 2019.12**
      https://releases.linaro.org/components/toolchain/binaries/
 ```
-$ sudo -p mkdir /opt/linaro
+$ sudo mkdir -p /opt/linaro
 $ cd /opt/linaro
-$ sudo https://releases.linaro.org/components/toolchain/binaries/7.5-2019.12/aarch64-linux-gnu/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
+$ sudo wget https://releases.linaro.org/components/toolchain/binaries/7.5-2019.12/aarch64-linux-gnu/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
 $ sudo tar xf gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
 ```
