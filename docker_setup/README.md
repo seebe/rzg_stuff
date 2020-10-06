@@ -189,8 +189,8 @@ so everything will be set to "POSIX". Yocto is not going to like that.
 		  1. None  2. C.UTF-8  3. en_US.UTF-8
 		Default locale for the system environment: 3  <<<--- enter "3"
 
-	$ update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
-	$ update-locale LANG=en_US.UTF-8
+	$ sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+	$ sudo update-locale LANG=en_US.UTF-8
 	$ cat /etc/default/locale
 
 
