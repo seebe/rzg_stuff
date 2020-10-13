@@ -20,8 +20,8 @@ docker container:  /home/chris/yocto
 
 ## 2. Docker Install
 
-###  2.1 Set up the repository
-Docker is not container in the standard Ubuntu download repositories,so you will have to download it directly from docker. 
+###  2.1 Set up the repository (Ubuntu 18.04 only)
+Docker is not container in the standard Ubuntu download repositories,so you will have to download it directly from docker.
 Copy/paste the following command to add the docker repository to the list of available download sources.
 ```
 $ sudo apt update
@@ -37,11 +37,21 @@ $ sudo apt-key fingerprint 0EBFCD88
 $ sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 ```
 ###  2.2 Install the Docker Engine
-Copy/paste the following command to install the docker  (community edition).
+Copy/paste the following commands to install the docker  (community edition).
+
+Ubuntu 18.04:
 ```
 $ sudo apt-get update
 $ sudo apt-get install docker-ce docker-ce-cli containerd.io
-$ sudo docker run hello-world    # (optional, just to see if it installed)
+```
+Ubuntu 20.04:
+```
+$ sudo apt-get update
+$ sudo apt-get install docker.io
+```
+(Optional, just to see if it installed)
+```
+$ sudo docker run hello-world
 ```
 
 ### 2.3 Check if docker is running (optional)
