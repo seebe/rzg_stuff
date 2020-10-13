@@ -27,7 +27,7 @@ fi
 OUT=.out
 
 # Directly where the config files are kept
-CONFIG_DIR=.configs
+CONFIG_DIR=.config_options
 
 # Copy output files to a .deploy directory
 DEPLOY_DIR=.deploy
@@ -102,13 +102,13 @@ if [ "$1" == "make_config" ] ; then
   # Now add each option
   # BSP defaults:
   echo -n "Include Touch Panel support? [Y/n]: " ; read ANS;
-  if [ "$ANS" != "n" ] ; then cat $CONFIG_DIR/$DIR/configs/touch.cfg >> arch/arm64/configs/defconfig ; fi
+  if [ "$ANS" != "n" ] ; then cat $CONFIG_DIR/touch.cfg >> arch/arm64/configs/defconfig ; fi
 
   echo -n "Set default CPU Frequncy to max [Y/n]: " ; read ANS;
-  if [ "$ANS" != "n" ] ; then cat $CONFIG_DIR/$DIR/configs/gsx.cfg >> arch/arm64/configs/defconfig ; fi
+  if [ "$ANS" != "n" ] ; then cat $CONFIG_DIR/gsx.cfg >> arch/arm64/configs/defconfig ; fi
 
   echo -n "Include USB3 support [Y/n]: " ; read ANS;
-  if [ "$ANS" != "n" ] ; then cat $CONFIG_DIR/$DIR/configs/usb3.cfg >> arch/arm64/configs/defconfig ; fi
+  if [ "$ANS" != "n" ] ; then cat $CONFIG_DIR/usb3.cfg >> arch/arm64/configs/defconfig ; fi
   if [ "$ANS" != "n" ] ; then
     USB3_FIRMWARE_V2="https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/r8a779x_usb3_v2.dlmem"
     USB3_FIRMWARE_V3="https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/r8a779x_usb3_v3.dlmem"
@@ -128,7 +128,7 @@ if [ "$1" == "make_config" ] ; then
   fi
 
   echo -n "Include WiFi support [Y/n]: " ; read ANS;
-  if [ "$ANS" != "n" ] ; then cat $CONFIG_DIR/$DIR/configs/wifi.cfg >> arch/arm64/configs/defconfig ; fi
+  if [ "$ANS" != "n" ] ; then cat $CONFIG_DIR/wifi.cfg >> arch/arm64/configs/defconfig ; fi
   if [ "$ANS" != "n" ] ; then
     REGULATORY_DB="https://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git/plain/regulatory.db?h=master-2019-06-03"
     REGULATORY_DB_P7S="https://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git/plain/regulatory.db.p7s?h=master-2019-06-03"
@@ -149,7 +149,7 @@ if [ "$1" == "make_config" ] ; then
   fi
 
   echo -n "Include Bluetooth support [Y/n]: " ; read ANS;
-  if [ "$ANS" != "n" ] ; then cat $CONFIG_DIR/$DIR/configs/bluetooth.cfg >> arch/arm64/configs/defconfig ; fi
+  if [ "$ANS" != "n" ] ; then cat $CONFIG_DIR/bluetooth.cfg >> arch/arm64/configs/defconfig ; fi
   if [ "$ANS" != "n" ] ; then
     BLUETOOTH_FW=" https://git.ti.com/cgit/wilink8-bt/ti-bt-firmware/plain/TIInit_11.8.32.bts"
     #downloadfilename=TIInit_11.8.32.bts"
@@ -166,10 +166,10 @@ if [ "$1" == "make_config" ] ; then
 
   # Options set by local.confg
   echo -n "Include Docker support [y/N]: " ; read ANS;
-  if [ "$ANS" == "y" ] ; then cat $CONFIG_DIR/$DIR/configs/docker.cfg >> arch/arm64/configs/defconfig ; fi
+  if [ "$ANS" == "y" ] ; then cat $CONFIG_DIR/docker.cfg >> arch/arm64/configs/defconfig ; fi
 
   echo -n "Include capacity aware migration strategy support [y/N]: " ; read ANS;
-  if [ "$ANS" == "y" ] ; then cat $CONFIG_DIR/$DIR/configs/capacity_aware_migration_strategy.cfg >> arch/arm64/configs/defconfig ; fi
+  if [ "$ANS" == "y" ] ; then cat $CONFIG_DIR/capacity_aware_migration_strategy.cfg >> arch/arm64/configs/defconfig ; fi
 
   make O=$OUT defconfig
 

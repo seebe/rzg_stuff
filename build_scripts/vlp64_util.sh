@@ -365,8 +365,8 @@ $0 udpate [repo_directory]
 	# Copy config files
 	if [  -e "$START_DIR/vlp64_patches/$VLP64_REL/$PATCH_DIR_NAME/configs" ] ; then
 		echo -e "\nCopying config files...\n"
-		mkdir -p .config/$BRANCH_NAME
-		cp -a "$START_DIR/vlp64_patches/$VLP64_REL/$PATCH_DIR_NAME/configs" .config/$BRANCH_NAME
+		mkdir -p .config_options
+		cp -a "$START_DIR/vlp64_patches/$VLP64_REL/$PATCH_DIR_NAME/configs/*" .config_options
 	fi
 
 	# Create a tag at his point
