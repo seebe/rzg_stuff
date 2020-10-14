@@ -77,22 +77,21 @@ if [ "$1" == "make_config" ] ; then
   if [ -e localversion-cip ] ; then
     CHECK=$(grep cip5 localversion-cip)
     if [ "$CHECK" != "" ] ; then
-      DIR="vlp64_v102"
+      VLP_VER="v102"
     fi
     CHECK=$(grep cip10 localversion-cip)
     if [ "$CHECK" != "" ] ; then
-      DIR="vlp64_v103"
+      VLP_VER="v103"
     fi
   fi
 
   if [ -e localversion-cip-rt ] ; then
     CHECK=$(grep rt4 localversion-cip-rt)
     if [ "$CHECK" != "" ] ; then
-      DIR="vlp64_v103rt"
+      VLP_VER="v103rt"
     fi
   fi
-
-  echo -e "\nINFO: Detected $DIR\n"
+  #echo -e "\nINFO: Detected $VLP_VER\n"
 
   mkdir -p $OUT
 
