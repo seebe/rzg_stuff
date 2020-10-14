@@ -97,6 +97,7 @@ $0 create [package] [base_directory] (dir_name)
 	if [ "$2" == "arm-trusted-firmware" ] || [ "$2" == "atf" ] ; then
 		REPO="ATF"
 		PATCH_DIR_NAME="arm-trusted-firmware"
+		BUILD_SCRIPT_DIR_NAME="arm-trusted-firmware"
 		if [ "$4" == "" ] ; then
 			TARGET_DIR="$3/arm-trusted-firmware"
 		else
@@ -106,6 +107,7 @@ $0 create [package] [base_directory] (dir_name)
 	elif [ "$2" == "kernel" ] || [ "$2" == "k" ] ; then
 		REPO="KERNEL"
 		PATCH_DIR_NAME="kernel"
+		BUILD_SCRIPT_DIR_NAME="linux-cip"
 		if [ "$4" == "" ] ; then
 			TARGET_DIR="$3/linux-cip"
 		else
@@ -114,6 +116,7 @@ $0 create [package] [base_directory] (dir_name)
 	elif [ "$2" == "u-boot" ] || [ "$2" == "ub" ] ; then
 		REPO="UBOOT"
 		PATCH_DIR_NAME="u-boot"
+		BUILD_SCRIPT_DIR_NAME="renesas-u-boot-cip"
 		if [ "$4" == "" ] ; then
 			TARGET_DIR="$3/renesas-u-boot-cip"
 		else
@@ -122,6 +125,7 @@ $0 create [package] [base_directory] (dir_name)
 	elif [ "$2" == "flash_writer" ] || [ "$2" == "fw" ] ; then
 		REPO="FLASH_WRITER"
 		PATCH_DIR_NAME="rzg2_flash_writer"
+		BUILD_SCRIPT_DIR_NAME="rzg2_flash_writer"
 		if [ "$4" == "" ] ; then
 			TARGET_DIR="$3/rzg2_flash_writer"
 		else
@@ -172,6 +176,13 @@ $0 create [package] [base_directory] (dir_name)
 		fi
 	fi
 
+	# Copy config files
+	if [  -e "$START_DIR/vlp64_patches/$VLP64_REL/$PATCH_DIR_NAME/configs" ] ; then
+		echo -e "\nCopying config files...\n"
+		mkdir -p .config_options
+		cp -v $START_DIR/vlp64_patches/$VLP64_REL/$PATCH_DIR_NAME/configs/* .config_options
+	fi
+
 	# Create a tag at his point
 	git tag $VLP64_REL
 
@@ -213,10 +224,10 @@ $0 create [package] [base_directory] (dir_name)
 	echo -n "  Enter Choice: "
 	read ans
 	if [ "$ans" == "1" ] ; then
-		cp -v $START_DIR/$PATCH_DIR_NAME/build.sh $TARGET_DIR
+		cp -v $START_DIR/$BUILD_SCRIPT_DIR_NAME/build.sh $TARGET_DIR
 	fi
 	if [ "$ans" == "2" ] ; then
-		ln -s $START_DIR/$PATCH_DIR_NAME/build.sh $TARGET_DIR
+		ln -s $START_DIR/$BUILD_SCRIPT_DIR_NAME/build.sh $TARGET_DIR
 	fi
 	exit
 
