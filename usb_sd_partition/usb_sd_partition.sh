@@ -4,13 +4,7 @@
 # to be used for RZ/G Linux systems.
 # It will have 2 partitions:
 #   1.  FAT16 partition (that can be access by Windows)
-#   2.  ext3 partition that can hold a Linux file system.
-
-#defaults
-FAT_SZ=+500M
-#EXT_SZ=+6G
-EXT_SZ=
-EXT_VER=ext4
+#   2.  ext partition that can hold a Linux file system.
 
 # This script must run as root
 if [[ $EUID -ne 0 ]]; then
@@ -95,7 +89,7 @@ fi
 
 
 FAT_SZ=$(
-whiptail --title "Select Size of FAT Partition" --menu "What would you like the size of the FAT partition to be?\nThis will hold the kernel and Device Tree" 0 0 0 \
+whiptail --title "Select Size of FAT Partition" --default-item "500M" --menu "What would you like the size of the FAT partition to be?\nThis will hold the kernel and Device Tree" 0 0 0 \
 	"250M" ""\
 	"500M" "(recomended)"\
 	"750M" ""\
@@ -113,18 +107,18 @@ else
 fi
 
 EXT_SZ=$(
-whiptail --title "Select Size of EXT Partition" --menu "What would you like the size of the EXT partition to be?\n\
+whiptail --title "Select Size of EXT Partition" --default-item "max" --menu "What would you like the size of the EXT partition to be?\n\
 This will hold the entire file system.\n\
 You can select only a portion (2GB) of the remaining space in case you would\n\
 like to keep multiple images on this disk.\n\
 FYI: The larger the partition size, the longer it takes to format." 0 0 0 \
-	"max" "(recomended) Use whatever is left"\
 	"1G" ""\
 	"2G" ""\
 	"3G" ""\
 	"4G" ""\
 	"5G" ""\
 	"6G" ""\
+    "max" "(recomended) Use whatever is left"\
 	"EXIT" "Cancel and exit the script" \
 	 3>&2 2>&1 1>&3	
 )
@@ -143,7 +137,7 @@ else
 fi
 
 EXT_VER=$(
-whiptail --title "Select EXT Partition filesystem" --menu "What filesystem would you like the EXT partition to be?\n\
+whiptail --title "Select EXT Partition filesystem" --default-item ext4 --menu "What filesystem would you like the EXT partition to be?\n\
 " 0 0 0 \
 	"ext2" ""\
 	"ext3" ""\
