@@ -8,8 +8,9 @@
 
 # This script must run as root
 if [[ $EUID -ne 0 ]]; then
-   echo "This script must be run as root"
-   echo "Please use sudo"
+   echo -e "This script must be run as root. \nRestarting as root...\n"
+   echo -e "sudo $0\n"
+   sudo $0
    exit 1
 fi
 
