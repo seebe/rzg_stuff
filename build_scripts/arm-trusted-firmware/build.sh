@@ -5,8 +5,8 @@
 #---------------------------------------------------------------------------
 
 # HiHope RZ/G2M
-MACHINE=hihope-rzg2m
-EMMC_BOOT=1
+#MACHINE=hihope-rzg2m
+#EMMC_BOOT=1
 #ECC_FULL=0    # 0=no ECC, 1=ECC dual channel, 2=ECC single channel
 
 # HiHope RZ/G2N
