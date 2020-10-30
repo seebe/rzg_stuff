@@ -237,7 +237,7 @@ fi
 if [ "$1" == "update" ] ; then
 
 	if [ "$2" == "" ] ; then
-		echo "$0 udpate:
+		echo "$0 update:
 	Updates a repository based on a specific VLP64 release.
 This will add a new branch to your repository that will contain the
 patches for that release.
@@ -245,12 +245,12 @@ You can then use the \"build.sh\" script to reproduce the
 binaries outside to Yocto.
 
 Uasge:
-$0 udpate [repo_directory]
+$0 update [repo_directory]
 
 [repo_directory]:
  - This is the directory where a repository directory is located.
    For example, if you pass:
-       $0 udpate ~/rzg/arm-trusted-firmware
+       $0 update ~/rzg/arm-trusted-firmware
 "
 		exit
 	fi
@@ -387,8 +387,14 @@ $0 udpate [repo_directory]
 	echo -e "  Branch created: $BRANCH_NAME"
 	echo -e "  Tag created: $VLP64_REL"
 	echo -e "----------------------------------------------------\n"
+
+	exit
 fi
 
-
-
+echo "ERROR: Unknown command \"$1\""
+echo "
+usage:
+  $0 create	# create a new repository
+  $0 update	# update an existing repo with a new VLP64 release
+"
 
