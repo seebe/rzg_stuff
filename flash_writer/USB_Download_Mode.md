@@ -42,6 +42,15 @@ USB Download mode (w/o verification)
 -- please send file---------------!
 The issue is that the cdc_acm driver will then echo that message back to the board (one bulk packet at a time). And, the internal ROM code is not expecting that. It only wants to see an S-Record, so it instantly errors out.
 
+### Automatic Build Script
+There is a script **patch-cdc-acm.sh** that will perform **all the steps below for you automatically** including downloading, modifying, building and installing the driver.
+It will automaticaly detect the Ubuntu version and kernel version you are currently running, so no changes should be needed.
+The entire kernel source code repository will be downloaded to your home directory.
+For example, ~/ubuntu-bionic.
+Note that this will take up about 3 GB worth of disk space.
+I would suggest you do not delete this since every time you get a kernel update from Ubuntu, you will have to rebuild this driver again.
+
+
 ### 2.1 Download the source code for your kernel
 * Since I was using Ubuntu-18.04, I will need to get the code for the 'Bionic' repository.
 
@@ -61,6 +70,8 @@ $ uname -r
 ```
 $ git tag | grep 5.3.0-53
 Ubuntu-hwe-5.3.0-53.47_18.04.1
+
+$ git checkout Ubuntu-hwe-5.3.0-53.47_18.04.1
 ```
 * (**Optional, not needed**). By default, the cdc-acm driver is already configured to be build as a module in the kernel. If it wasn't, we would need to rebuild kernel. These would have been the steps to do that....but again, we do not need to do this.
 $ cp /boot/config-5.3.0-51-generic .config
@@ -98,15 +109,18 @@ https://github.com/torvalds/linux/commit/eafb27fa5283599ce6c5492ea18cf636a28222b
 (or also located here)
 https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/drivers/usb/class?id=eafb27fa5283599ce6c5492ea18cf636a28222bb
 
-* Manually edit cdc-acm.c and add the 2 USB ID for RZ/G2N,H and RZ/G2E to the table as shown below.
+* Manually edit cdc-acm.c and add the 3 USB ID for RZ/G2H, G2N and G2E to the table as shown below.
 ```
 $ diff -u cdc-acm.c.orig cdc-acm.c
 --- cdc-acm.c.orig    2020-06-05 07:13:20.395582047 -0400
 +++ cdc-acm.c   2020-06-05 07:41:41.816674789 -0400
-@@ -1668,6 +1668,12 @@
+@@ -1668,6 +1668,15 @@
 	{ USB_DEVICE(0x0e8d, 0x2000), /* MediaTek Inc Preloader */
 	.driver_info = DISABLE_ECHO, /* DISABLE ECHO in termios flag */
 	},
++	{ USB_DEVICE(0x045b, 0x023c), /* Renesas USB Download mode */
++	.driver_info = DISABLE_ECHO, /* DISABLE ECHO in termios flag */
++	},
 +	{ USB_DEVICE(0x045b, 0x0248), /* Renesas USB Download mode */
 +	.driver_info = DISABLE_ECHO, /* DISABLE ECHO in termios flag */
 +	},
