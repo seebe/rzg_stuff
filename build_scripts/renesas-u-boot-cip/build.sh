@@ -66,6 +66,10 @@ unset LDFLAGS
 unset AS
 unset LD
 
+# Having these set (by the Yocto SDK)  will break "menuconfig"
+unset PKG_CONFIG_PATH
+unset HOST_EXTRACFLAGS
+
 # Add '-s' for silent Build
 MAKE="make -j$BUILD_THREADS O=$OUT"
 
