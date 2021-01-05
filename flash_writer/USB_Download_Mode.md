@@ -29,7 +29,7 @@ $ sudo udevadm control --reload-rules && sudo udevadm trigger
 
 ```
 
-### 2. Modify Host cdc-acm Kernel Driver
+### 2. Modify Host cdc-acm Kernel Driver (if needed)
 
 What happens is when the board is powered up, /dev/ttyACM0 is created.
 On the USB side, the only other thing that happens other USB enumeration is that the kernel (Ubuntu) set the ??virtual?? baud rate to 9600 on the USB control pipe (so that doesn??t matter).
@@ -42,9 +42,29 @@ USB Download mode (w/o verification)
 -- please send file---------------!
 The issue is that the cdc_acm driver will then echo that message back to the board (one bulk packet at a time). And, the internal ROM code is not expecting that. It only wants to see an S-Record, so it instantly errors out.
 
+### Mainline Kernel Fix
+The mainline kernel was patched for RZ/G2 devices and was fixed for the Linux-5.10 release. Additionally, the patch was back ported to stable kernels.
+Here is the list of kernels that have the patch:
+* 5.10 (and later)
+* 5.9.9
+* 5.4.78
+* 4.19.158
+* 4.14.207
+* 4.9.244
+* 4.4.244
+
+For Ubuntu, you can use this website to check what mainline kernel version you are using.
+https://people.canonical.com/~kernel/info/kernel-version-map.html
+
+I would suggest you first **get all the latest Ubuntu updates** and then try connecting to your board. It is very likely that you do not need to manually modify your kernel code.
+```
+$ sudo apt update ; sudo apt upgrade
+```
+If you board does not connect, then you will need to follow the procedure below.
+
 ### Automatic Build Script
 There is a script **patch-cdc-acm.sh** that will perform **all the steps below for you automatically** including downloading, modifying, building and installing the driver.
-It will automaticaly detect the Ubuntu version and kernel version you are currently running, so no changes should be needed.
+It will automatically detect the Ubuntu version and kernel version you are currently running, so no changes should be needed.
 The entire kernel source code repository will be downloaded to your home directory.
 For example, ~/ubuntu-bionic.
 Note that this will take up about 3 GB worth of disk space.
