@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright (c) 2021 Renesas
+# SPDX-License-Identifier: MIT
+
 # pass a file that contains all the settings
 # For example: ./create_image.sh example_config.ini
 
@@ -9,6 +12,8 @@ if [ "$1" == "" ] ; then
 	exit
 fi
 
+# Make default /tmp. User can override with the config file.
+TMP="/tmp"
 source $1
 
 message() {
@@ -19,14 +24,22 @@ echo -----------------------------------------
 
 }
 
+# Some tools do not like ~ character, they want the full path
+TMP="${TMP/#\~/$HOME}"
+OUTFILE="${OUTFILE/#\~/$HOME}"
 
-# test that we can created the output file
+# Create the direcotry if it does not exist
+if [ ! -d ${TMP} ]; then
+  mkdir -p $TMP
+  chmod a+rwx $TMP
+fi
+
+# Test that we can create the output file
 DIR=$(dirname "${OUTFILE}")
 FILENAME=$(basename "${OUTFILE}")
 mkdir -p $DIR
 touch "$OUTFILE"
-
-if [ ! -e $OUTFILE ] ; then 
+if [ ! -e $OUTFILE ] ; then
   echo "ERROR: Cannot create output file ${OUTFILE}"
   exit
 fi
@@ -66,11 +79,13 @@ dd if=/dev/zero of=$OUTFILE bs=$BS_SIZE count=$COUNT
 
 # Create 2 primary partitions inside our image file
 # (FAT16) + (ext3/4)
+
 message "Creating partitions"
-echo -e "n\n p\n 1\n \n +${FAT_SIZE}\n"\
-        "n\n p\n 2\n \n \n"\
-        "t\n 1\n 6\n"\
-        "p\n w\n" | fdisk -u $OUTFILE
+
+echo -e "n\np\n1\n\n+${FAT_SIZE}\n"\
+        "n\np\n2\n\n\n"\
+        "t\n1\n6\n"\
+        "p\nw\n" | fdisk -u $OUTFILE
 
 # (Optional) Verify your file partitioning
 # fdisk -l $OUTFILE
@@ -92,10 +107,10 @@ LOOP_DEVICE=$(losetup --list | grep $OUTFILE | awk '{print $1}');
 sudo mkfs.vfat -F 16 -n $FAT_LABEL $LOOP_DEVICE
 
 # mount this loop device (partition) so we can copy files into it
-mkdir -p /tmp/loop_mount/fat16
-sudo mount $LOOP_DEVICE /tmp/loop_mount/fat16
-sudo cp -r $FAT_FILES/* /tmp/loop_mount/fat16
-sudo umount  /tmp/loop_mount/fat16
+mkdir -p ${TMP}/loop_mount/fat16
+sudo mount $LOOP_DEVICE ${TMP}/loop_mount/fat16
+sudo cp -r $FAT_FILES/* ${TMP}/loop_mount/fat16
+sudo umount  ${TMP}/loop_mount/fat16
 
 # Release the loop device
 sudo losetup -d $LOOP_DEVICE
@@ -111,10 +126,10 @@ LOOP_DEVICE=$(losetup --list | grep $OUTFILE | awk '{print $1}');
 sudo mkfs.${EXT_TYPE} -L $EXT_LABEL $LOOP_DEVICE
 
 # mount this loop device (partition) so we can copy files into it
-mkdir -p /tmp/loop_mount/ext
-sudo mount $LOOP_DEVICE /tmp/loop_mount/ext
-sudo cp -r $EXT_FILES/* /tmp/loop_mount/ext
-sudo umount  /tmp/loop_mount/ext
+mkdir -p ${TMP}/loop_mount/ext
+sudo mount $LOOP_DEVICE ${TMP}/loop_mount/ext
+sudo cp -r $EXT_FILES/* ${TMP}/loop_mount/ext
+sudo umount  ${TMP}/loop_mount/ext
 
 # Release the loop device
 sudo losetup -d $LOOP_DEVICE
@@ -146,5 +161,7 @@ if [ "$CREATE_ZIP" == "yes" ] ; then
 	zip -j ${OUTFILE}.zip ${OUTFILE}
 fi
 
-message "done"
+echo -e "\n\n"
+message "Output Files"
+ls -lh ${OUTFILE}*
 
