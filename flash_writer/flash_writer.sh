@@ -37,23 +37,23 @@ if [ "$BOARD" == "ek874" ] ; then
 	SW_SETTINGS="Switch settings for SW12 which is placed near the micro SD card slot.
 Please TURN OFF board power when changing switch settings.
 
-	SPI Flash boot
-	----------------------------------
-	1 = ON
-	2 = ON
-	3 = ON
-	4 = OFF
-	5 = ON
-	6 = ON
+	SPI Flash boot              eMMC boot
+	--------------              ---------
+	1 = ON                      1 = OFF
+	2 = ON                      2 = ON
+	3 = ON                      3 = OFF
+	4 = OFF                     4 = OFF
+	5 = ON                      5 = ON
+	6 = ON                      6 = ON
 
-	SCIF Download mode
-	----------------------------------
-	1 = OFF
-	2 = OFF
-	3 = OFF
-	4 = OFF
-	5 = ON
-	6 = ON
+	SCIF Download mode         USB Download mode
+	------------------         -----------------
+	1 = OFF                    1 = OFF
+	2 = OFF                    2 = OFF
+	3 = OFF                    3 = ON
+	4 = OFF                    4 = OFF
+	5 = ON                     5 = ON
+	6 = ON                     6 = ON
 "
 fi
 
