@@ -108,7 +108,11 @@ if [ "$BOARD" == "ek874" ] || [ "$BOARD" == "hihope-rzg2m" ] || \
 		FILES_DIR=$VLP64_BASE/build/tmp/deploy/images/${BOARD}
 	fi
 	if [ "$FLASHWRITER" == "" ] ; then
-		FLASHWRITER=$FILES_DIR/AArch64_Flash_writer_SCIF_DUMMY_CERT_E6300400_${BOARD}.mot
+		if [ "$BOARD" == "hihope-rzg2m" ] || [ "$BOARD" == "hihope-rzg2n" ] || [ "$BOARD" == "hihope-rzg2h" ] ; then
+			FLASHWRITER=$FILES_DIR/AArch64_Flash_writer_SCIF_DUMMY_CERT_E6300400_hihope.mot
+		else
+			FLASHWRITER=$FILES_DIR/AArch64_Flash_writer_SCIF_DUMMY_CERT_E6300400_${BOARD}.mot
+		fi
 	fi
 	if [ "$SA0_FILE" == "" ] ; then
 		SA0_FILE=$FILES_DIR/bootparam_sa0.srec
