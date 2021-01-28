@@ -1,12 +1,5 @@
 #!/bin/bash
 
-if [ "$TARGET_PREFIX" == "" ] ; then
-
-  echo "Yocto SDK environment not set up"
-  echo "source /opt/poky/2.4.3/environment-setup-aarch64-poky-linux"
-  exit
-fi
-
 # Whiptail colors
 export NEWT_COLORS='
 root=,blue
@@ -119,6 +112,23 @@ do_usb_menu() {
   fi
 }
 
+do_toolchain_menu() {
+  SELECT=$(whiptail --title "Toolchain setup" --menu "You may use ESC+ESC to cancel.\nEnter the command line you want to run before build.\n" 0 0 0 \
+	"1  SDK Toolchain" "  /opt/poky/2.4.3/environment-setup-aarch64-poky-linux" \
+	"2  Linaro gcc-linaro-7.5.0-2019.12" "  /opt/linaro/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu" \
+	"3  (none)" "  No setup" \
+	3>&1 1>&2 2>&3)
+  RET=$?
+  if [ $RET -eq 0 ] ; then
+    case "$SELECT" in
+      1\ *) TOOLCHAIN_SETUP_NAME="SDK Toolchain" ; TOOLCHAIN_SETUP="source /opt/poky/2.4.3/environment-setup-aarch64-poky-linux" ;;
+      2\ *) TOOLCHAIN_SETUP_NAME="Linaro Toolchain" ; TOOLCHAIN_SETUP="PATH=/opt/linaro/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin:\$PATH ; export CROSS_COMPILE=aarch64-linux-gnu- ; export ARCH=arm64" ;;
+      3\ *) TOOLCHAIN_SETUP_NAME="(none)" ; TOOLCHAIN_SETUP= ;;
+      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
+    esac || whiptail --msgbox "There was an error running option $SELECT" 20 60 1
+  fi
+}
+
 if [ "$BOARD" == "" ] ; then
   echo "Set BOARD first to avoid GUI menu"
 
@@ -129,6 +139,8 @@ if [ "$BOARD" == "" ] ; then
     # Some default entries
     BOARD=HIHOPE
     OUTFILE=AArch64_Flash_writer_SCIF_DUMMY_CERT_E6300400_hihope.mot
+    TOOLCHAIN_SETUP="source /opt/poky/2.4.3/environment-setup-aarch64-poky-linux"
+    TOOLCHAIN_SETUP_NAME="SDK Toolchain"
   fi
 
   while true ; do
@@ -138,6 +150,7 @@ if [ "$BOARD" == "" ] ; then
 	"3.  SPI Flash programming support:" "  $SERIAL_FLASH"  \
 	"4. eMMC Flash programming support:" "  $EMMC" \
 	"5.      USB Download Mode support:" "  $USB" \
+	"6.                Toolchain setup:" "  $TOOLCHAIN_SETUP_NAME" \
 	3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ] ; then
@@ -147,7 +160,11 @@ if [ "$BOARD" == "" ] ; then
       echo "SERIAL_FLASH=$SERIAL_FLASH" >> board.ini
       echo "EMMC=$EMMC" >> board.ini
       echo "USB=$USB" >> board.ini
+      echo "TOOLCHAIN_SETUP_NAME=\"$TOOLCHAIN_SETUP_NAME\"" >> board.ini
+      echo "TOOLCHAIN_SETUP=\"$TOOLCHAIN_SETUP\"" >> board.ini
       echo "Building..."
+      echo "$TOOLCHAIN_SETUP"
+      echo $TOOLCHAIN_SETUP > /tmp/tc_setup ; source /tmp/tc_setup ; rm /tmp/tc_setup
       echo "make clean"
       make clean
       echo "make BOARD=$BOARD"
@@ -160,12 +177,20 @@ if [ "$BOARD" == "" ] ; then
         3.\ *) do_serial_menu ;;
         4.\ *) do_emmc_menu ;;
         5.\ *) do_usb_menu ;;
+        6.\ *) do_toolchain_menu ;;
         *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
       esac || whiptail --msgbox "There was an error running option $SELECT" 20 60 1
     else
       exit 1
     fi
   done
+  exit
+fi
+
+if [ "$TARGET_PREFIX" == "" ] ; then
+
+  echo "Yocto SDK environment not set up"
+  echo "source /opt/poky/2.4.3/environment-setup-aarch64-poky-linux"
   exit
 fi
 
