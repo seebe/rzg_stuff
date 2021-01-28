@@ -318,6 +318,7 @@ if [ "$1" == "" ] ; then
 	echo "$0 sa6              # programs SA6 (Cert Header)"
 	echo "$0 bl31             # programs BL31 (EL3 Runtime Software)"
 	echo "$0 uboot            # programs u-boot (BL33, Non-trusted Firmware)"
+	echo "$0 atf              # programs sa0,bl2,sa6,bl31 all at once"
 	echo "$0 all              # programs sa0,bl2,sa6,bl31,uboot all at once"
 	echo ""
 	echo "$0 emmc_config      # Configure an eMMC for booting (only needed once)"
@@ -383,7 +384,7 @@ if [ "$1" == "emmc_config" ] ; then
 fi
 
 
-if [ "$1" == "sa0" ] || [ "$1" == "all" ] ; then
+if [ "$1" == "sa0" ] || [ "$1" == "atf" ] || [ "$1" == "all" ]; then
 	if [ "$2" != "" ] ; then
 		SA0_FILE=$2
 	fi
@@ -395,7 +396,7 @@ if [ "$1" == "sa0" ] || [ "$1" == "all" ] ; then
 	fi
 fi
 
-if [ "$1" == "bl2" ] || [ "$1" == "all" ] ; then
+if [ "$1" == "bl2" ] || [ "$1" == "atf" ] || [ "$1" == "all" ] ; then
 	if [ "$2" != "" ] ; then
 		BL2_FILE=$2
 	fi
@@ -406,7 +407,7 @@ if [ "$1" == "bl2" ] || [ "$1" == "all" ] ; then
 	fi
 fi
 
-if [ "$1" == "sa6" ] || [ "$1" == "all" ] ; then
+if [ "$1" == "sa6" ] || [ "$1" == "atf" ] || [ "$1" == "all" ] ; then
 	if [ "$2" != "" ] ; then
 		SA6_FILE=$2
 	fi
@@ -417,7 +418,7 @@ if [ "$1" == "sa6" ] || [ "$1" == "all" ] ; then
 	fi
 fi
 
-if [ "$1" == "bl31" ] || [ "$1" == "all" ] ; then
+if [ "$1" == "bl31" ] || [ "$1" == "atf" ] || [ "$1" == "all" ] ; then
 	if [ "$2" != "" ] ; then
 		BL31_FILE=$2
 	fi
