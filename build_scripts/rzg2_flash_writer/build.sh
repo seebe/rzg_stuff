@@ -122,7 +122,7 @@ do_toolchain_menu() {
   if [ $RET -eq 0 ] ; then
     case "$SELECT" in
       1\ *) TOOLCHAIN_SETUP_NAME="SDK Toolchain" ; TOOLCHAIN_SETUP="source /opt/poky/2.4.3/environment-setup-aarch64-poky-linux" ;;
-      2\ *) TOOLCHAIN_SETUP_NAME="Linaro Toolchain" ; TOOLCHAIN_SETUP="PATH=/opt/linaro/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin:\$PATH ; export CROSS_COMPILE=aarch64-linux-gnu- ; export ARCH=arm64" ;;
+      2\ *) TOOLCHAIN_SETUP_NAME="Linaro Toolchain" ; TOOLCHAIN_SETUP="PATH=/opt/linaro/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin:\$PATH ; export CROSS_COMPILE=aarch64-linux-gnu-" ;;
       3\ *) TOOLCHAIN_SETUP_NAME="(none)" ; TOOLCHAIN_SETUP= ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $SELECT" 20 60 1
@@ -164,7 +164,17 @@ if [ "$BOARD" == "" ] ; then
       echo "TOOLCHAIN_SETUP=\"$TOOLCHAIN_SETUP\"" >> board.ini
       echo "Building..."
       echo "$TOOLCHAIN_SETUP"
-      echo $TOOLCHAIN_SETUP > /tmp/tc_setup ; source /tmp/tc_setup ; rm /tmp/tc_setup
+      eval $TOOLCHAIN_SETUP
+      if [ "$TARGET_PREFIX" == "" ] ; then
+        # Not using SDK (poky) toolchain (assuming Linaro)
+        # We need to set these before calling make (that's why makefile.linaro exists, but we don't need to use it)
+        export CC=${CROSS_COMPILE}gcc
+        export AS=${CROSS_COMPILE}as
+        export LD=${CROSS_COMPILE}ld
+        export AR=${CROSS_COMPILE}ar
+        export OBJDUMP=${CROSS_COMPILE}objdump
+        export OBJCOPY=${CROSS_COMPILE}objcopy
+      fi
       echo "make clean"
       make clean
       echo "make BOARD=$BOARD"
@@ -187,11 +197,26 @@ if [ "$BOARD" == "" ] ; then
   exit
 fi
 
-if [ "$TARGET_PREFIX" == "" ] ; then
-
-  echo "Yocto SDK environment not set up"
-  echo "source /opt/poky/2.4.3/environment-setup-aarch64-poky-linux"
+if [ "$CROSS_COMPILE" == "" ] ; then
+  echo "Cross Compiler (CROSS_COMPILE) not set."
+  echo ""
+  echo "Yocto SDK environment set up:"
+  echo "   source /opt/poky/2.4.3/environment-setup-aarch64-poky-linux"
+  echo ""
+  echo "Linaro environment set up:"
+  echo "   PATH=/opt/linaro/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin:\$PATH ; export CROSS_COMPILE=aarch64-linux-gnu-"
+  echo ""
   exit
+fi
+
+if [ "$CC" == "" ] ; then
+  # We need to set these before calling make (that's why makefile.linaro exists, but we don't need to use it)
+  export CC=${CROSS_COMPILE}gcc
+  export AS=${CROSS_COMPILE}as
+  export LD=${CROSS_COMPILE}ld
+  export AR=${CROSS_COMPILE}ar
+  export OBJDUMP=${CROSS_COMPILE}objdump
+  export OBJCOPY=${CROSS_COMPILE}objcopy
 fi
 
 make BOARD=$BOARD $1 $2 $3
