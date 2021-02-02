@@ -32,22 +32,31 @@ $ git checkout master
 $ cp ../rzg_stuff/build_scripts/rzg2_flash_writer/build.sh  .
 ```
 
-
-## Select the board to build
-To select the board you would like to build for, please **edit the build.sh** file and make your selection at the top. Selections are made by un-commenting the **MACHINE** and **OUTFILE** lines you want (removing the # sign).
-
-For example, to build for a HiHope RZ/G2M board:
-```
-# HiHope RZ/G2M
-BOARD=HIHOPE
-OUTFILE=AArch64_Flash_writer_SCIF_DUMMY_CERT_E6300400_hihope.mot
-```
-
-## Build the code
-Finally, to build, simply execute the build.sh script without any parameters.
+## Select your board and build
+To build, simply execute the build.sh script without any parameters.
 ```
 ./build.sh
 ```
+Then use the GUI menu to “Select your board” to select the board you want to build.
+
+You do not need to change the other settings (the defaults will be chosen by the Makefile)
+
+After, select the < Build > button at the bottom.
+
+Your settings will automatically be saved in the file **board.ini**.
+
+The output files will be in:
+ * rzg2_flash_writer/AArch64_output/
+
+## (Optional) Build with Command Line only
+You may also build using the command line. In that case, pass the settings on the command line before build.sh.
+For example, to build for a HiHope RZ/G2M board:
+```
+$ source /opt/poky/2.4.3/environment-setup-aarch64-poky-linux
+$ BOARD=HIHOPE ./build.sh clean
+$ BOARD=HIHOPE ./build.sh
+```
+
 The output files will be in:
  * rzg2_flash_writer/AArch64_output/
 
