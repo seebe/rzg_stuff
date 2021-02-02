@@ -130,7 +130,7 @@ do_toolchain_menu() {
 }
 
 if [ "$BOARD" == "" ] ; then
-  echo "Set BOARD first to avoid GUI menu"
+  # Set BOARD environment variable first to avoid GUI menu
 
   # Read what we programmed last time
   if [ -e "board.ini" ] ; then
@@ -144,12 +144,20 @@ if [ "$BOARD" == "" ] ; then
   fi
 
   while true ; do
-    SELECT=$(whiptail --title "RZ/G2 Flash Writer Configuration" --menu "Select your build options.\nYou may use [ESC]+[ESC] to cancel.\nUse [Tab] key to select buttons.\n\nA Blank entry means use default board settings.\n\nUse the <Change> button (or enter) to make changes.\nUse the <Build> button to start the build." 0 0 0 --cancel-button Build --ok-button Change \
+
+    # In case of no setting, display as 'default'
+    if [ "$BOOT" == "" ] ; then BOOT_TEXT="(default)" ; else BOOT_TEXT="$BOOT" ; fi
+    if [ "$SERIAL_FLASH" == "" ] ; then SERIAL_FLASH_TEXT="(default)" ; else SERIAL_FLASH_TEXT="$SERIAL_FLASH" ; fi
+    if [ "$EMMC" == "" ] ; then EMMC_TEXT="(default)" ; else EMMC_TEXT="$EMMC" ; fi
+    if [ "$USB" == "" ] ; then USB_TEXT="(default)" ; else USB_TEXT="$USB" ; fi
+
+
+    SELECT=$(whiptail --title "RZ/G2 Flash Writer Configuration" --menu "Select your build options.\nYou may use [ESC]+[ESC] to cancel/exit.\nUse [Tab] key to select buttons at the bottom.\n\nUse the <Change> button (or enter) to make changes.\nUse the <Build> button to start the build." 0 0 0 --cancel-button Build --ok-button Change \
 	"1.              Select your board:" "  $BOARD"  \
-	"2.             Include Dummy cert:" "  $BOOT" \
-	"3.  SPI Flash programming support:" "  $SERIAL_FLASH"  \
-	"4. eMMC Flash programming support:" "  $EMMC" \
-	"5.      USB Download Mode support:" "  $USB" \
+	"2.             Include Dummy cert:" "  $BOOT_TEXT" \
+	"3.  SPI Flash programming support:" "  $SERIAL_FLASH_TEXT"  \
+	"4. eMMC Flash programming support:" "  $EMMC_TEXT" \
+	"5.      USB Download Mode support:" "  $USB_TEXT" \
 	"6.                Toolchain setup:" "  $TOOLCHAIN_SETUP_NAME" \
 	3>&1 1>&2 2>&3)
     RET=$?
