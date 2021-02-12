@@ -88,6 +88,7 @@ config_hash() {
   "$SERIAL_DEVICE_INTERFACE" \
   "$FILES_DIR" \
   "$FLASHWRITER" \
+  "$FW_PREBUILT" \
   "$SA0_FILE" \
   "$BL2_FILE" \
   "$SA6_FILE" \
@@ -188,6 +189,29 @@ set_filenames() {
   fi
 }
 
+set_fw_binary() {
+  if [ "$FW_PREBUILT" == "1" ] ; then
+    if [ "${BOARD:0:6}" == "hihope" ] ; then
+      B_NAME="hihope"
+    fi
+    if [ "$BOARD" == "ek874" ] ; then
+      B_NAME="ek874"
+    fi
+    if [ "$FLASH" == "0" ] ; then
+      F_NAME="SPI"
+    else
+      F_NAME="eMMC"
+    fi
+    if [ "${SERIAL_DEVICE_INTERFACE:8:3}" == "ACM" ] ; then
+      S_NAME="USB"
+    else
+      S_NAME="SCIF"
+    fi
+
+  FLASHWRITER="./binaries/Flash_writer_${B_NAME}_${S_NAME}_${F_NAME}.mot"
+  fi
+}
+
 do_menu_config() {
   SELECT=$(whiptail --title "Config File Selection" --menu "You may use ESC+ESC to cancel.\n\nHow do you want to select the file?" 0 0 0 \
 	"1 File Browse" "  Use a GUI File broswer " \
@@ -259,10 +283,10 @@ do_menu_board() {
   RET=$?
   if [ $RET -eq 0 ] ; then
     case "$SELECT" in
-      1\ *) BOARD=ek874 ; switch_settings ; clear_filenames ; set_filenames ;;
-      2\ *) BOARD=hihope-rzg2m ; switch_settings ; clear_filenames ; set_filenames ;;
-      3\ *) BOARD=hihope-rzg2n ; switch_settings ; clear_filenames ; set_filenames ;;
-      4\ *) BOARD=hihope-rzg2h ; switch_settings ; clear_filenames ; set_filenames ;;
+      1\ *) BOARD=ek874 ; switch_settings ; clear_filenames ; set_filenames ; set_fw_binary ;;
+      2\ *) BOARD=hihope-rzg2m ; switch_settings ; clear_filenames ; set_filenames ; set_fw_binary ;;
+      3\ *) BOARD=hihope-rzg2n ; switch_settings ; clear_filenames ; set_filenames ; set_fw_binary ;;
+      4\ *) BOARD=hihope-rzg2h ; switch_settings ; clear_filenames ; set_filenames ; set_fw_binary ;;
       5\ *) BOARD=CUSTOM ; switch_settings ; clear_filenames ; FLASHWRITER="(please define)" ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $SELECT" 20 60 1
@@ -288,6 +312,8 @@ do_menu_target_flash() {
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $SELECT" 20 60 1
   fi
+
+  set_fw_binary
 }
 
 do_menu_dev() {
@@ -303,6 +329,8 @@ do_menu_dev() {
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $SELECT" 20 60 1
   fi
+
+  set_fw_binary
 }
 
 do_menu_extra() {
@@ -371,14 +399,26 @@ do_menu_file_dir() {
 }
 
 do_menu_file_fw() {
+  SELECT=$(whiptail --title "Flash Writer Selection" --menu "You may use ESC+ESC to cancel." 0 0 0 \
+	"1. Enter filename" " " \
+	"2. Use included prebuilt binaries (auto select)" " " \
+	3>&1 1>&2 2>&3)
+  RET=$?
+  if [ $RET -eq 0 ] ; then
+    case "$SELECT" in
+      1.\ *) FW_PREBUILT=0 ;;
+      2.\ *) FW_PREBUILT=1 ; set_fw_binary ; return ;;
+      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
+    esac || whiptail --msgbox "There was an error running option $SELECT" 20 60 1
+  fi
+
   SELECT=$(whiptail --title "Flash Writer File Selection" --inputbox "You may use ESC+ESC to cancel.\n\n Enter file path to Flash Writer File." 0 100 \
 	"AArch64_Flash_writer_SCIF_DUMMY_CERT_E6300400_${BOARD}.mot"  \
 	3>&1 1>&2 2>&3)
   RET=$?
   if [ $RET -eq 0 ] ; then
-   FW_FILE="$SELECT"
+   FLASHWRITER="$SELECT"
   fi
-  
 }
 
 do_menu_file_sa0() {
@@ -507,9 +547,13 @@ if [ "$FW_GUI_MODE" == "1" ] ; then
     # change the text that is displayed on the screen
     FLASH_TEXT=("SPI Flash" "eMMC Flash")
     if [ "${FLASHWRITER:0:6}" != "binaries" ] && [ "${FLASHWRITER:2:8}" != "binaries" ] ; then
-      FLASHWRITER_TEXT=$(echo $FLASHWRITER | sed "s:$FILES_DIR:\$FILES_DIR:")
+      FLASHWRITER_TEXT=$(echo $FLASHWRITER | sed "s:$FILES_DIR:\$(FILES_DIR):")
     else
-      FLASHWRITER_TEXT=$FLASHWRITER
+      if [ "$FW_PREBUILT" == "1" ] ; then
+        FLASHWRITER_TEXT="$FLASHWRITER (auto select)"
+      else
+        FLASHWRITER_TEXT="$FLASHWRITER"
+      fi
     fi
     SA0_FILE_TEXT=$(echo $SA0_FILE | sed "s:$FILES_DIR:\$(FILES_DIR):")
     BL2_FILE_TEXT=$(echo $BL2_FILE | sed "s:$FILES_DIR:\$(FILES_DIR):")
@@ -584,6 +628,7 @@ if [ "$FW_GUI_MODE" == "1" ] ; then
         echo "SERIAL_DEVICE_INTERFACE=$SERIAL_DEVICE_INTERFACE" >> $CONFIG_FILE
 
         echo "FILES_DIR=$FILES_DIR" >> $CONFIG_FILE
+        echo "FW_PREBUILT=$FW_PREBUILT" >> $CONFIG_FILE
         echo "FLASHWRITER=$FLASHWRITER" >> $CONFIG_FILE
         echo "SA0_FILE=$SA0_FILE" >> $CONFIG_FILE
         echo "BL2_FILE=$BL2_FILE" >> $CONFIG_FILE
