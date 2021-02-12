@@ -29,6 +29,7 @@ vlp64_releases=(
 	"BSP-1.0.5"
 	"BSP-1.0.5-RT"
 	"BSP-1.0.5-RT-update1"
+	"BSP-1.0.6"
 	"BSP-1.0.6-update1"
 )
 branch_names=(
@@ -39,6 +40,7 @@ branch_names=(
 	"vlp64_v105"
 	"vlp64_v105rt"
 	"vlp64_v105rt-update1"
+	"vlp64_v106"
 	"vlp64_v106-update1"
 )
 
