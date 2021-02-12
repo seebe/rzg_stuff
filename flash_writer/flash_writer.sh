@@ -86,7 +86,6 @@ config_hash() {
   CONFIG_HASH_RESULT=$(echo "$BOARD" \
   "$FLASH" \
   "$SERIAL_DEVICE_INTERFACE" \
-  "$BUILT_OUTSIDE_YOCTO" \
   "$FILES_DIR" \
   "$FLASHWRITER" \
   "$SA0_FILE" \
@@ -153,6 +152,38 @@ set_filenames() {
 		#UBOOT_FILE=$FILES_DIR/u-boot-elf-${BOARD}.srec
 		UBOOT_FILE=$FILES_DIR/u-boot.bin
 	fi
+  fi
+
+  # For any file that does not exist, look to see if they are
+  # in sub-directories because they were build outside of Yocto
+
+  # Flash Writer
+  if [ ! -e "$FLASHWRITER" ] ; then
+    FLASHWRITER_TMP=`find ../../rzg2_flash_writer/AArch64_output/*.mot`
+    if [ -e "$FLASHWRITER_TMP" ] ; then FLASHWRITER=$FLASHWRITER_TMP ; fi
+  fi
+
+  # arm-trusted-firmware
+  if [ "$FLASH" == "0" ] ; then
+    DEPLOY_DIR=z_deploy_spi
+  else
+    DEPLOY_DIR=z_deploy_emmc
+  fi
+  if [ ! -e "$SA0_FILE" ] ; then
+    # If we find the sa0 file, then we know the other files should be there too
+    SA0_FILE_TMP=$FILES_DIR/arm-trusted-firmware/$DEPLOY_DIR/bootparam_sa0.srec
+    if [ -e "$SA0_FILE_TMP" ] ; then
+      SA0_FILE=$FILES_DIR/arm-trusted-firmware/$DEPLOY_DIR/bootparam_sa0.srec
+      BL2_FILE=$FILES_DIR/arm-trusted-firmware/$DEPLOY_DIR/bl2-${BOARD}.bin
+      SA6_FILE=$FILES_DIR/arm-trusted-firmware/$DEPLOY_DIR/cert_header_sa6.srec
+      BL31_FILE=$FILES_DIR/arm-trusted-firmware/$DEPLOY_DIR/bl31-${BOARD}.bin
+   fi
+  fi
+
+  # u-boot
+  if [ ! -e "$UBOOT_FILE" ] ; then
+    UBOOT_FILE_TMP=$FILES_DIR/renesas-u-boot-cip/.out_${BOARD}/u-boot.bin
+    if [ -e "$UBOOT_FILE_TMP" ] ; then UBOOT_FILE=$UBOOT_FILE_TMP ; fi
   fi
 }
 
@@ -228,9 +259,9 @@ do_menu_board() {
   if [ $RET -eq 0 ] ; then
     case "$SELECT" in
       1\ *) BOARD=ek874 ; switch_settings ; clear_filenames ; set_filenames ;;
-      2\ *) BOARD=hihope-rzg2m ; switch_settings ; clear_filenames ; set_filenames;;
-      3\ *) BOARD=hihope-rzg2n ; switch_settings ; clear_filenames ; set_filenames;;
-      4\ *) BOARD=hihope-rzg2h ; switch_settings ; clear_filenames ; set_filenames;;
+      2\ *) BOARD=hihope-rzg2m ; switch_settings ; clear_filenames ; set_filenames ;;
+      3\ *) BOARD=hihope-rzg2n ; switch_settings ; clear_filenames ; set_filenames ;;
+      4\ *) BOARD=hihope-rzg2h ; switch_settings ; clear_filenames ; set_filenames ;;
       5\ *) BOARD=CUSTOM ; switch_settings ; clear_filenames ; FLASHWRITER="(please define)" ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $SELECT" 20 60 1
@@ -245,8 +276,14 @@ do_menu_target_flash() {
   RET=$?
   if [ $RET -eq 0 ] ; then
     case "$SELECT" in
-      1\ *) FLASH=0 ;;
-      2\ *) FLASH=1 ;;
+      1\ *) FLASH=0 ;
+        # If building outside of Yocto, and we have the wrong directory selected, we need to update file paths
+        echo $SA0_FILE | grep -q z_deploy_emmc ; if [ "$?" == "0" ] ; then clear_filenames ; set_filenames ; fi
+        ;;
+      2\ *) FLASH=1
+        # If building outside of Yocto, and we have the wrong directory selected, we need to update file paths
+        echo $SA0_FILE | grep -q z_deploy_spi ; if [ "$?" == "0" ] ; then clear_filenames ; set_filenames ; fi
+        ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $SELECT" 20 60 1
   fi
@@ -448,7 +485,6 @@ if [ "$FW_GUI_MODE" == "1" ] ; then
     SERIAL_DEVICE_INTERFACE="/dev/ttyUSB0"
     FLASH="0"
     CONFIG_FILE="config.ini"
-    BUILT_OUTSIDE_YOCTO=0
     MUST_RUN_FW_FRIST=1
   fi
 
@@ -467,26 +503,6 @@ if [ "$FW_GUI_MODE" == "1" ] ; then
     # Set files for Renesas boards
     set_filenames
 
-    if [ "$BUILT_OUTSIDE_YOCTO" == "1" ] ; then
-       # if using pre-built binaries, do not override
-	if [ "${FLASHWRITER:0:6}" != "binaries" ] && [ "${FLASHWRITER:2:8}" != "binaries" ] ; then
-		# For Flashwriter, the filename does not always match the BOARD name
-		FLASHWRITER=`find $FILES_DIR/rzg2_flash_writer/AArch64_output/*.mot`
-	fi
-
-	if [ "$FLASH" == "0" ] ; then
-		DEPLOY_DIR=z_deploy_spi
-	else
-		DEPLOY_DIR=z_deploy_emmc
-	fi
-
-	SA0_FILE=$FILES_DIR/arm-trusted-firmware/$DEPLOY_DIR/bootparam_sa0.srec
-	BL2_FILE=$FILES_DIR/arm-trusted-firmware/$DEPLOY_DIR/bl2-${BOARD}.bin
-	SA6_FILE=$FILES_DIR/arm-trusted-firmware/$DEPLOY_DIR/cert_header_sa6.srec
-	BL31_FILE=$FILES_DIR/arm-trusted-firmware/$DEPLOY_DIR/bl31-${BOARD}.bin
-	UBOOT_FILE=$FILES_DIR/renesas-u-boot-cip/.out_${BOARD}/u-boot.bin
-    fi
-
     # change the text that is displayed on the screen
     FLASH_TEXT=("SPI Flash" "eMMC Flash")
     if [ "${FLASHWRITER:0:6}" != "binaries" ] && [ "${FLASHWRITER:2:8}" != "binaries" ] ; then
@@ -494,11 +510,11 @@ if [ "$FW_GUI_MODE" == "1" ] ; then
     else
       FLASHWRITER_TEXT=$FLASHWRITER
     fi
-    SA0_FILE_TEXT=$(echo $SA0_FILE | sed "s:$FILES_DIR:\$FILES_DIR:")
-    BL2_FILE_TEXT=$(echo $BL2_FILE | sed "s:$FILES_DIR:\$FILES_DIR:")
-    SA6_FILE_TEXT=$(echo $SA6_FILE | sed "s:$FILES_DIR:\$FILES_DIR:")
-    BL31_FILE_TEXT=$(echo $BL31_FILE | sed "s:$FILES_DIR:\$FILES_DIR:")
-    UBOOT_FILE_TEXT=$(echo $UBOOT_FILE | sed "s:$FILES_DIR:\$FILES_DIR:")
+    SA0_FILE_TEXT=$(echo $SA0_FILE | sed "s:$FILES_DIR:\$(FILES_DIR):")
+    BL2_FILE_TEXT=$(echo $BL2_FILE | sed "s:$FILES_DIR:\$(FILES_DIR):")
+    SA6_FILE_TEXT=$(echo $SA6_FILE | sed "s:$FILES_DIR:\$(FILES_DIR):")
+    BL31_FILE_TEXT=$(echo $BL31_FILE | sed "s:$FILES_DIR:\$(FILES_DIR):")
+    UBOOT_FILE_TEXT=$(echo $UBOOT_FILE | sed "s:$FILES_DIR:\$(FILES_DIR):")
 
     # check if files exits
     if [ -e "$FILES_DIR" ] ; then FD_EXIST="✓" ; else FD_EXIST="x" ; fi
@@ -565,8 +581,6 @@ if [ "$FW_GUI_MODE" == "1" ] ; then
         echo "BOARD=$BOARD" >> $CONFIG_FILE
         echo "FLASH=$FLASH" >> $CONFIG_FILE
         echo "SERIAL_DEVICE_INTERFACE=$SERIAL_DEVICE_INTERFACE" >> $CONFIG_FILE
-
-        echo "BUILT_OUTSIDE_YOCTO=$BUILT_OUTSIDE_YOCTO" >> $CONFIG_FILE
 
         echo "FILES_DIR=$FILES_DIR" >> $CONFIG_FILE
         echo "FLASHWRITER=$FLASHWRITER" >> $CONFIG_FILE
