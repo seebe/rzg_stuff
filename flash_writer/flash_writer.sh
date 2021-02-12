@@ -109,7 +109,8 @@ check_fw_first() {
 	unset CMD_ABORT
 	
 	if [ "$FW_NOT_DL_YET" == "1" ] ; then
-		ANSWER=$(whiptail --yesno "WARNING: The Flash writer binary has not been downloaded yet.\n\nContinue?" 0 0 3>&1 1>&2 2>&3; echo $?)
+		ANSWER=$(whiptail --yesno --defaultno "WARNING !\n\nThe Flash writer binary has not been downloaded yet.\
+\n\nThe Flash Writer program must be downloaded and running for programming to work.\n\nContinue anyway?" 0 0 3>&1 1>&2 2>&3; echo $?)
 		# 0=yes, 1=no
 		if [ "$ANSWER" != "0" ] ; then
 			CMD_ABORT=1
