@@ -333,8 +333,80 @@ do_menu_dev() {
   set_fw_binary
 }
 
+do_menu_colors() {
+  SELECT=$(whiptail --title "GUI menu colors" --menu "You may use ESC+ESC to cancel.\n\nSelect the color theme you want to use" 0 0 0 \
+	"1  Default" " " \
+	"2  Black and Green" " " \
+	"3  Black and White" " " \
+	3>&1 1>&2 2>&3)
+  RET=$?
+  if [ $RET -eq 0 ] ; then
+    case "$SELECT" in
+      1\ *) 
+export NEWT_COLORS='
+root=,blue
+'
+;;
+      2\ *) 
+export NEWT_COLORS='
+    root=green,black
+    border=green,black
+    title=green,black
+    roottext=white,black
+    window=green,black
+    textbox=white,black
+    button=black,green
+    compactbutton=white,black
+    listbox=white,black
+    actlistbox=black,white
+    actsellistbox=black,green
+    checkbox=green,black
+    actcheckbox=black,green
+'
+;;
+      3\ *) 
+export NEWT_COLORS='
+    root=white,black
+    border=black,lightgray
+    window=lightgray,lightgray
+    shadow=black,gray
+    title=black,lightgray
+    button=black,cyan
+    actbutton=white,cyan
+    compactbutton=black,lightgray
+    checkbox=black,lightgray
+    actcheckbox=lightgray,cyan
+    entry=black,lightgray
+    disentry=gray,lightgray
+    label=black,lightgray
+    listbox=black,lightgray
+    actlistbox=black,cyan
+    sellistbox=lightgray,black
+    actsellistbox=lightgray,black
+    textbox=black,lightgray
+    acttextbox=black,cyan
+    emptyscale=,gray
+    fullscale=,cyan
+    helpline=white,black
+    roottext=lightgrey,black
+'
+;;
+      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
+    esac || whiptail --msgbox "There was an error running option $SELECT" 20 60 1
+  fi
+}
+
 do_menu_extra() {
-	whiptail --msgbox "Coming soon...." 0 0 0
+  SELECT=$(whiptail --title "Extra menu" --menu "You may use ESC+ESC to cancel." 0 0 0 \
+	"1  Change GUI Colors" " " \
+	3>&1 1>&2 2>&3)
+  RET=$?
+  if [ $RET -eq 0 ] ; then
+    case "$SELECT" in
+      1\ *) do_menu_colors ;;
+      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
+    esac || whiptail --msgbox "There was an error running option $SELECT" 20 60 1
+  fi
 }
 
 do_menu_file_dir() {
@@ -596,7 +668,7 @@ if [ "$FW_GUI_MODE" == "1" ] ; then
 	"2.      Target Flash:" "  ${FLASH_TEXT[$FLASH]}" \
 	"3.         Interface:" "  $SERIAL_DEVICE_INTERFACE  ($DL_TYPE)"  \
 	"4.       Config File:" "  $CONFIG_FILE"  \
-	"5.    Extra Settings:" "  GUI Colors, special builds, windows size, etc..."  \
+	"5.    Extra Settings:" "  GUI Colors, windows size, etc..."  \
 	"_______Files_________" "" \
 	"10. $FDR      FILES_DIR:" "$FD_EXIST $FILES_DIR" \
 	"11.      FLASHWRITER:" "$FW_EXIST $FLASHWRITER_TEXT" \
