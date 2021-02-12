@@ -656,23 +656,23 @@ do_xls2() {
 	echo "Writting $1 ($4)"
 	echo "Sending XLS2 command..."
 	echo -en "XLS2\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo -en "$2\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo -en "$3\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo "Sending file..."
 	#cat $4 > $SERIAL_DEVICE_INTERFACE
 	stat -L --printf="%s bytes\n" $4
 	dd if=$4 of=$SERIAL_DEVICE_INTERFACE bs=1k status=progress
-	sleep 0.5
+	sleep $CMD_DELAY
 
 	# You only need to send a 'y', not the 'y' + CR. But, if the flash is already
 	# blank, flash writer will not ask you to confirm, so we send y + CR
 	# just in case. So if the flash is already blank you will just see an
 	# extra 'command not found' message which does not hurt anything.
 	echo -en "y\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo ""
 }
 
@@ -685,29 +685,29 @@ do_xls3() {
 	echo "Writting $1 ($3)"
 	echo "Sending XLS3 command..."
 	echo -en "XLS3\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 
 	# get the file size of our binary
 	SIZE_DEC=$(stat -L --printf="%s" $3)
 	SIZE_HEX=$(printf '%X' $SIZE_DEC)
 	echo -en "$SIZE_HEX\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 
 	echo -en "$2\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 
 	echo "Sending file..."
 	#cat $3 > $SERIAL_DEVICE_INTERFACE
 	stat -L --printf="%s bytes\n" $3
 	dd if=$3 of=$SERIAL_DEVICE_INTERFACE bs=1k status=progress
-	sleep 0.5
+	sleep $CMD_DELAY
 
 	# You only need to send a 'y', not the 'y' + CR. But, if the flash is already
 	# blank, flash writer will not ask you to confirm, so we send y + CR
 	# just in case. So if the flash is already blank you will just see an
 	# extra 'command not found' message which does not hurt anything.
 	echo -en "y\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo ""
 }
 
@@ -722,18 +722,18 @@ do_em_w() {
 	echo "Writting $1 ($5)"
 	echo "Sending EM_W command..."
 	echo -en "EM_W\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo -en "$2\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo -en "$3\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo -en "$4\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo "Sending file..."
 	#cat $5 > $SERIAL_DEVICE_INTERFACE
 	stat -L --printf="%s bytes\n" $5
 	dd if=$5 of=$SERIAL_DEVICE_INTERFACE bs=1k status=progress
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo ""
 }
 
@@ -747,23 +747,23 @@ do_em_wb() {
 	echo "Writting $1 ($4)"
 	echo "Sending EM_WB command..."
 	echo -en "EM_WB\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo -en "$2\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo -en "$3\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 
 	# get the file size of our binary
 	SIZE_DEC=$(stat -L --printf="%s" $4)
 	SIZE_HEX=$(printf '%X' $SIZE_DEC)
 	echo -en "$SIZE_HEX\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 
 	echo "Sending file..."
 	#cat $4 > $SERIAL_DEVICE_INTERFACE
 	stat -L --printf="%s bytes\n" $4
 	dd if=$4 of=$SERIAL_DEVICE_INTERFACE bs=1k status=progress
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo ""
 }
 
@@ -898,6 +898,18 @@ fi
 # when using /dev/ttyACM0
 stty -icrnl -onlcr -isig -icanon -echoe -opost -F $SERIAL_DEVICE_INTERFACE
 
+# Change the inter-command delay times based on the interface and flash type
+if [ "${SERIAL_DEVICE_INTERFACE:8:3}" == "ACM" ] ; then
+  # USB is so fast, almost no delay is needed.
+  CMD_DELAY="0.2"
+elif [ "$FLASH" == "1" ] ; then
+  # eMMC commands over SPI flash seem to need more time because more
+  # text is output for each entry
+  CMD_DELAY="1"
+else
+  # Programming SPI Flash over SCIF seems to only need a short delay
+  CMD_DELAY="0.5"
+fi
 
 # Print current selected board
 if [ "$FLASH" == "0" ] ; then
@@ -949,22 +961,22 @@ if [ "$CMD" == "emmc_config" ] ; then
 	#  * BOOT_BUS_WIDTH bit[1:0] = 0x2 (x8 bus width in boot operation mode)
 	echo "Setting EXT_CSD regiser 177..."
 	echo -en "EM_SECSD\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo -en "b1\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo -en "0a\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 
 	# Set the EXT_CSD register 179 (0xB3) PARTITION_CONFIG:
 	#   * BOOT_ACK bit[6] = 0x0 (No boot acknowledge sent)
 	#   * BOOT_PARTITION_ENABLE bit[5:3] = 0x1 (Boot partition 1 enabled for boot)
 	echo "Setting EXT_CSD regiser 179..."
 	echo -en "EM_SECSD\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo -en "b3\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 	echo -en "08\r" > $SERIAL_DEVICE_INTERFACE
-	sleep 0.5
+	sleep $CMD_DELAY
 fi
 
 
