@@ -171,3 +171,6 @@ $ cp cdc-acm.ko /lib/modules/5.3.0-51-generic/kernel/drivers/usb/class/cdc-acm.k
 
 ### 3. A note on kernel updates
 Please note that as you get Ubuntu system updates, the kernel and all it's modules might get updated. Mean, you will have to repeat this process again. However, at least in your ubuntu-bionic.git repository, you can do a 'git pull' in order to just download the updated code instead of cloning the entire repository again.
+
+### 4. Device or resource busy error
+If you got "/dev/ttyACM0":Device or resource busy error while writing files, please make sure that Modem Manager service was disabled. If not, Please follow step 1 "Disable Modem Manager" to disable it.  
