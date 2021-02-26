@@ -1,0 +1,50 @@
+# BSP-1.0.7
+
+# For the most part, "BSP-1.0.7" and "BSP-1.0.7-RT" is the same except the kernel and sample config files
+# To see the differences, enter this command int eh meta-rzg2 repository:
+#   $  git diff BSP-1.0.7 BSP-1.0.7-RT --summary
+
+#---------------------------------------
+# rzg2_flash_writer
+#---------------------------------------
+FLASH_WRITER_REPO=https://github.com/renesas-rz/rzg2_flash_writer.git
+FLASH_WRITER_BRANCH=master
+FLASH_WRITER_COMMIT="757e29806159dc239064ea33a65012511518e635"
+FLASH_WRITER_SAME="BSP-1.0.7-RT"
+
+
+# SECURE_BOOT
+#0001-Add-Secure-Boot-Injection.patch
+# oe_runmake BOARD=${BOARD} ENC_PROVISIONING_KEY=${ENCRYPTED_PROVISIONING_KEY}
+
+
+#---------------------------------------
+# arm-trusted-firmware"
+#---------------------------------------
+ATF_REPO=https://git.trustedfirmware.org/TF-A/trusted-firmware-a.git
+ATF_BRANCH=master
+ATF_COMMIT="e2c509a39c6cc4dda8734e6509cdbe6e3603cdfc"
+ATF_SAME="BSP-1.0.7-RT"
+
+MBEDTLS_REPO=git://github.com/ARMmbed/mbedtls.git
+MBEDTLS_BRANCH="mbedtls-2.16"
+MBEDTLS_COMMIT="04a049bda1ceca48060b57bc4bcf5203ce591421"
+
+
+#---------------------------------------
+# u-boot
+#---------------------------------------
+UBOOT_REPO="git://github.com/renesas-rz/renesas-u-boot-cip.git"
+UBOOT_BRANCH="v2018.09/rzg2"
+UBOOT_COMMIT="a5d350acb9a0580a2bf53b9e07a9262257597eb6"
+#UBOOT_SAME="BSP-1.0.7-RT"
+
+#---------------------------------------
+# kernel
+#---------------------------------------
+KERNEL_REPO="git://git.kernel.org/pub/scm/linux/kernel/git/cip/linux-cip.git"
+KERNEL_BRANCH="linux-4.19.y-cip"
+KERNEL_COMMIT="53ba31d44bf6ff0a915b472797ec1af07b663751"
+KERNEL_VERSION="4.19.160"
+KERNEL_SAME="BSP-1.0.7-x"
+
