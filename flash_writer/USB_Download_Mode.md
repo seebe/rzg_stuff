@@ -31,6 +31,17 @@ $ sudo udevadm control --reload-rules && sudo udevadm trigger
 
 ### 2. Modify Host cdc-acm Kernel Driver (if needed)
 
+If you are running Ubuntu 20.04-LTS, and your kernel is equal to are newer then the follow versions, you can **skip this section**.
+Use the command "uname -a" to check:
+```
+$ uname -a
+```
+Ubuntu-20.04 with a 5.8 kernel
+* 5.8.0-**44**-generic   (44 or higher)
+
+Ubuntu-20.04 with a 5.4 kernel
+* 5.4.0-**57**-generic   (57 or higher)
+
 What happens is when the board is powered up, /dev/ttyACM0 is created.
 On the USB side, the only other thing that happens other USB enumeration is that the kernel (Ubuntu) set the ??virtual?? baud rate to 9600 on the USB control pipe (so that doesn??t matter).
 
