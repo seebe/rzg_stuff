@@ -1,0 +1,35 @@
+From 1ffcb9f718ef1744e18e5f2057a0eed189536760 Mon Sep 17 00:00:00 2001
+From: Boris Brezillon <bbrezillon@kernel.org>
+Date: Tue, 5 Jan 2021 13:57:55 +0000
+Subject: spi: spi-mem: Fix a memory leak in spi_mem_dirmap_destroy()
+
+commit bfecfd6e23bf677c85828eb20fa4b13a18bffe23 upstream.
+
+The dirmap descriptor object allocated in spi_mem_dirmap_create is
+never freed. Add a kfree(desc) in spi_mem_dirmap_destroy().
+
+Fixes: aa167f3fed0c ("spi: spi-mem: Add a new API to support direct mapping")
+Signed-off-by: Boris Brezillon <bbrezillon@kernel.org>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>
+Signed-off-by: Pavel Machek <pavel@denx.de>
+---
+ drivers/spi/spi-mem.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/spi/spi-mem.c b/drivers/spi/spi-mem.c
+index 0998ebc2689d..c3a08afb6edf 100644
+--- a/drivers/spi/spi-mem.c
++++ b/drivers/spi/spi-mem.c
+@@ -542,6 +542,8 @@ void spi_mem_dirmap_destroy(struct spi_mem_dirmap_desc *desc)
+ 
+ 	if (!desc->nodirmap && ctlr->mem_ops && ctlr->mem_ops->dirmap_destroy)
+ 		ctlr->mem_ops->dirmap_destroy(desc);
++
++	kfree(desc);
+ }
+ EXPORT_SYMBOL_GPL(spi_mem_dirmap_destroy);
+ 
+-- 
+2.25.1
+

@@ -1,0 +1,107 @@
+From aa2e54b26b0b8afab47a11a012b5eaeefd12631c Mon Sep 17 00:00:00 2001
+From: Boris Brezillon <boris.brezillon@bootlin.com>
+Date: Tue, 5 Jan 2021 13:57:49 +0000
+Subject: spi: spi-mem: Split spi_mem_exec_op() code
+
+commit f86c24f4795303e4024bc113196de32782f6ccb5 upstream.
+
+The logic surrounding the ->exec_op() call applies to direct mapping
+accessors. Move this code to separate functions to avoid duplicating
+code.
+
+Signed-off-by: Boris Brezillon <boris.brezillon@bootlin.com>
+Reviewed-by: Miquel Raynal <miquel.raynal@bootlin.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>
+Signed-off-by: Pavel Machek <pavel@denx.de>
+---
+ drivers/spi/spi-mem.c | 63 ++++++++++++++++++++++++++++---------------
+ 1 file changed, 42 insertions(+), 21 deletions(-)
+
+diff --git a/drivers/spi/spi-mem.c b/drivers/spi/spi-mem.c
+index b319a9f0138c..0908f979f6a8 100644
+--- a/drivers/spi/spi-mem.c
++++ b/drivers/spi/spi-mem.c
+@@ -213,6 +213,44 @@ bool spi_mem_supports_op(struct spi_mem *mem, const struct spi_mem_op *op)
+ }
+ EXPORT_SYMBOL_GPL(spi_mem_supports_op);
+ 
++static int spi_mem_access_start(struct spi_mem *mem)
++{
++	struct spi_controller *ctlr = mem->spi->controller;
++
++	/*
++	 * Flush the message queue before executing our SPI memory
++	 * operation to prevent preemption of regular SPI transfers.
++	 */
++	spi_flush_queue(ctlr);
++
++	if (ctlr->auto_runtime_pm) {
++		int ret;
++
++		ret = pm_runtime_get_sync(ctlr->dev.parent);
++		if (ret < 0) {
++			dev_err(&ctlr->dev, "Failed to power device: %d\n",
++				ret);
++			return ret;
++		}
++	}
++
++	mutex_lock(&ctlr->bus_lock_mutex);
++	mutex_lock(&ctlr->io_mutex);
++
++	return 0;
++}
++
++static void spi_mem_access_end(struct spi_mem *mem)
++{
++	struct spi_controller *ctlr = mem->spi->controller;
++
++	mutex_unlock(&ctlr->io_mutex);
++	mutex_unlock(&ctlr->bus_lock_mutex);
++
++	if (ctlr->auto_runtime_pm)
++		pm_runtime_put(ctlr->dev.parent);
++}
++
+ /**
+  * spi_mem_exec_op() - Execute a memory operation
+  * @mem: the SPI memory
+@@ -242,30 +280,13 @@ int spi_mem_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
+ 		return -ENOTSUPP;
+ 
+ 	if (ctlr->mem_ops) {
+-		/*
+-		 * Flush the message queue before executing our SPI memory
+-		 * operation to prevent preemption of regular SPI transfers.
+-		 */
+-		spi_flush_queue(ctlr);
+-
+-		if (ctlr->auto_runtime_pm) {
+-			ret = pm_runtime_get_sync(ctlr->dev.parent);
+-			if (ret < 0) {
+-				dev_err(&ctlr->dev,
+-					"Failed to power device: %d\n",
+-					ret);
+-				return ret;
+-			}
+-		}
++		ret = spi_mem_access_start(mem);
++		if (ret)
++			return ret;
+ 
+-		mutex_lock(&ctlr->bus_lock_mutex);
+-		mutex_lock(&ctlr->io_mutex);
+ 		ret = ctlr->mem_ops->exec_op(mem, op);
+-		mutex_unlock(&ctlr->io_mutex);
+-		mutex_unlock(&ctlr->bus_lock_mutex);
+ 
+-		if (ctlr->auto_runtime_pm)
+-			pm_runtime_put(ctlr->dev.parent);
++		spi_mem_access_end(mem);
+ 
+ 		/*
+ 		 * Some controllers only optimize specific paths (typically the
+-- 
+2.25.1
+

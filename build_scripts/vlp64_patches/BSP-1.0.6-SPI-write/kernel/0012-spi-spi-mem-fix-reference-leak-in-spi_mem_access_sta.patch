@@ -1,0 +1,36 @@
+From ea0866a3c701743404f9a73b41feaf7f705e0444 Mon Sep 17 00:00:00 2001
+From: Zhang Qilong <zhangqilong3@huawei.com>
+Date: Tue, 5 Jan 2021 13:57:50 +0000
+Subject: spi: spi-mem: fix reference leak in spi_mem_access_start
+
+commit c02bb16b0e826bf0e19aa42c3ae60ea339f32cf5 upstream.
+
+pm_runtime_get_sync will increment pm usage counter even it
+failed. Forgetting to pm_runtime_put_noidle will result in
+reference leak in spi_mem_access_start, so we should fix it.
+
+Fixes: f86c24f479530 ("spi: spi-mem: Split spi_mem_exec_op() code")
+Signed-off-by: Zhang Qilong <zhangqilong3@huawei.com>
+Link: https://lore.kernel.org/r/20201103140910.3482-1-zhangqilong3@huawei.com
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>
+Signed-off-by: Pavel Machek <pavel@denx.de>
+---
+ drivers/spi/spi-mem.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/spi/spi-mem.c b/drivers/spi/spi-mem.c
+index 0908f979f6a8..2607981d973d 100644
+--- a/drivers/spi/spi-mem.c
++++ b/drivers/spi/spi-mem.c
+@@ -228,6 +228,7 @@ static int spi_mem_access_start(struct spi_mem *mem)
+ 
+ 		ret = pm_runtime_get_sync(ctlr->dev.parent);
+ 		if (ret < 0) {
++			pm_runtime_put_noidle(ctlr->dev.parent);
+ 			dev_err(&ctlr->dev, "Failed to power device: %d\n",
+ 				ret);
+ 			return ret;
+-- 
+2.25.1
+

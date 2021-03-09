@@ -1,0 +1,49 @@
+From 647886980e2db24a44f17687ccbb34befa894dae Mon Sep 17 00:00:00 2001
+From: Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>
+Date: Tue, 5 Jan 2021 13:57:43 +0000
+Subject: memory: renesas-rpc-if: Return correct value to the caller of
+ rpcif_manual_xfer()
+
+commit a0453f4ed066cae651b3119ed11f52d31dae1eca upstream.
+
+In the error path of rpcif_manual_xfer() the value of ret is overwritten
+by value returned by reset_control_reset() function and thus returning
+incorrect value to the caller.
+
+This patch makes sure the correct value is returned to the caller of
+rpcif_manual_xfer() by dropping the overwrite of ret in error path.
+Also now we ignore the value returned by reset_control_reset() in the
+error path and instead print a error message when it fails.
+
+Fixes: ca7d8b980b67f ("memory: add Renesas RPC-IF driver")
+Reported-by: Pavel Machek <pavel@denx.de>
+Signed-off-by: Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>
+Reviewed-by: Sergei Shtylyov <sergei.shtylyov@gmail.com>
+Reviewed-by: Geert Uytterhoeven <geert+renesas@glider.be>
+Reviewed-by: Pavel Machek (CIP) <pavel@denx.de>
+Cc: stable@vger.kernel.org
+Link: https://lore.kernel.org/r/20201126191146.8753-2-prabhakar.mahadev-lad.rj@bp.renesas.com
+Signed-off-by: Krzysztof Kozlowski <krzk@kernel.org>
+Signed-off-by: Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>
+Signed-off-by: Pavel Machek <pavel@denx.de>
+---
+ drivers/memory/renesas-rpc-if.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/memory/renesas-rpc-if.c b/drivers/memory/renesas-rpc-if.c
+index 88f51ec8f1d1..d58b80d9e605 100644
+--- a/drivers/memory/renesas-rpc-if.c
++++ b/drivers/memory/renesas-rpc-if.c
+@@ -510,7 +510,8 @@ int rpcif_manual_xfer(struct rpcif *rpc)
+ 	return ret;
+ 
+ err_out:
+-	ret = reset_control_reset(rpc->rstc);
++	if (reset_control_reset(rpc->rstc))
++		dev_err(rpc->dev, "Failed to reset HW\n");
+ 	rpcif_hw_init(rpc, rpc->bus_size == 2);
+ 	goto exit;
+ }
+-- 
+2.25.1
+

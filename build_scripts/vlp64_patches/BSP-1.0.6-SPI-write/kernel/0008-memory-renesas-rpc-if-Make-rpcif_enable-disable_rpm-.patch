@@ -1,0 +1,91 @@
+From c0e37556e1af8f19c001314bbfe5c685a66e0113 Mon Sep 17 00:00:00 2001
+From: Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>
+Date: Tue, 5 Jan 2021 13:57:46 +0000
+Subject: memory: renesas-rpc-if: Make rpcif_enable/disable_rpm() as static
+ inline
+
+commit 7889a7da59e0131ac60b858c73a3604ef88b1d96 upstream.
+
+Define rpcif_enable_rpm() and rpcif_disable_rpm() as static
+inline in the header instead of exporting them.
+
+Suggested-by: Pavel Machek <pavel@denx.de>
+Signed-off-by: Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>
+Reviewed-by: Pavel Machek (CIP) <pavel@denx.de>
+Link: https://lore.kernel.org/r/20201126191146.8753-5-prabhakar.mahadev-lad.rj@bp.renesas.com
+Signed-off-by: Krzysztof Kozlowski <krzk@kernel.org>
+Signed-off-by: Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>
+Signed-off-by: Pavel Machek <pavel@denx.de>
+---
+ drivers/memory/renesas-rpc-if.c | 13 -------------
+ include/memory/renesas-rpc-if.h | 13 +++++++++++--
+ 2 files changed, 11 insertions(+), 15 deletions(-)
+
+diff --git a/drivers/memory/renesas-rpc-if.c b/drivers/memory/renesas-rpc-if.c
+index 1e7b937b739a..5f650eb3e9e7 100644
+--- a/drivers/memory/renesas-rpc-if.c
++++ b/drivers/memory/renesas-rpc-if.c
+@@ -12,7 +12,6 @@
+ #include <linux/module.h>
+ #include <linux/platform_device.h>
+ #include <linux/of.h>
+-#include <linux/pm_runtime.h>
+ #include <linux/regmap.h>
+ #include <linux/reset.h>
+ 
+@@ -206,18 +205,6 @@ int rpcif_sw_init(struct rpcif *rpc, struct device *dev)
+ }
+ EXPORT_SYMBOL(rpcif_sw_init);
+ 
+-void rpcif_enable_rpm(struct rpcif *rpc)
+-{
+-	pm_runtime_enable(rpc->dev);
+-}
+-EXPORT_SYMBOL(rpcif_enable_rpm);
+-
+-void rpcif_disable_rpm(struct rpcif *rpc)
+-{
+-	pm_runtime_disable(rpc->dev);
+-}
+-EXPORT_SYMBOL(rpcif_disable_rpm);
+-
+ void rpcif_hw_init(struct rpcif *rpc, bool hyperflash)
+ {
+ 	u32 dummy;
+diff --git a/include/memory/renesas-rpc-if.h b/include/memory/renesas-rpc-if.h
+index 9ad136682c47..14cfd036268a 100644
+--- a/include/memory/renesas-rpc-if.h
++++ b/include/memory/renesas-rpc-if.h
+@@ -10,6 +10,7 @@
+ #ifndef __RENESAS_RPC_IF_H
+ #define __RENESAS_RPC_IF_H
+ 
++#include <linux/pm_runtime.h>
+ #include <linux/types.h>
+ 
+ enum rpcif_data_dir {
+@@ -77,11 +78,19 @@ struct	rpcif {
+ 
+ int  rpcif_sw_init(struct rpcif *rpc, struct device *dev);
+ void rpcif_hw_init(struct rpcif *rpc, bool hyperflash);
+-void rpcif_enable_rpm(struct rpcif *rpc);
+-void rpcif_disable_rpm(struct rpcif *rpc);
+ void rpcif_prepare(struct rpcif *rpc, const struct rpcif_op *op, u64 *offs,
+ 		   size_t *len);
+ int rpcif_manual_xfer(struct rpcif *rpc);
+ ssize_t rpcif_dirmap_read(struct rpcif *rpc, u64 offs, size_t len, void *buf);
+ 
++static inline void rpcif_enable_rpm(struct rpcif *rpc)
++{
++	pm_runtime_enable(rpc->dev);
++}
++
++static inline void rpcif_disable_rpm(struct rpcif *rpc)
++{
++	pm_runtime_disable(rpc->dev);
++}
++
+ #endif // __RENESAS_RPC_IF_H
+-- 
+2.25.1
+
