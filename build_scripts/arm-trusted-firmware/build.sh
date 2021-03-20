@@ -29,6 +29,10 @@ if [ "$MACHINE" == "" ] ; then
   exit
 fi
 
+if [ "$ECC_FULL" == "" ] ; then
+  ECC_FULL="0"
+fi
+
 #PATH=/opt/linaro/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin:$PATH
 #export CROSS_COMPILE="aarch64-linux-gnu-"
 #export ARCH=arm64
@@ -51,12 +55,6 @@ if [ "$(which nproc)" != "" ] ; then  # make sure nproc is installed
   NPROC=$(nproc)
 fi
 BUILD_THREADS=$(expr $NPROC + $NPROC)
-
-if [ -e plat/renesas/rzg ] ; then
-  PLATFORM=rzg
-else
-  PLATFORM=rcar
-fi
 
 # PLAT
 #	Set string is "rcar" (VLP v1.0.0-4) or "rzg" (VLP v1.0.5+)
@@ -95,7 +93,8 @@ fi
 #	3 = Disable the QoS arbitration setting
 
 
-# RCAR_DRAM_SPLIT
+# RZG_DRAM_SPLIT
+# RCAR_DRAM_SPLIT  (before BSP 1.0.7)
 #	DRAM split setting in the SDRAM setting
 #	0 = Linear (No split)
 #	1 = 4 channel split
@@ -117,7 +116,8 @@ fi
 # LSI
 #	G2E,G2M,G2N,G2H
 
-# RCAR_SA6_TYPE:
+# RZG_SA6_TYPE:
+# RCAR_SA6_TYPE:   (before BSP 1.0.7)
 #	0 = for Hyper Flash / QPSI Flash boot (Default setting)
 #	1 = for eMMC boot
 
@@ -167,47 +167,108 @@ fi
 #	0 = 1G Byte x 4 channel : 4GB
 #	1 = 2G Byte x4 channel : 8GB (Default setting)
 
-# RZ/G2E
-if [ "$MACHINE" == "ek874" ] ; then
-  ATFW_OPT="LSI=G2E RCAR_SA0_SIZE=0 RCAR_AVS_SETTING_ENABLE=0 RZG_EK874=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 RCAR_DRAM_DDR3L_MEMCONF=1 RCAR_DRAM_DDR3L_MEMDUAL=1 SPD="none""
-  if [ "$ECC_FULL" != "0" ] ; then
-    ATFW_OPTS_ECC=" LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_EK874_ECC=1 "
-  fi
+# Platform setting changed from rcar to rzg in BSP v1.0.5+
+# Cert tool was changed from dummy_tool to rzg for BSP v1.0.5+
+if [ -e plat/renesas/rzg ] ; then
+  PLATFORM=rzg
+  TOOL=rzg
+else
+  PLATFORM=rcar
+  TOOL=dummytool
 fi
 
-#RZ/G2M
-if [ "$MACHINE" == "hihope-rzg2m" ] ; then
-  # The RZ/G2M v1.3 device mounted on the HiHope-RZG2M board has been found to be unable to boot unless "RCAR_SECURE_BOOT=0"
-  ATFW_OPT="LSI=G2M RCAR_DRAM_SPLIT=2 RCAR_AVS_SETTING_ENABLE=0 RZG_HIHOPE_RZG2M=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 RCAR_SECURE_BOOT=0 SPD="none""
-  if [ "$ECC_FULL" != "0" ] ; then
-    ATFW_OPTS_ECC=" LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_HIHOPE_RZG2M_ECC=1 RCAR_DRAM_SPLIT=0"
-  else
-    # Reserve Lossy Decompression area for multimedia (only be used if no ECC)
-    ATFW_OPT_LOSSY="RCAR_LOSSY_ENABLE=1"
-  fi
+# There was a major code change from BSP 1.0.6 to v1.0.7
+if [ ! -e plat/renesas/rzg/rzg_common.c ] ; then
+  OLD_CODE=1
 fi
 
-# RZ/G2N
-if [ "$MACHINE" == "hihope-rzg2n" ] ; then
-  ATFW_OPT="LSI=G2N RCAR_AVS_SETTING_ENABLE=0 RZG_HIHOPE_RZG2N=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 SPD="none""
-  if [ "$ECC_FULL" != "0" ] ; then
-    ATFW_OPTS_ECC=" LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_HIHOPE_RZG2N_ECC=1"
-  else
-    # Reserve Lossy Decompression area for multimedia (only be used if no ECC)
-    ATFW_OPT_LOSSY="RCAR_LOSSY_ENABLE=1"
-  fi
+# ECC and video decompression settings
+if [ "$ECC_FULL" != "0" ] ; then
+  G2E_ECC="LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_ECC=1"
+  G2M_ECC="LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_SPLIT=0 RZG_DRAM_ECC=1"
+  G2N_ECC="LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_ECC=1"
+  G2H_ECC="LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_SPLIT=0 RZG_DRAM_ECC=1"
+else
+  # If ECC is not set, we will assume that we want to reserve a
+  # Lossy Decompression area for multimedia.
+  G2E_LOSSY=""   # not needed for RZ/G2E
+  G2M_LOSSY="RZG_LOSSY_ENABLE=1"
+  G2N_LOSSY="RZG_LOSSY_ENABLE=1"
+  G2H_LOSSY="RZG_LOSSY_ENABLE=1"
 fi
 
-# RZ/G2H
-if [ "$MACHINE" == "hihope-rzg2h" ] ; then
-  ATFW_OPT="LSI=G2H RCAR_DRAM_SPLIT=2 RCAR_DRAM_LPDDR4_MEMCONF=1 RCAR_DRAM_CHANNEL=5 RCAR_AVS_SETTING_ENABLE=0 RZG_HIHOPE_RZG2H=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 SPD="none""
-  if [ "$ECC_FULL" != "0" ] ; then
-    ATFW_OPTS_ECC= " LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_HIHOPE_RZG2H_ECC=1 RCAR_DRAM_SPLIT=0"
-  else
-    # Reserve Lossy Decompression area for multimedia (only be used if no ECC)
-    ATFW_OPT_LOSSY="RCAR_LOSSY_ENABLE=1"
-  fi
+# Board Settings
+case "$MACHINE" in 
+  "ek874")
+    ATFW_OPT="LSI=G2E RZG_SA0_SIZE=0 RZG_DRAM_DDR3L_MEMCONF=1 RZG_DRAM_DDR3L_MEMDUAL=1 SPD="none" $G2E_ECC $G2E_LOSSY"
+    ;;
+  "hihope-rzg2m")
+    ATFW_OPT="LSI=G2M RZG_DRAM_SPLIT=2 SPD="none" $G2M_ECC $G2M_LOSSY"
+    ;;
+  "hihope-rzg2n")
+    ATFW_OPT="LSI=G2N SPD="none" $G2N_ECC $G2N_LOSSY"
+    ;;
+  "hihope-rzg2h")
+    ATFW_OPT="LSI=G2H RZG_DRAM_SPLIT=2 RZG_DRAM_LPDDR4_MEMCONF=1 RZG_DRAM_CHANNEL=5 SPD="none" $G2H_ECC $G2H_LOSSY"
+    ;;
+esac
+
+# Common Settings
+ATFW_OPT="$ATFW_OPT RZG_RPC_HYPERFLASH_LOCKED=0"
+
+# For eMMC boot, you need to set RZG_SA6_TYPE=1
+if [ "$EMMC_BOOT" == "1" ] ; then
+  ATFW_OPT="$ATFW_OPT RZG_SA6_TYPE=1"
 fi
+
+
+###################[OLD_CODE]#################################
+if [ "$OLD_CODE" == "1" ] ; then
+# Setting were named "RCAR" instead of "RZG"
+
+# ECC and video decompression settings
+if [ "$ECC_FULL" != "0" ] ; then
+  G2E_ECC="LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_EK874_ECC=1"
+  G2M_ECC="LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_HIHOPE_RZG2M_ECC=1 RCAR_DRAM_SPLIT=0"
+  G2N_ECC="LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_HIHOPE_RZG2N_ECC=1"
+  G2H_ECC="LIFEC_DBSC_PROTECT_ENABLE=0 RZG_DRAM_HIHOPE_RZG2H_ECC=1 RCAR_DRAM_SPLIT=0"
+else
+  # If ECC is not set, we will assume that we want to reserve a
+  # Lossy Decompression area for multimedia.
+  G2E_LOSSY=""   # not needed for RZ/G2E
+  G2M_LOSSY="RCAR_LOSSY_ENABLE=1"
+  G2N_LOSSY="RCAR_LOSSY_ENABLE=1"
+  G2H_LOSSY="RCAR_LOSSY_ENABLE=1"
+fi
+
+# Board Settings
+case "$MACHINE" in 
+  "ek874")
+    ATFW_OPT="LSI=G2E RCAR_SA0_SIZE=0 RCAR_AVS_SETTING_ENABLE=0 RZG_EK874=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 RCAR_DRAM_DDR3L_MEMCONF=1 RCAR_DRAM_DDR3L_MEMDUAL=1 SPD="none" $G2E_ECC "
+    ;;
+  "hihope-rzg2m")
+    # The RZ/G2M v1.3 device mounted on the HiHope-RZG2M board has been found to be unable to boot unless "RCAR_SECURE_BOOT=0"
+    ATFW_OPT="LSI=G2M RCAR_DRAM_SPLIT=2 RCAR_AVS_SETTING_ENABLE=0 RZG_HIHOPE_RZG2M=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 RCAR_SECURE_BOOT=0 SPD="none" $G2M_ECC $G2M_LOSSY"
+    ;;
+  "hihope-rzg2n")
+    ATFW_OPT="LSI=G2N RCAR_AVS_SETTING_ENABLE=0 RZG_HIHOPE_RZG2N=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 SPD="none" $G2N_ECC $G2N_LOSSY"
+    ;;
+  "hihope-rzg2h")
+    ATFW_OPT="LSI=G2H RCAR_DRAM_SPLIT=2 RCAR_DRAM_LPDDR4_MEMCONF=1 RCAR_DRAM_CHANNEL=5 RCAR_AVS_SETTING_ENABLE=0 RZG_HIHOPE_RZG2H=1 PMIC_ROHM_BD9571=0 RCAR_SYSTEM_SUSPEND=0 SPD="none" $G2H_ECC $G2H_LOSSY"
+    ;;
+esac
+
+# Common Settings
+ATFW_OPT="$ATFW_OPT RCAR_RPC_HYPERFLASH_LOCKED=0"
+
+# For eMMC boot, you need to set RCAR_SA6_TYPE=1
+if [ "$EMMC_BOOT" == "1" ] ; then
+  ATFW_OPT="$ATFW_OPT RCAR_SA6_TYPE=1"
+fi
+
+fi
+###################[OLD_CODE]#################################
+
 
 # MBED is required for VLP v1.0.5+
 if [ "$PLATFORM" == "rzg" ] &&  [ "$MBEDTLS_DIR" == "" ] ; then
@@ -221,40 +282,31 @@ if [ "$PLATFORM" == "rzg" ] &&  [ "$MBEDTLS_DIR" == "" ] ; then
   fi
 fi
 
-# Cert tool was changed from dummy_tool to rzg for VLP64 v1.0.5+
-if [ "$PLATFORM" == "rzg" ] ; then
-  TOOL=rzg
-else
-  TOOL=dummytool
-fi
-
-
-# For eMMC boot, you need to set RCAR_SA6_TYPE=1
-if [ "$EMMC_BOOT" == "1" ] ; then
-  ATFW_OPT="$ATFW_OPT RCAR_SA6_TYPE=1"
-fi
-
-if [ "${ECC_FULL}" == "" ] ; then
-  ECC_FULL=0
-fi
-
 # Let the Makefile handle setting up the CFLAGS and LDFLAGS as it is a standalone application
 unset CFLAGS
 unset LDFLAGS
 unset AS
 unset LD
 
-make distclean
-make -j $BUILD_THREADS bl2 bl31 ${TOOL} PLAT=${PLATFORM} ${ATFW_OPT} ${ATFW_OPTS_ECC} RZG_DRAM_ECC_FULL=${ECC_FULL} ${ATFW_OPT_LOSSY} \
-	RCAR_RPC_HYPERFLASH_LOCKED=0 \
-	MBEDTLS_DIR=$MBEDTLS_DIR \
-	O=$OUT $1 $2 $3
+# distclean
+if [ "$1" == "" ] ; then
+  echo "make distclean"
+  make distclean
+fi
 
-# Copy file to deploy folder
+# make
+CMD="make -j $BUILD_THREADS bl2 bl31 ${TOOL} PLAT=${PLATFORM} ${ATFW_OPT} RZG_DRAM_ECC_FULL=${ECC_FULL} \
+	MBEDTLS_DIR=$MBEDTLS_DIR \
+	$1 $2 $3"
+echo "$CMD"
+$CMD
+
+# If this was just a clean, exit now
 if [ ! -e "build/${PLATFORM}/release/bl2/bl2.elf" ] ; then
   exit
 fi
 
+# Copy files to deploy folder
 if [ "$EMMC_BOOT" == "1" ] ; then
 	DEPLOYDIR=z_deploy_emmc
 else
