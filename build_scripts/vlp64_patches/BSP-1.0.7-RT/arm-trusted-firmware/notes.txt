@@ -1,0 +1,6 @@
+
+Note that patch file "0017-driver-rzg-swdt-increase-WDT-count-when-ECC-enabled.patch" exists in the
+Yocto recipe in meta-rzg2, but if you look close, you will notice that it is not included in thte SRC_URI.
+So, this patch is not part of a v1.0.7 relesae.
+(The patch file was left in by mistake)
+
