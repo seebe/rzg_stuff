@@ -5,17 +5,15 @@ export NEWT_COLORS='
 root=,blue
 '
 
-#make clean
-
 ################################
-#    HiHope RZ/G2M, RZ/G2N, RZ/G2H
+#    Board options
 ################################
 #BOARD=HIHOPE
-
-################################
-# RZG2E
-################################
 #BOARD=EK874
+#BOARD=RZG2L_SMARC
+#BOARD=RZG2L_15MMSQ_DEV
+#BOARD=RZG2L_21MMSQ_DEV
+#BOARD=RZG2LC_DEV
 
 ################################
 # Makefile options
@@ -37,12 +35,20 @@ do_board_menu() {
   SELECT=$(whiptail --title "Board Selection" --menu "You may use ESC+ESC to cancel." 0 0 0 \
 	"1  HIHOPE" "HiHope RZ/G2M, RZ/G2N, RZ/G2H" \
 	"2  EK874" "Silicon Linux RZ/G2E" \
+	"3  RZG2L_SMARC" "Renesas SMARC RZ/G2L" \
+	"4  RZG2L_15MMSQ_DEV" "Renesas Internal Dev Board" \
+	"5  RZG2L_21MMSQ_DEV" "Renesas Internal Dev Board" \
+	"6  RZG2LC_DEV" "Renesas Internal Dev Board" \
 	3>&1 1>&2 2>&3)
   RET=$?
   if [ $RET -eq 0 ] ; then
     case "$SELECT" in
       1\ *) BOARD=HIHOPE ; OUTFILE=AArch64_Flash_writer_SCIF_DUMMY_CERT_E6300400_hihope.mot ;;
       2\ *) BOARD=EK874 ; OUTFILE=AArch64_Flash_writer_SCIF_DUMMY_CERT_E6300400_ek874.mot ;;
+      3\ *) BOARD=RZG2L_SMARC ; OUTFILE=Flash_Writer_SCIF_RZG2L_SMARC_DDR4_2GB.mot ;;
+      4\ *) BOARD=RZG2L_15MMSQ_DEV ; OUTFILE=Flash_Writer_SCIF_RZG2L_15MMSQ_DEV_DDR4_4GB.mot ;;
+      5\ *) BOARD=RZG2L_21MMSQ_DEV ; OUTFILE=Flash_Writer_SCIF_RZG2L_21MMSQ_DEV_DDR4_4GB.mot ;;
+      6\ *) BOARD=RZG2LC_DEV ; OUTFILE=Flash_Writer_SCIF_RZG2LC_DEV_DDR3L_1GB.mot ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $SELECT" 20 60 1
   fi
@@ -121,9 +127,12 @@ do_toolchain_menu() {
   RET=$?
   if [ $RET -eq 0 ] ; then
     case "$SELECT" in
-      1\ *) TOOLCHAIN_SETUP_NAME="SDK Toolchain" ; TOOLCHAIN_SETUP="source /opt/poky/2.4.3/environment-setup-aarch64-poky-linux" ;;
-      2\ *) TOOLCHAIN_SETUP_NAME="Linaro Toolchain" ; TOOLCHAIN_SETUP="PATH=/opt/linaro/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin:\$PATH ; export CROSS_COMPILE=aarch64-linux-gnu-" ;;
-      3\ *) TOOLCHAIN_SETUP_NAME="(none)" ; TOOLCHAIN_SETUP= ;;
+      1\ *)
+      		TOOLCHAIN_SETUP_NAME="SDK Toolchain" ; TOOLCHAIN_SETUP="source /opt/poky/2.4.3/environment-setup-aarch64-poky-linux" ;;
+      2\ *)
+      		TOOLCHAIN_SETUP_NAME="Linaro Toolchain" ; TOOLCHAIN_SETUP="PATH=/opt/linaro/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin:\$PATH ; export CROSS_COMPILE=aarch64-linux-gnu-" ;;
+      3\ *)
+		TOOLCHAIN_SETUP_NAME="(none)" ; TOOLCHAIN_SETUP= ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $SELECT" 20 60 1
   fi
