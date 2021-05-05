@@ -265,6 +265,16 @@ xz-utils debianutils iputils-ping libsdl1.2-dev xterm p7zip-full
 
 **Your container is now set up.**
 
+### 3.4 Generate the Ubuntu 16.04 image by using dockerfile
+In order to generate the build environment with docker more easier, You can just use Dockerfile.ubuntu1604 file. The default image tag is "rzg", you can also replace to yours.
+```
+$ docker build --no-cache --build-arg "host_uid=$(id -u)" --build-arg "host_gid=$(id -g)" --build-arg "USERNAME=$USER" --tag rzg -f ./Dockerfile.ubuntu1604 .
+$ docker images
+REPOSITORY   TAG       IMAGE ID       CREATED       SIZE
+rzg          latest    1234567890ab   5 hours ago   1.18GB
+$ 
+```
+
 ## 4. Using your Container
 
 **4.1 Start your container running (if it is stopped, doesn't show up in 'docker ps' )**
@@ -285,6 +295,19 @@ If you really don't like the name that was automatically generated, you can chan
 ```
 $ docker rename CONTAINER NEW_NAME
 ```
+
+**4.4 Run the container if you generate the image by the Dockerfile.ubuntu1604 file**
+Make sure you put everything into your host workdir folder. Here is an example below.
+```
+$ cd $HOME/workdir
+$ ls
+build  extra  meta-gplv2  meta-openembedded  meta-rzg2  poky
+$ docker run -it --rm -v $PWD:/workdir rzg /bin/bash
+user@docker:/workdir $ source poky/oe-init-build-env
+user@docker:/workdir/build $ bitbake core-image-minimal
+user@docker:/workdir/build $ 
+```
+
 
 ## 5. extra notes
 ```
