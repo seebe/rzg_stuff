@@ -54,4 +54,8 @@ RUN mkdir -p /workdir
 ENV TERM xterm-256color
 
 USER $USERNAME
+
+RUN echo PS1=\"\\[\\e[33m\\]dir\:\ \\w\\n\\[\\e[1\;31m\\]\\u\@\(docker\)\$\\[\\e[00m\\]\ \" >> ~/.bashrc
+RUN echo printf=\"\\e]2\;docker\\a\" >> ~/.bashrc
+
 WORKDIR /workdir
