@@ -1,0 +1,32 @@
+From 9fcd7eb9c08eed79947c0601d5a31e59e081c6a0 Mon Sep 17 00:00:00 2001
+From: micbis <michele.bisogno.ct@renesas.com>
+Date: Mon, 10 May 2021 10:30:15 +0200
+Subject: [PATCH 2/2] target/arm_adi_v5: fixes for RZ/G2L
+
+---
+ src/target/arm_adi_v5.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/target/arm_adi_v5.c b/src/target/arm_adi_v5.c
+index 8f5ad59c3..f8fd9ea56 100644
+--- a/src/target/arm_adi_v5.c
++++ b/src/target/arm_adi_v5.c
+@@ -763,10 +763,14 @@ int mem_ap_init(struct adiv5_ap *ap)
+ 
+ 	ap->tar_valid = false;
+ 	ap->csw_value = 0;      /* force csw and tar write */
+-	retval = mem_ap_setup_transfer(ap, CSW_8BIT | CSW_ADDRINC_PACKED, 0);
++	retval = mem_ap_setup_transfer(ap, CSW_32BIT | CSW_ADDRINC_PACKED, 0);
+ 	if (retval != ERROR_OK)
+ 		return retval;
+ 
++        retval = dap_run(dap);
++        if (retval != ERROR_OK)
++                return retval;
++
+ 	retval = dap_queue_ap_read(ap, MEM_AP_REG_CSW, &csw);
+ 	if (retval != ERROR_OK)
+ 		return retval;
+-- 
+2.25.1
+

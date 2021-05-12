@@ -1,0 +1,10 @@
+target remote localhost:3333
+shell sleep 0.5
+disconnect
+target remote localhost:3333
+mon reset
+shell sleep 0.5 
+mon halt
+detach
+target remote localhost:3333
+shell sleep 0.5
