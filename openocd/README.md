@@ -14,8 +14,8 @@ The possible SOC are: G2H, G2M, G2N, G2E and G2L (default).
 
 Note that you don't really need sudo to run OpenOCD, you can follow this guide, just add yourself to the plugdev and dialout groups:
 
-sudo usermod -a -G plugdev <username>
-sudo usermod -a -G dialout <username>
+sudo usermod -a -G plugdev username
+sudo usermod -a -G dialout username
 
 
 
