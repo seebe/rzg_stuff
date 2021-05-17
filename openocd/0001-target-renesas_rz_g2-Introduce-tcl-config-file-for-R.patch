@@ -1,29 +1,36 @@
-From e0961b67d75ec8928ccb125857d04964317fc1d7 Mon Sep 17 00:00:00 2001
+From 02fe10c77e1a465b6f50d2200284b049dbf2667d Mon Sep 17 00:00:00 2001
 From: micbis <michele.bisogno.ct@renesas.com>
 Date: Mon, 10 May 2021 10:24:49 +0200
-Subject: [PATCH 1/2] Introduce tcl config files for RZ/G2 devices
+Subject: [PATCH 1/2] target/renesas_rz_g2: Introduce tcl config file for RZ/G2
+ devices
 
+Initial support for Renesas RZ/G2 MPU family
+
+Change-Id: I5ca74cddfd0c105a5307de56c3ade7084f9c28d2
+Signed-off-by: micbis <michele.bisogno.ct@renesas.com>
 ---
- tcl/target/renesas_rz_g2.cfg | 193 +++++++++++++++++++++++++++++++++++
- 1 file changed, 193 insertions(+)
+ tcl/target/renesas_rz_g2.cfg | 178 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 178 insertions(+)
  create mode 100644 tcl/target/renesas_rz_g2.cfg
 
 diff --git a/tcl/target/renesas_rz_g2.cfg b/tcl/target/renesas_rz_g2.cfg
 new file mode 100644
-index 000000000..4ace1a678
+index 000000000..83a251eeb
 --- /dev/null
 +++ b/tcl/target/renesas_rz_g2.cfg
-@@ -0,0 +1,193 @@
+@@ -0,0 +1,178 @@
++# SPDX-License-Identifier: GPL-2.0-or-later
++
 +# Renesas RZ/G2 SOCs
 +# - There are a combination of Cortex-A57s, Cortex-A53s, Cortex-A55, Cortex-R7 and Cortex-M33 for each SOC
 +# - Each SOC can boot through the Cortex-A5x cores
 +
-+# Supported Gen3 SOCs and their cores:
-+# RZ/G2H: Cortex-A57 x 4, Cortex-A53 x 4, Cortex-R7 x 2 (Lock-Step)
-+# RZ/G2M: Cortex-A57 x 2, Cortex-A53 x 4, Cortex-R7 x 2 (Lock-Step)
-+# RZ/G2N: Cortex-A57 x 2,                 Cortex-R7 x 2 (Lock-Step)
-+# RZ/G2E:                 Cortex-A53 x 2, Cortex-R7 x 2 (Lock-Step)
-+# RZ/G2L:                 Cortex-A55 x 2, Cortex-M33
++# Supported RZ/G2 SOCs and their cores:
++# RZ/G2H: Cortex-A57 x4, Cortex-A53 x4, Cortex-R7 x2
++# RZ/G2M: Cortex-A57 x2, Cortex-A53 x4, Cortex-R7 x2
++# RZ/G2N: Cortex-A57 x2,                Cortex-R7 x2
++# RZ/G2E:                Cortex-A53 x2, Cortex-R7 x2
++# RZ/G2L:                Cortex-A55 x2, Cortex-M33
 +
 +# Usage:
 +# There are 2 configuration options:
@@ -68,7 +75,7 @@ index 000000000..4ace1a678
 +	G2N {
 +		set _CHIPNAME r8a774bx
 +		set _num_ca57 2
-+		set _num_ca53 4
++		set _num_ca53 0
 +		set _num_cr7 1
 +		set _boot_core CA57
 +		set _ap_num 1
@@ -76,7 +83,7 @@ index 000000000..4ace1a678
 +	G2E {
 +		set _CHIPNAME r8a774c0
 +		set _num_ca57 0
-+		set _num_ca53 1
++		set _num_ca53 2
 +		set _num_cr7 1
 +		set _boot_core CA53
 +		set _ap_num 1
@@ -134,69 +141,53 @@ index 000000000..4ace1a678
 +set smp_targets ""
 +
 +proc setup_a5x {core_name dbgbase ctibase num boot} {
-+	global _CHIPNAME
-+	global _DAPNAME
-+	global smp_targets
-+	global _ap_num
 +	for { set _core 0 } { $_core < $num } { incr _core } {
-+		set _TARGETNAME $_CHIPNAME.$core_name.$_core
++		set _TARGETNAME $::_CHIPNAME.$core_name.$_core
 +		set _CTINAME $_TARGETNAME.cti
-+		cti create $_CTINAME -dap $_DAPNAME -ap-num $_ap_num \
++		cti create $_CTINAME -dap $::_DAPNAME -ap-num $::_ap_num \
 +			-baseaddr [lindex $ctibase $_core]
-+		set _command "target create $_TARGETNAME aarch64 -dap $_DAPNAME \
-+			-ap-num $_ap_num -dbgbase [lindex $dbgbase $_core] -cti $_CTINAME"
-+		if { $_core == 0  && $boot == 1 } {
-+			set _targets "$_TARGETNAME"
-+		} else {
-+			set _command "$_command -defer-examine"
++		target create $_TARGETNAME aarch64 -dap $::_DAPNAME \
++			-ap-num $::_ap_num -dbgbase [lindex $dbgbase $_core] -cti $_CTINAME
++		if { $_core > 0 || $boot == 0 } {
++			$_TARGETNAME configure -defer-examine
 +		}
-+		set smp_targets "$smp_targets $_TARGETNAME"
-+		eval $_command
++		set ::smp_targets "$::smp_targets $_TARGETNAME"
 +	}
 +}
 +
 +proc setup_cr7 {dbgbase ctibase} {
-+	global _CHIPNAME
-+	global _DAPNAME
-+	set _TARGETNAME $_CHIPNAME.r7
++	set _TARGETNAME $::_CHIPNAME.r7
 +	set _CTINAME $_TARGETNAME.cti
-+	cti create $_CTINAME -dap $_DAPNAME -ap-num 1 -baseaddr $ctibase
-+	set _command "target create $_TARGETNAME cortex_r4 -dap $_DAPNAME \
-+		-ap-num 1 -dbgbase $dbgbase"
-+	set _command "$_command -defer-examine"
-+	eval $_command
++	cti create $_CTINAME -dap $::_DAPNAME -ap-num 1 -baseaddr $ctibase
++	target create $_TARGETNAME cortex_r4 -dap $::_DAPNAME \
++		-ap-num 1 -dbgbase $dbgbase -defer-examine
 +}
 +
 +proc setup_cm33 {dbgbase ctibase} {
-+        global _CHIPNAME
-+        global _DAPNAME
-+        set _TARGETNAME $_CHIPNAME.m33
++        set _TARGETNAME $::_CHIPNAME.m33
 +        set _CTINAME $_TARGETNAME.cti
-+        cti create $_CTINAME -dap $_DAPNAME -ap-num 2 -baseaddr $ctibase
-+        set _command "target create $_TARGETNAME cortex_m -dap $_DAPNAME \
-+                -ap-num 2 -dbgbase $dbgbase"
-+        set _command "$_command -defer-examine"
-+        eval $_command
++        cti create $_CTINAME -dap $::_DAPNAME -ap-num 2 -baseaddr $ctibase
++        target create $_TARGETNAME cortex_m -dap $::_DAPNAME \
++                -ap-num 2 -dbgbase $dbgbase -defer-examine
 +}
 +
 +# Organize target list based on the boot core
-+if { [string equal $_boot_core CA57] } {
++if { $_boot_core == "CA57" } {
 +	setup_a5x a57 $CA57_DBGBASE $CA57_CTIBASE $_num_ca57 1
 +	setup_a5x a53 $CA53_DBGBASE $CA53_CTIBASE $_num_ca53 0
 +	setup_cr7 $CR7_DBGBASE $CR7_CTIBASE
-+} elseif { [string equal $_boot_core CA53] } {
++} elseif { $_boot_core == "CA53" } {
 +	setup_a5x a53 $CA53_DBGBASE $CA53_CTIBASE $_num_ca53 1
 +	setup_a5x a57 $CA57_DBGBASE $CA57_CTIBASE $_num_ca57 0
 +	setup_cr7 $CR7_DBGBASE $CR7_CTIBASE
-+} elseif { [string equal $_boot_core CA55] } {
++} elseif { $_boot_core == "CA55" } {
 +	setup_a5x a55 $CA55_DBGBASE $CA55_CTIBASE $_num_ca55 1
 +	setup_cm33 $CM33_DBGBASE $CM33_CTIBASE
 +}
-+
++echo "SMP targets:$smp_targets"
 +eval "target smp $smp_targets"
 +
 +proc init_reset {mode} {
-+
 +    # Assert both resets: equivalent to a power-on reset
 +    adapter assert trst assert srst
 +
@@ -205,7 +196,6 @@ index 000000000..4ace1a678
 +
 +    # TAP should now be responsive, validate the scan-chain
 +    jtag arp_init
-+
 +}
 -- 
 2.25.1
