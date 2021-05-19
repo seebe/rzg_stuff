@@ -1,0 +1,16 @@
+# Please set the board boot mode to SCIF boot: SW11 ON-OFF-ON-OFF
+
+# Connect to OpenOCD
+target remote localhost:3333
+mon reset
+mon halt
+shell sleep 0.5
+
+# Disable SMP
+mon r9a07g044l.a55.0 aarch64 smp off
+
+# Load Flash Writer  code and use related symbols
+load ~/repos/rzg2_flash_writer/AArch64_output/Flash_Writer_SCIF_RZG2L_SMARC_DDR4_2GB.axf
+shell sleep 1
+symbol-file ~/repos/rzg2_flash_writer/AArch64_output/Flash_Writer_SCIF_RZG2L_SMARC_DDR4_2GB.axf
+shell sleep 1
