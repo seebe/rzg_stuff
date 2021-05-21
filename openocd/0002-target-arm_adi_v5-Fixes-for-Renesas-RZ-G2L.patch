@@ -1,41 +1,67 @@
-From 6c0ac4ed7488ee24f1e6a3fc5a101b9c53e3fc5b Mon Sep 17 00:00:00 2001
+From 97997752d8b5d34bb4821ea9de4dd0d1952bec44 Mon Sep 17 00:00:00 2001
 From: micbis <michele.bisogno.ct@renesas.com>
 Date: Mon, 10 May 2021 10:30:15 +0200
-Subject: [PATCH 2/2] target/arm_adi_v5: Fixes for Renesas RZ/G2L
+Subject: [PATCH 2/3] target/arm_adi_v5: Fixes for Renesas RZ/G2L
 
-This fix to mem_ap_init is required to support RZ/G2L. The first
-problem is related to the back to back CSW write and successive
-reads to CSW and CFG, solved by splitting the accesses. The second
-is related to the CSW MEM-AP access size. 8-bit is not required by
-Arm ADI v5 architecture and it causes troubles when examining the
-Cortex-M33. Fixed by using 32-bit access size, whose support is
-mandatory.
+This fix to mem_ap functions is required to support RZ/G2L. The
+problem is related to the back to back CSW write and TAR, that
+causes a WAIT response from DAP. Folling commands, even if
+repeated later in the correct order cause problems to the DAP
+itself. Solved by ensuring that as soon as a WAIT is received
+the commands are repeated and others are not sent.
 
 Change-Id: Ia0dcbdd8b975083e2462976ccdca26875a1add31
 Signed-off-by: micbis <michele.bisogno.ct@renesas.com>
 ---
- src/target/arm_adi_v5.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+ src/target/arm_adi_v5.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
 diff --git a/src/target/arm_adi_v5.c b/src/target/arm_adi_v5.c
-index 8f5ad59c3..8495975ee 100644
+index 8f5ad59c3..f2bcf828e 100644
 --- a/src/target/arm_adi_v5.c
 +++ b/src/target/arm_adi_v5.c
-@@ -763,7 +763,13 @@ int mem_ap_init(struct adiv5_ap *ap)
+@@ -379,6 +379,13 @@ static int mem_ap_write(struct adiv5_ap *ap, const uint8_t *buffer, uint32_t siz
+ 		if (retval != ERROR_OK)
+ 			break;
  
- 	ap->tar_valid = false;
- 	ap->csw_value = 0;      /* force csw and tar write */
--	retval = mem_ap_setup_transfer(ap, CSW_8BIT | CSW_ADDRINC_PACKED, 0);
-+	retval = mem_ap_setup_transfer(ap, CSW_32BIT | CSW_ADDRINC_PACKED, 0);
-+	if (retval != ERROR_OK)
-+		return retval;
++		/* Workaround to prevent DAP from locking due to CSW/TAR back to back
++		 * writes that cause a WAIT response from the DAP in some devices
++		 * (e.g. Renesas RZ/G2L) */
++		retval = dap_run(dap);
++		if (retval != ERROR_OK)
++			return retval;
 +
-+	/* Split back-to-back write and read to CSW to avoid
-+	 * potential issues with some targets (e.g. Renesas RZ/G2L) */
-+	retval = dap_run(dap);
+ 		retval = mem_ap_setup_tar(ap, address ^ addr_xor);
+ 		if (retval != ERROR_OK)
+ 			return retval;
+@@ -512,6 +519,13 @@ static int mem_ap_read(struct adiv5_ap *ap, uint8_t *buffer, uint32_t size, uint
+ 		if (retval != ERROR_OK)
+ 			break;
+ 
++		/* Workaround to prevent DAP from locking due to CSW/TAR back to back
++		 * writes that cause a WAIT response from the DAP in some devices
++		 * (e.g. Renesas RZ/G2L) */
++		retval = dap_run(dap);
++		if (retval != ERROR_OK)
++			return retval;
++
+ 		retval = mem_ap_setup_tar(ap, address);
+ 		if (retval != ERROR_OK)
+ 			break;
+@@ -767,6 +781,13 @@ int mem_ap_init(struct adiv5_ap *ap)
  	if (retval != ERROR_OK)
  		return retval;
  
++	/* Workaround to prevent DAP from locking due to CSW/TAR back to back
++	 * writes that cause a WAIT response from the DAP in some devices
++	 * (e.g. Renesas RZ/G2L) */
++	retval = dap_run(dap);
++	if (retval != ERROR_OK)
++		return retval;
++
+ 	retval = dap_queue_ap_read(ap, MEM_AP_REG_CSW, &csw);
+ 	if (retval != ERROR_OK)
+ 		return retval;
 -- 
 2.25.1
 
