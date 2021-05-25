@@ -1,4 +1,4 @@
-From 97997752d8b5d34bb4821ea9de4dd0d1952bec44 Mon Sep 17 00:00:00 2001
+From a2422389fccf810a68b97593c007e137773d35e8 Mon Sep 17 00:00:00 2001
 From: micbis <michele.bisogno.ct@renesas.com>
 Date: Mon, 10 May 2021 10:30:15 +0200
 Subject: [PATCH 2/3] target/arm_adi_v5: Fixes for Renesas RZ/G2L
@@ -17,7 +17,7 @@ Signed-off-by: micbis <michele.bisogno.ct@renesas.com>
  1 file changed, 21 insertions(+)
 
 diff --git a/src/target/arm_adi_v5.c b/src/target/arm_adi_v5.c
-index 8f5ad59c3..f2bcf828e 100644
+index 6569fccfd..a0820713d 100644
 --- a/src/target/arm_adi_v5.c
 +++ b/src/target/arm_adi_v5.c
 @@ -379,6 +379,13 @@ static int mem_ap_write(struct adiv5_ap *ap, const uint8_t *buffer, uint32_t siz
