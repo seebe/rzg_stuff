@@ -1,4 +1,4 @@
-From 5fec36490dad8912af789c875a9e89a61f483221 Mon Sep 17 00:00:00 2001
+From bc8e4bd20ad150e66cdd547edc1682ecd2cc1918 Mon Sep 17 00:00:00 2001
 From: micbis <michele.bisogno.ct@renesas.com>
 Date: Tue, 18 May 2021 18:52:37 +0200
 Subject: [PATCH 3/3] target/aarch64: Write Memory functions fix for
@@ -18,10 +18,10 @@ Signed-off-by: micbis <michele.bisogno.ct@renesas.com>
  2 files changed, 32 insertions(+), 34 deletions(-)
 
 diff --git a/src/target/aarch64.c b/src/target/aarch64.c
-index 4ba92c8a0..c64062f67 100644
+index 612924f5a..4ea939959 100644
 --- a/src/target/aarch64.c
 +++ b/src/target/aarch64.c
-@@ -2481,6 +2481,8 @@ static int aarch64_write_phys_memory(struct target *target,
+@@ -2470,6 +2470,8 @@ static int aarch64_write_phys_memory(struct target *target,
  	target_addr_t address, uint32_t size,
  	uint32_t count, const uint8_t *buffer)
  {
@@ -30,7 +30,7 @@ index 4ba92c8a0..c64062f67 100644
  	int retval = ERROR_COMMAND_SYNTAX_ERROR;
  
  	if (count && buffer) {
-@@ -2488,7 +2490,20 @@ static int aarch64_write_phys_memory(struct target *target,
+@@ -2477,7 +2479,20 @@ static int aarch64_write_phys_memory(struct target *target,
  		retval = aarch64_mmu_modify(target, 0);
  		if (retval != ERROR_OK)
  			return retval;
@@ -52,7 +52,7 @@ index 4ba92c8a0..c64062f67 100644
  	}
  
  	return retval;
-@@ -2499,6 +2514,8 @@ static int aarch64_write_memory(struct target *target, target_addr_t address,
+@@ -2488,6 +2503,8 @@ static int aarch64_write_memory(struct target *target, target_addr_t address,
  {
  	int mmu_enabled = 0;
  	int retval;
@@ -61,7 +61,7 @@ index 4ba92c8a0..c64062f67 100644
  
  	/* determine if MMU was enabled on target stop */
  	retval = aarch64_mmu(target, &mmu_enabled);
-@@ -2511,7 +2528,20 @@ static int aarch64_write_memory(struct target *target, target_addr_t address,
+@@ -2500,7 +2517,20 @@ static int aarch64_write_memory(struct target *target, target_addr_t address,
  		if (retval != ERROR_OK)
  			return retval;
  	}
