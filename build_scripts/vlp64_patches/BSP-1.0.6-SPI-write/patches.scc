@@ -483,3 +483,6 @@ patch patches/v1.0.6_spi_patch/0030-pinctrl-renesas-r8a77965-Add-QSPI-01-pins-gr
 patch patches/v1.0.6_spi_patch/0031-arm64-dts-renesas-rzg2-Add-RPC-IF-Support.patch
 patch patches/v1.0.6_spi_patch/0032-dts-added-RPC-IF-and-SPI-memory.patch
 patch patches/v1.0.6_spi_patch/0033-vlp1.0.6-modifications-added-HiHope-QSPI-memory-and-.patch
+patch patches/v1.0.6_spi_patch/0034-clk-renesas-r8a774e1-Add-RPC-clocks.patch
+patch patches/v1.0.6_spi_patch/0035-added-EK874-QSPI-memory-support.patch
+
