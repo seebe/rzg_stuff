@@ -1,7 +1,7 @@
-From bc8e4bd20ad150e66cdd547edc1682ecd2cc1918 Mon Sep 17 00:00:00 2001
+From 68e34d08ebe270a3fdb95d00d58405a108bf9051 Mon Sep 17 00:00:00 2001
 From: micbis <michele.bisogno.ct@renesas.com>
 Date: Tue, 18 May 2021 18:52:37 +0200
-Subject: [PATCH 3/3] target/aarch64: Write Memory functions fix for
+Subject: [PATCH 2/3] target/aarch64: Write Memory functions fix for
  self-modifying code
 
 Writing memory function shall invalidate / flush caches. This is required
