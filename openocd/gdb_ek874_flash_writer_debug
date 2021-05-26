@@ -1,4 +1,6 @@
-source gdb_ek874_reset_break
+# WARNING: gdb_ek874_reset_break need to be called before
+# The SCIF output is not working when loading the code because Flash Writer relies on ROM configuration.
+
 load "~/repos/rzg2_flash_writer/AArch64_output/AArch64_Flash_writer_SCIF_DUMMY_CERT_E6300400_ek874.axf"
 symbol-file "~/repos/rzg2_flash_writer/AArch64_output/AArch64_Flash_writer_SCIF_DUMMY_CERT_E6300400_ek874.axf"
 b Main 

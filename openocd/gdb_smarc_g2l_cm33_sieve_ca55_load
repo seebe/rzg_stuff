@@ -1,0 +1,53 @@
+# Please set the board boot mode to SCIF boot: SW11 ON-OFF-ON-OFF
+
+# Connect to OpenOCD
+target remote localhost:3333
+mon reset
+mon halt
+shell sleep 0.5
+
+# Disable SMP
+mon r9a07g044l.a55.0 aarch64 smp off
+shell sleep 1
+
+# Load Cortex-M33 code
+load ~/rzg_stuff/openocd/cm33_sample_code/sieve_ram_thumb_ii_v8m_base.elf -0x30000000
+#load ~/rzg_stuff/openocd/cm33_sample_code/sieve_ram_thumb_ii_v8m_base.elf
+symbol-file ~/rzg_stuff/openocd/cm33_sample_code/sieve_ram_thumb_ii_v8m_base.elf -o -0x30000000
+#symbol-file ~/rzg_stuff/openocd/cm33_sample_code/sieve_ram_thumb_ii_v8m_base.elf
+shell sleep 1
+# Set SYS_CM33_CFG0/1 (SSG = ON)
+mon mww 0x11020804 0x01003CE5
+mon mww 0x11020808 0x01003CE5
+# Set SYS_CM33_CFG2/3, reset vector address (secure and non-secure)
+mon mww 0x1102080c 0x30010000
+mon mww 0x11020810 0x30010000
+# Set CPG_CLK_ON_CM33
+mon mww 0x11010504 0x00030003
+# Wait and read back
+shell sleep 0.5
+mon mdw 0x11020504
+# Set SYS_LP_CM33CTL1 (Debug REQn)
+mon mww 0x11020d28 0x00001100
+# Wait and read back
+shell sleep 0.5
+mon mdw 0x11020d28
+# Set FETCHCNT bit of SYS_CM33_CTL to 1
+mon mww 0x11020818 0x00000001
+# Set CPG_RST_CM33
+mon mww 0x11010804 0x00070007
+# Wait and read back
+shell sleep 0.5
+mon mdw 0x11010984
+
+# Now we are ready to examine Cortex-M33
+mon r9a07g044l.m33 arp_examine
+# Set reset vector catch to be able to debug from start
+mon r9a07g044l.m33 cortex_m vector_catch all
+
+# Set FETCHCNT bit of SYS_CM33_CTL to 0
+mon mww 0x11020818 0x0
+
+# Now the CM33 is stopped at the reset vector.
+# Another instance of gdb for Cortex-R/M (arm-none-eabi-gdb)
+# should be open to debug the CM33

@@ -1,0 +1,170 @@
+#ifndef FLASHSTART
+  #define FLASH SRAM
+#endif
+
+#ifndef FLASHSIZE
+  #define FLASHSIZE 128K
+#endif
+
+#ifndef RAMSTART
+  #define RAMSTART 0x20000000
+#endif
+
+#ifndef RAMSIZE
+  #define RAMSIZE 32K
+#endif
+
+#ifndef STACKSIZE
+  #define STACKSIZE 0x200
+#endif
+
+#ifndef NVICSIZE
+  #define NVICSIZE 0x400
+#endif
+
+#ifndef KEEPSIZE
+  #define KEEPSIZE 0x40
+#endif
+
+#ifndef MTBSIZE
+  #define MTBSIZE 0x40
+#endif
+
+#ifndef ETRSIZE
+  #define ETRSIZE 0x0
+#endif
+
+#ifndef ETRALIGN
+  #define ETRALIGN 0x100
+#endif
+
+MEMORY
+{
+#ifdef FLASHSTART
+    FLASH (rx) : ORIGIN = FLASHSTART, LENGTH = FLASHSIZE
+#endif
+    SRAM (rwx) : ORIGIN = RAMSTART, LENGTH = RAMSIZE
+}
+
+SECTIONS
+{
+    .isr_vector :
+    {
+        __nvic_base = . ;
+        . = ALIGN(4);
+        KEEP(*(.exception_vector))
+        . = ABSOLUTE(__nvic_base) + 0x40;
+        KEEP(*(.isr_vector))
+        . = ABSOLUTE(__nvic_base) + NVICSIZE;
+    } > FLASH =0x00
+#ifdef FLASHSTART
+    .keep :
+    {
+        __gap_start = . ;
+        . += KEEPSIZE;
+        __gap_end = . ;
+    } > FLASH
+#endif
+    .gnu.sgstubs : ALIGN (0x10)
+    {
+        __sg_start = .;
+        KEEP(*(.gnu.sgstubs));
+        . = ALIGN(0x10);
+        __sg_end = .;
+    } > FLASH
+    .text :
+    {
+        . = ALIGN(4);
+        KEEP(*(.text.crt*))
+        *(.text*)
+        . = ALIGN(4);
+        _etext = .;
+    } > FLASH
+
+    .eh_frame_hdr : ALIGN (4)
+    {
+        KEEP (*(.eh_frame_hdr))
+        *(.eh_frame_entry .eh_frame_entry.*)
+    } > FLASH
+    .eh_frame : ALIGN (4)
+    {
+        KEEP (*(.eh_frame)) *(.eh_frame.*)
+    } > FLASH
+    .ARM.exidx : 
+    {
+        __exidx_start = .;
+        KEEP(*(.ARM.exidx*))
+        KEEP(*(.gnu.linkonce.armexidx.*))
+        __exidx_end = .;
+    } > FLASH
+
+    .rodata :
+    {
+        *(.rodata*)
+        *(.constdata*)
+    } > FLASH
+
+    .data : 
+    {
+        __data_start = . ;
+        __data = .;
+        *(vtable*)
+        *(.data*)
+	. = ALIGN(4);
+        __data_end = .;
+    } > SRAM AT> FLASH
+    
+    .init : ALIGN(0x4)
+    {
+        PROVIDE_HIDDEN (__init_array_start = .);
+        KEEP (*(.preinit_array))
+        KEEP (*(.init))
+        KEEP (*(SORT(.init_array.*)))
+        KEEP (*(.init_array))
+        PROVIDE_HIDDEN (__init_array_end = .);
+    } > SRAM AT> FLASH
+
+    .bss : ALIGN(6) {
+        __bss_start = .;
+        * (.sbss*)
+        * (.bss*)
+        * (COMMON)
+        . = ALIGN(4);
+        __bss_end = .;
+    } > SRAM
+
+    .stack :
+    {
+        . = ALIGN(0x8);
+        __stack_start = .;
+        . += STACKSIZE;
+        __stack_end = ABSOLUTE(.)&~(0x7);
+    } > SRAM
+
+    .mtb ALIGN(MTBSIZE):
+    {
+        __mtb_start = .;
+        . += MTBSIZE;
+        __mtb_end = .;
+    } > SRAM
+
+    __heap_start = .;
+    
+#if ETRSIZE>0x0
+    .etr (RAMSTART+RAMSIZE-ETRSIZE-((RAMSTART+RAMSIZE)&(ETRALIGN-1))):
+    {
+        __etr_start = .;
+        . += ETRSIZE;
+        __etr_end = .;
+    } > SRAM
+#endif
+}
+
+__SRAM_start = ORIGIN(SRAM);
+__SRAM_size  = LENGTH(SRAM);
+__data_vaddr = ADDR(.data);
+__data_laddr = LOADADDR(.data);
+__data_size  = SIZEOF(.data);
+__init_vaddr = ADDR(.init);
+__init_laddr = LOADADDR(.init);
+__init_size  = SIZEOF(.init);

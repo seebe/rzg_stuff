@@ -1,0 +1,4 @@
+target remote localhost:3334
+symbol-file ~/rzg_stuff/openocd/cm33_sample_code/sieve_ram_thumb_ii_v8m_base.elf
+b main
+c

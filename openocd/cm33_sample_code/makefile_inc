@@ -1,0 +1,219 @@
+export SHELLOPTS := igncr
+
+FLASHSTART ?= 0x00000000
+RAMSTART   ?= 0x20000000
+WATCHDOG   ?= 0
+DEFINE     ?= 
+SRC        ?= 
+LIB        ?= 
+
+CFLAGS     ?=
+CPPFLAGS   ?=
+LDFLAGS    ?=
+INCLUDEDIR ?=
+HARDFP     ?= 0
+
+MKFILEPATH       := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+WORKPATH         := $(dir $(abspath $(CURDIR))/)
+TMP              := $(WORKPATH)tmp
+MISCSRC          :=
+COMMA            := ,
+
+IFLAGS           := -I$(CURDIR) -I$(MKFILEPATH)/src $(addprefix -I,$(INCLUDEDIR))
+HEADERS          := $(wildcard $(CURDIR)/*.h $(MKFILEPATH)/src/*.h $(addsuffix /*.h,$(INCLUDEDIR)))
+ifeq ($(WATCHDOG),0)
+DFLAGS           := $(addprefix -D,$(DEFINE)) $(if $(RAMSIZE),-DRAMSTART=$(RAMSTART) -DRAMSIZE=$(RAMSIZE))
+else
+DFLAGS           := $(addprefix -D,$(DEFINE)) $(if $(RAMSIZE),-DRAMSTART=$(RAMSTART) -DRAMSIZE=$(RAMSIZE)) -DWATCHDOG
+MISCSRC          += watchdog.c
+endif
+
+LIBS             := -Wl,-lgcc $(addprefix -Wl$(COMMA),$(LIB))
+
+CPU_THUMBV6M     := -march=armv6s-m -mthumb -mlittle-endian -msoft-float
+AOPT_THUMBV6M    := -g -Wall $(CPU_THUMBV6M) -Wa,--gdwarf2 -Wa,-mthumb -xassembler-with-cpp -c $(DFLAGS)
+COPT_THUMBV6M    := -g -Wall $(CPU_THUMBV6M) -fshort-enums -c $(IFLAGS) $(DFLAGS) $(CFLAGS)
+CPPOPT_THUMBV6M  := -g -Wall $(CPU_THUMBV6M) -fshort-enums -fno-unwind-tables -fno-exceptions -fno-rtti -std=gnu++98 -c $(IFLAGS) $(DFLAGS) $(CPPFLAGS)
+LOPT_THUMBV6M    := -g -Wall $(CPU_THUMBV6M) -Wl,--nmagic -nostartfiles -nodefaultlibs -Wl,--thumb-entry=_start $(addprefix -Wl$(COMMA),$(LDFLAGS))
+
+ifeq ($(HARDFP),0)
+CPU_THUMB2V7     := -march=armv7-m -mthumb -mfix-cortex-m3-ldrd -mlittle-endian -msoft-float 
+else
+CPU_THUMB2V7     := -march=armv7-m -mthumb -mfix-cortex-m3-ldrd -mlittle-endian -mfloat-abi=hard -mfpu=fpv4-sp-d16
+endif
+AOPT_THUMB2V7    := -g -Wall $(CPU_THUMB2V7) -Wa,--gdwarf2 -Wa,-mthumb -xassembler-with-cpp -c $(DFLAGS)
+COPT_THUMB2V7    := -g -Wall $(CPU_THUMB2V7) -fshort-enums -c $(IFLAGS) $(DFLAGS) $(CFLAGS)
+CPPOPT_THUMB2V7  := -g -Wall $(CPU_THUMB2V7) -fshort-enums -fno-unwind-tables -fno-exceptions -fno-rtti -std=gnu++98 -c $(IFLAGS) $(DFLAGS) $(CPPFLAGS)
+LOPT_THUMB2V7    := -g -Wall $(CPU_THUMB2V7) -Wl,--nmagic -nostartfiles -nodefaultlibs -Wl,--thumb-entry=_start $(addprefix -Wl$(COMMA),$(LDFLAGS))
+
+CPU_THUMB2V8B    := -march=armv8-m.base -mthumb -mlittle-endian -msoft-float 
+AOPT_THUMB2V8B   := -g -Wall $(CPU_THUMB2V8B) -Wa,--gdwarf2 -Wa,-mthumb -xassembler-with-cpp -c $(DFLAGS)
+COPT_THUMB2V8B   := -g -Wall $(CPU_THUMB2V8B) -fshort-enums -c $(IFLAGS) $(DFLAGS) $(CFLAGS)
+CPPOPT_THUMB2V8B := -g -Wall $(CPU_THUMB2V8B) -fshort-enums -fno-unwind-tables -fno-exceptions -fno-rtti -std=gnu++98 -c $(IFLAGS) $(DFLAGS) $(CPPFLAGS)
+LOPT_THUMB2V8B   := -g -Wall $(CPU_THUMB2V8B) -Wl,--nmagic -nostartfiles -nodefaultlibs -Wl,--thumb-entry=_start $(addprefix -Wl$(COMMA),$(LDFLAGS))
+
+ifeq ($(HARDFP),0)
+CPU_THUMB2V8M    := -march=armv8-m.main -mthumb -mlittle-endian -msoft-float 
+else
+CPU_THUMB2V8M    := -march=armv8-m.main -mthumb -mlittle-endian -mfloat-abi=hard -mfpu=fpv5-sp-d16
+endif
+AOPT_THUMB2V8M   := -g -Wall $(CPU_THUMB2V8M) -Wa,--gdwarf2 -Wa,-mthumb -xassembler-with-cpp -c $(DFLAGS)
+COPT_THUMB2V8M   := -g -Wall $(CPU_THUMB2V8M) -fshort-enums -c $(IFLAGS) $(DFLAGS) $(CFLAGS)
+CPPOPT_THUMB2V8M := -g -Wall $(CPU_THUMB2V8M) -fshort-enums -fno-unwind-tables -fno-exceptions -fno-rtti -std=gnu++98 -c $(IFLAGS) $(DFLAGS) $(CPPFLAGS)
+LOPT_THUMB2V8M   := -g -Wall $(CPU_THUMB2V8M) -Wl,--nmagic -nostartfiles -nodefaultlibs -Wl,--thumb-entry=_start $(addprefix -Wl$(COMMA),$(LDFLAGS))
+
+CCGRP           := arm-none-eabi-
+
+TARGET          ?= sieve.c 
+SRCS            := crt0.s $(SRC) $(MISCSRC)
+TARGETS          = $(TARGET:%.c=%_ram_thumb_v6m.elf)           \
+                   $(TARGET:%.c=%_flash_thumb_v6m.elf)         \
+                   $(TARGET:%.c=%_ram_thumb_ii_v7m.elf)        \
+                   $(TARGET:%.c=%_flash_thumb_ii_v7m.elf)	\
+                   $(TARGET:%.c=%_ram_thumb_ii_v8m_base.elf)        \
+                   $(TARGET:%.c=%_ram_thumb_ii_v8m_main.elf)   \
+                   $(TARGET:%.c=%_ram_thumb_ii_v8m_base_secure.elf)        \
+                   $(TARGET:%.c=%_ram_thumb_ii_v8m_main_secure.elf)        
+
+
+-include ./special-cortex-m-defines.mk
+
+all: $(TARGETS)
+target-m0p target-m0 target-m1: $(filter %v6m.elf, $(TARGETS))
+target-m3 target-m4 target-m7:  $(filter %v7m.elf, $(TARGETS))
+target-m23:                     $(filter %v8m_base.elf, $(TARGETS))
+target-m33:                     $(filter %v8m_main.elf, $(TARGETS))
+
+.SECONDARY: ./midi.c ./sieve.c ./cppdemo.cpp ./secure.c
+
+$(TMP):
+	mkdir $(TMP)
+
+./%.c : $(MKFILEPATH)src/%.c
+	cp $< ./$@
+
+./%.cpp : $(MKFILEPATH)src/%.cpp
+	cp $< ./$@
+
+./%.s : $(MKFILEPATH)src/%.s
+	cp $< ./$@
+
+.PHONY: ./%.src
+./%.src: ./%.c ;
+./%.src: ./%.cpp ;
+
+$(TMP)/headers: $(HEADERS)
+	touch $(TMP)/headers
+
+$(TMP)/%.thumbv6m.o:     ./%.c   $(MAKEFILE_LIST)
+	$(CCGRP)gcc $(COPT_THUMBV6M)  -o $@ $<
+
+$(TMP)/%.thumbIIv7m.o:   ./%.c   $(MAKEFILE_LIST)
+	$(CCGRP)gcc $(COPT_THUMB2V7)  -o $@ $<
+
+$(TMP)/%.thumbIIv8mB.o:  ./%.c   $(MAKEFILE_LIST)
+	$(CCGRP)gcc $(COPT_THUMB2V8B) -o $@ $<
+
+$(TMP)/%.thumbIIv8mM.o:  ./%.c   $(MAKEFILE_LIST)
+	$(CCGRP)gcc $(COPT_THUMB2V8M) -o $@ $<
+
+$(TMP)/%.thumbIIv8mBs.o: ./%.c   $(MAKEFILE_LIST)
+	$(CCGRP)gcc $(COPT_THUMB2V8B) -mcmse -o $@ $<
+
+$(TMP)/%.thumbIIv8mMs.o: ./%.c   $(MAKEFILE_LIST)
+	$(CCGRP)gcc $(COPT_THUMB2V8M) -mcmse -o $@ $<
+
+$(TMP)/%.thumbv6m.o:     ./%.cpp $(MAKEFILE_LIST)
+	$(CCGRP)g++ $(CPPOPT_THUMBV6M)  -o $@ $<
+
+$(TMP)/%.thumbIIv7m.o:   ./%.cpp $(MAKEFILE_LIST)
+	$(CCGRP)g++ $(CPPOPT_THUMB2V7)  -o $@ $<
+
+$(TMP)/%.thumbIIv8mB.o:  ./%.cpp $(MAKEFILE_LIST)
+	$(CCGRP)g++ $(CPPOPT_THUMB2V8B) -o $@ $<
+
+$(TMP)/%.thumbIIv8mM.o:  ./%.cpp $(MAKEFILE_LIST)
+	$(CCGRP)g++ $(CPPOPT_THUMB2V8M) -o $@ $<
+
+$(TMP)/%.thumbIIv8mBs.o:  ./%.cpp $(MAKEFILE_LIST)
+	$(CCGRP)g++ $(CPPOPT_THUMB2V8B) -mcmse -o $@ $<
+
+$(TMP)/%.thumbIIv8mMs.o:  ./%.cpp $(MAKEFILE_LIST)
+	$(CCGRP)g++ $(CPPOPT_THUMB2V8M) -mcmse -o $@ $<
+
+$(TMP)/%.thumbv6m.o:     ./%.s   $(MAKEFILE_LIST)
+	$(CCGRP)gcc $(AOPT_THUMBV6M)  -o $@ $<
+
+$(TMP)/%.thumbIIv7m.o:   ./%.s   $(MAKEFILE_LIST)
+	$(CCGRP)gcc $(AOPT_THUMB2V7)  -o $@ $<
+
+$(TMP)/%.thumbIIv8mB.o:  ./%.s   $(MAKEFILE_LIST)
+	$(CCGRP)gcc $(AOPT_THUMB2V8B) -o $@ $<
+
+$(TMP)/%.thumbIIv8mM.o:  ./%.s   $(MAKEFILE_LIST)
+	$(CCGRP)gcc $(AOPT_THUMB2V8M) -o $@ $<
+
+$(TMP)/%.thumbIIv8mBs.o: ./%.s   $(MAKEFILE_LIST)
+	$(CCGRP)gcc $(AOPT_THUMB2V8B) -mcmse -o $@ $<
+
+$(TMP)/%.thumbIIv8mMs.o: ./%.s   $(MAKEFILE_LIST)
+	$(CCGRP)gcc $(AOPT_THUMB2V8M) -mcmse -o $@ $<
+
+.INTERMEDIATE :          $(TMP)/ram.ld 
+$(TMP)/ram.ld:           $(MKFILEPATH)src/linker.ldx $(MAKEFILE_LIST) | $(TMP)
+	$(CCGRP)cpp -P -DRAMSTART=$(RAMSTART) $(DFLAGS) -o $@ $< 
+
+.INTERMEDIATE :          $(TMP)/flash.ld
+$(TMP)/flash.ld:         $(MKFILEPATH)src/linker.ldx $(MAKEFILE_LIST) | $(TMP)
+	$(CCGRP)cpp -P -DFLASHSTART=$(FLASHSTART) -DRAMSTART=$(RAMSTART) $(DFLAGS) -o $@ $<
+
+%_ram_thumb_v6m.elf:                  ./%.src $(addprefix ./,$(SRCS)) $(addprefix $(TMP)/,ram.ld   $(filter %.o, $(SRCS:%.s=%.thumbv6m.o))     %.thumbv6m.o     $(filter %.o, $(SRCS:%.c=%.thumbv6m.o))     $(filter %.o, $(SRCS:%.cpp=%.thumbv6m.o))   )  $(TMP)/headers
+	$(CCGRP)gcc $(LOPT_THUMBV6M)  -o $@ -T $(filter %.ld,$(^)) $(filter %.o,$(^)) -Wl,--start-group $(LIBS) -Wl,--end-group
+
+%_flash_thumb_v6m.elf:                ./%.src $(addprefix ./,$(SRCS)) $(addprefix $(TMP)/,flash.ld $(filter %.o, $(SRCS:%.s=%.thumbv6m.o))     %.thumbv6m.o     $(filter %.o, $(SRCS:%.c=%.thumbv6m.o))     $(filter %.o, $(SRCS:%.cpp=%.thumbv6m.o))   )  $(TMP)/headers
+	$(CCGRP)gcc $(LOPT_THUMBV6M)  -o $@ -T $(filter %.ld,$(^)) $(filter %.o,$(^)) -Wl,--start-group $(LIBS) -Wl,--end-group
+
+%_ram_thumb_ii_v7m.elf:               ./%.src $(addprefix ./,$(SRCS)) $(addprefix $(TMP)/,ram.ld   $(filter %.o, $(SRCS:%.s=%.thumbIIv7m.o))   %.thumbIIv7m.o   $(filter %.o, $(SRCS:%.c=%.thumbIIv7m.o))   $(filter %.o, $(SRCS:%.cpp=%.thumbIIv7m.o)) )  $(TMP)/headers
+	$(CCGRP)gcc $(LOPT_THUMB2V7)  -o $@ -T $(filter %.ld,$(^)) $(filter %.o,$(^)) -Wl,--start-group $(LIBS) -Wl,--end-group
+
+%_flash_thumb_ii_v7m.elf:             ./%.src $(addprefix ./,$(SRCS)) $(addprefix $(TMP)/,flash.ld $(filter %.o, $(SRCS:%.s=%.thumbIIv7m.o))   %.thumbIIv7m.o   $(filter %.o, $(SRCS:%.c=%.thumbIIv7m.o))   $(filter %.o, $(SRCS:%.cpp=%.thumbIIv7m.o)) )  $(TMP)/headers
+	$(CCGRP)gcc $(LOPT_THUMB2V7)  -o $@ -T $(filter %.ld,$(^)) $(filter %.o,$(^)) -Wl,--start-group $(LIBS) -Wl,--end-group
+
+%_ram_thumb_ii_v8m_base.elf:          ./%.src $(addprefix ./,$(SRCS)) $(addprefix $(TMP)/,ram.ld   $(filter %.o, $(SRCS:%.s=%.thumbIIv8mB.o))  %.thumbIIv8mB.o  $(filter %.o, $(SRCS:%.c=%.thumbIIv8mB.o))  $(filter %.o, $(SRCS:%.cpp=%.thumbIIv8mB.o)))  $(TMP)/headers
+	$(CCGRP)gcc $(LOPT_THUMB2V8B) -o $@ -T $(filter %.ld,$(^)) $(filter %.o,$(^)) -Wl,--start-group $(LIBS) -Wl,--end-group $(filter %.lib, $(SRCS))
+
+%_flash_thumb_ii_v8m_base.elf:        ./%.src $(addprefix ./,$(SRCS)) $(addprefix $(TMP)/,flash.ld $(filter %.o, $(SRCS:%.s=%.thumbIIv8mB.o))  %.thumbIIv8mB.o  $(filter %.o, $(SRCS:%.c=%.thumbIIv8mB.o))  $(filter %.o, $(SRCS:%.cpp=%.thumbIIv8mB.o)))  $(TMP)/headers
+	$(CCGRP)gcc $(LOPT_THUMB2V8B) -o $@ -T $(filter %.ld,$(^)) $(filter %.o,$(^)) -Wl,--start-group $(LIBS) -Wl,--end-group $(filter %.lib, $(SRCS))
+
+%_ram_thumb_ii_v8m_base_secure.elf:   ./%.src $(addprefix ./,$(SRCS)) $(addprefix $(TMP)/,ram.ld   $(filter %.o, $(SRCS:%.s=%.thumbIIv8mBs.o)) %.thumbIIv8mBs.o $(filter %.o, $(SRCS:%.c=%.thumbIIv8mBs.o)) $(filter %.o, $(SRCS:%.cpp=%.thumbIIv8mBs.o))) $(TMP)/headers
+	$(CCGRP)gcc $(LOPT_THUMB2V8B) -o $@ -Wl,--out-implib=$(@:%.elf=%.lib) -Wl,--cmse-implib -T $(filter %.ld,$(^))  $(filter %.o,$(^)) -Wl,--start-group $(LIBS) -Wl,--end-group
+
+%_flash_thumb_ii_v8m_base_secure.elf: ./%.src $(addprefix ./,$(SRCS)) $(addprefix $(TMP)/,flash.ld $(filter %.o, $(SRCS:%.s=%.thumbIIv8mBs.o)) %.thumbIIv8mBs.o $(filter %.o, $(SRCS:%.c=%.thumbIIv8mBs.o)) $(filter %.o, $(SRCS:%.cpp=%.thumbIIv8mBs.o))) $(TMP)/headers
+	$(CCGRP)gcc $(LOPT_THUMB2V8B) -o $@ -Wl,--out-implib=$(@:%.elf=%.lib) -Wl,--cmse-implib -T $(filter %.ld,$(^))  $(filter %.o,$(^)) -Wl,--start-group $(LIBS) -Wl,--end-group
+
+%_ram_thumb_ii_v8m_main.elf:          ./%.src $(addprefix ./,$(SRCS)) $(addprefix $(TMP)/,ram.ld   $(filter %.o, $(SRCS:%.s=%.thumbIIv8mM.o))  %.thumbIIv8mM.o  $(filter %.o, $(SRCS:%.c=%.thumbIIv8mM.o))  $(filter %.o, $(SRCS:%.cpp=%.thumbIIv8mM.o)))  $(TMP)/headers
+	$(CCGRP)gcc $(LOPT_THUMB2V8M) -o $@ -T $(filter %.ld,$(^)) $(filter %.o,$(^)) -Wl,--start-group $(LIBS) -Wl,--end-group $(filter %.lib, $(SRCS))
+
+%_flash_thumb_ii_v8m_main.elf:        ./%.src $(addprefix ./,$(SRCS)) $(addprefix $(TMP)/,flash.ld $(filter %.o, $(SRCS:%.s=%.thumbIIv8mM.o))  %.thumbIIv8mM.o  $(filter %.o, $(SRCS:%.c=%.thumbIIv8mM.o))  $(filter %.o, $(SRCS:%.cpp=%.thumbIIv8mM.o)))  $(TMP)/headers
+	$(CCGRP)gcc $(LOPT_THUMB2V8M) -o $@ -T $(filter %.ld,$(^)) $(filter %.o,$(^)) -Wl,--start-group $(LIBS) -Wl,--end-group $(filter %.lib, $(SRCS))
+
+%_ram_thumb_ii_v8m_main_secure.elf:   ./%.src $(addprefix ./,$(SRCS)) $(addprefix $(TMP)/,ram.ld   $(filter %.o, $(SRCS:%.s=%.thumbIIv8mMs.o)) %.thumbIIv8mMs.o $(filter %.o, $(SRCS:%.c=%.thumbIIv8mMs.o)) $(filter %.o, $(SRCS:%.cpp=%.thumbIIv8mMs.o))) $(TMP)/headers
+	$(CCGRP)gcc $(LOPT_THUMB2V8M) -o $@ -Wl,--out-implib=$(@:%.elf=%.lib) -Wl,--cmse-implib -T $(filter %.ld,$(^))  $(filter %.o,$(^)) -Wl,--start-group $(LIBS) -Wl,--end-group
+
+%_flash_thumb_ii_v8m_main_secure.elf: ./%.src $(addprefix ./,$(SRCS)) $(addprefix $(TMP)/,flash.ld $(filter %.o, $(SRCS:%.s=%.thumbIIv8mMs.o)) %.thumbIIv8mMs.o $(filter %.o, $(SRCS:%.c=%.thumbIIv8mMs.o)) $(filter %.o, $(SRCS:%.cpp=%.thumbIIv8mMs.o))) $(TMP)/headers
+	$(CCGRP)gcc $(LOPT_THUMB2V8M) -o $@ -Wl,--out-implib=$(@:%.elf=%.lib) -Wl,--cmse-implib -T $(filter %.ld,$(^))  $(filter %.o,$(^)) -Wl,--start-group $(LIBS) -Wl,--end-group
+
+clean:
+	-rm -fvr $(TMP)
+	-rm -fv ./*_ram_thumb_v6m.elf
+	-rm -fv ./*_flash_thumb_v6m.elf
+	-rm -fv ./*_ram_thumb_ii_v7m.elf
+	-rm -fv ./*_flash_thumb_ii_v7m.elf
+	-rm -fv ./*_ram_thumb_ii_v8m_base.elf
+	-rm -fv ./*_flash_thumb_ii_v8m_base.elf
+	-rm -fv ./*_ram_thumb_ii_v8m_base_secure.elf
+	-rm -fv ./*_ram_thumb_ii_v8m_main.elf
+	-rm -fv ./*_flash_thumb_ii_v8m_main.elf
+	-rm -fv ./*_ram_thumb_ii_v8m_main_secure.elf
+
+-include ./special-cortex-m-rules.mk
