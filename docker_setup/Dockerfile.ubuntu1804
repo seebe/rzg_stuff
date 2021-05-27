@@ -5,6 +5,7 @@ FROM ubuntu:18.04
 ARG host_uid=1000
 ARG host_gid=1000
 ARG USERNAME=user
+ARG TZ="Etc/UTC"
 
 # use bash instead of dash as default /bin/sh
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
@@ -29,7 +30,15 @@ RUN DEBIAN_FRONTEND=noninteractive \
     flex gdisk git kmod libncurses5 libncurses5-dev libssl-dev \
     mtools parted pkg-config pv python3-dev python-dev \
     sudo swig udev python-ply ninja-build libwayland-dev \
-    golang
+    golang tmux
+
+# Install tzdata
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
+
+# Customize the time zone
+RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone \
+    && dpkg-reconfigure -f noninteractive tzdata 
 
 # Setup the locale
 RUN locale-gen en_US.UTF-8 \
@@ -37,6 +46,7 @@ RUN locale-gen en_US.UTF-8 \
 
 ENV LANG en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
+ENV LANGUAGE=en_US:en
 
 ENV USER $USERNAME
 
@@ -50,7 +60,7 @@ RUN adduser $USERNAME sudo
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 # Set work directory
-RUN mkdir -p /workdir
+RUN mkdir -p /home/$USERNAME/yocto
 
 # To have a more colorful world
 ENV TERM xterm-256color
@@ -60,4 +70,4 @@ USER $USERNAME
 RUN echo PS1=\"\\[\\e[33m\\]dir\:\ \\w\\n\\[\\e[1\;31m\\]\\u\@\(docker\)\$\\[\\e[00m\\]\ \" >> ~/.bashrc
 RUN echo printf=\"\\e]2\;docker\\a\" >> ~/.bashrc
 
-WORKDIR /workdir
+WORKDIR /home/$USERNAME/yocto
