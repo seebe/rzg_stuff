@@ -14,3 +14,5 @@ load ~/repos/rzg2_flash_writer/AArch64_output/Flash_Writer_SCIF_RZG2L_SMARC_DDR4
 shell sleep 1
 symbol-file ~/repos/rzg2_flash_writer/AArch64_output/Flash_Writer_SCIF_RZG2L_SMARC_DDR4_2GB.axf
 shell sleep 1
+b Main
+c
