@@ -3,5 +3,6 @@
 For guidance please refer to the following wiki pages:
 
 https://renesas.info/wiki/RZ-G/RZG_openocd_new
+
 https://renesas.info/wiki/RZ-G/RZG2_Eclipse_develop_and_debug
 
