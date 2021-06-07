@@ -4,7 +4,8 @@ FROM ubuntu:18.04
 # default group id and user id if not setting in build command
 ARG host_uid=1000
 ARG host_gid=1000
-ARG USERNAME=user
+ARG USERNAME=RZuser
+ARG WORK_DIR=workdir
 ARG TZ="Etc/UTC"
 
 # use bash instead of dash as default /bin/sh
@@ -60,7 +61,7 @@ RUN adduser $USERNAME sudo
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 # Set work directory
-RUN mkdir -p /home/$USERNAME/yocto
+#RUN mkdir -p /home/$USERNAME/$WORK_DIR
 
 # To have a more colorful world
 ENV TERM xterm-256color
@@ -70,4 +71,4 @@ USER $USERNAME
 RUN echo PS1=\"\\[\\e[33m\\]dir\:\ \\w\\n\\[\\e[1\;31m\\]\\u\@\(docker\)\$\\[\\e[00m\\]\ \" >> ~/.bashrc
 RUN echo printf=\"\\e]2\;docker\\a\" >> ~/.bashrc
 
-WORKDIR /home/$USERNAME/yocto
+WORKDIR /home/$USERNAME/
