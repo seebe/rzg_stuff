@@ -1,0 +1,199 @@
+#ifndef MSTP_IOBITMASK_H
+#define MSTP_IOBITMASK_H
+
+/* =========================================================================================================================== */
+/* ================                                          R_MSTP                                           ================ */
+/* =========================================================================================================================== */
+/* ==================================================  ACPU_MSTOP  ================================================== */
+#define R_MSTP_ACPU_SRAM_A_Pos             (0UL)       /*!< SRAM_A      (Bit  0)              */
+#define R_MSTP_ACPU_SRAM_A_Msk             (0x0001UL)  /*!< SRAM_A      (Bitfield-Mask: 0x01) */
+/* ==================================================  MCPU1_MSTOP  ================================================= */
+#define R_MSTP_MCPU1_MXSRAM_M_Pos          (0UL)       /*!< MXSRAM_M    (Bit  0)              */
+#define R_MSTP_MCPU1_MXSRAM_M_Msk          (0x0001UL)  /*!< MXSRAM_M    (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU1_MHSPI_Pos             (1UL)       /*!< MHSPI       (Bit  1)              */
+#define R_MSTP_MCPU1_MHSPI_Msk             (0x0002UL)  /*!< MHSPI       (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU1_MHMTU3A_Pos           (2UL)       /*!< MHMTU3A     (Bit  2)              */
+#define R_MSTP_MCPU1_MHMTU3A_Msk           (0x0004UL)  /*!< MHMTU3A     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU1_MHSRC_Pos             (3UL)       /*!< MHSRC       (Bit  3)              */
+#define R_MSTP_MCPU1_MHSRC_Msk             (0x0008UL)  /*!< MHSRC       (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU1_MHGPT_Pos             (4UL)       /*!< MHGPT       (Bit  4)              */
+#define R_MSTP_MCPU1_MHGPT_Msk             (0x0010UL)  /*!< MHGPT       (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU1_MHPOEGA_Pos           (5UL)       /*!< MHPOEGA     (Bit  5)              */
+#define R_MSTP_MCPU1_MHPOEGA_Msk           (0x0020UL)  /*!< MHPOEGA     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU1_MHPOEGB_Pos           (6UL)       /*!< MHPOEGB     (Bit  6)              */
+#define R_MSTP_MCPU1_MHPOEGB_Msk           (0x0040UL)  /*!< MHPOEGB     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU1_MHPOEGC_Pos           (7UL)       /*!< MHPOEGC     (Bit  7)              */
+#define R_MSTP_MCPU1_MHPOEGC_Msk           (0x0080UL)  /*!< MHPOEGC     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU1_MHPOEGD_Pos           (8UL)       /*!< MHPOEGD     (Bit  8)              */
+#define R_MSTP_MCPU1_MHPOEGD_Msk           (0x0100UL)  /*!< MHPOEGD     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU1_MHPOE3_Pos            (9UL)       /*!< MHPOE3      (Bit  9)              */
+#define R_MSTP_MCPU1_MHPOE3_Msk            (0x0200UL)  /*!< MHPOE3      (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU1_MHSSIF0_Pos           (10UL)      /*!< MHSSIF0     (Bit 10)              */
+#define R_MSTP_MCPU1_MHSSIF0_Msk           (0x0400UL)  /*!< MHSSIF0     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU1_MHSSIF1_Pos           (11UL)      /*!< MHSSIF1     (Bit 11)              */
+#define R_MSTP_MCPU1_MHSSIF1_Msk           (0x0800UL)  /*!< MHSSIF1     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU1_MHSSIF2_Pos           (12UL)      /*!< MHSSIF2     (Bit 12)              */
+#define R_MSTP_MCPU1_MHSSIF2_Msk           (0x1000UL)  /*!< MHSSIF2     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU1_MHSSIF3_Pos           (13UL)      /*!< MHSSIF3     (Bit 13)              */
+#define R_MSTP_MCPU1_MHSSIF3_Msk           (0x2000UL)  /*!< MHSSIF3     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU1_MHRSPI0_Pos           (14UL)      /*!< MHRSPI0     (Bit 14)              */
+#define R_MSTP_MCPU1_MHRSPI0_Msk           (0x4000UL)  /*!< MHRSPI0     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU1_MHRSPI1_Pos           (15UL)      /*!< MHRSPI1     (Bit 15)              */
+#define R_MSTP_MCPU1_MHRSPI1_Msk           (0x8000UL)  /*!< MHRSPI1     (Bitfield-Mask: 0x01) */
+/* ==================================================  MCPU2_MSTOP  ================================================= */
+#define R_MSTP_MCPU2_MHRSPI2_Pos           (0UL)       /*!< MHRSPI2     (Bit  0)              */
+#define R_MSTP_MCPU2_MHRSPI2_Msk           (0x0001UL)  /*!< MHRSPI2     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU2_MHSCIF0_Pos           (1UL)       /*!< MHSCIF0     (Bit  1)              */
+#define R_MSTP_MCPU2_MHSCIF0_Msk           (0x0002UL)  /*!< MHSCIF0     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU2_MHSCIF1_Pos           (2UL)       /*!< MHSCIF1     (Bit  2)              */
+#define R_MSTP_MCPU2_MHSCIF1_Msk           (0x0004UL)  /*!< MHSCIF1     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU2_MHSCIF2_Pos           (3UL)       /*!< MHSCIF2     (Bit  3)              */
+#define R_MSTP_MCPU2_MHSCIF2_Msk           (0x0008UL)  /*!< MHSCIF2     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU2_MHSCIF3_Pos           (4UL)       /*!< MHSCIF3     (Bit  4)              */
+#define R_MSTP_MCPU2_MHSCIF3_Msk           (0x0010UL)  /*!< MHSCIF3     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU2_MHSCIF4_Pos           (5UL)       /*!< MHSCIF4     (Bit  5)              */
+#define R_MSTP_MCPU2_MHSCIF4_Msk           (0x0020UL)  /*!< MHSCIF4     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU2_MHIRDA_Pos            (6UL)       /*!< MHIRDA      (Bit  6)              */
+#define R_MSTP_MCPU2_MHIRDA_Msk            (0x0040UL)  /*!< MHIRDA      (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU2_MHSCI0_Pos            (7UL)       /*!< MHSCI0      (Bit  7)              */
+#define R_MSTP_MCPU2_MHSCI0_Msk            (0x0080UL)  /*!< MHSCI0      (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU2_MHSCI1_Pos            (8UL)       /*!< MHSCI1      (Bit  8)              */
+#define R_MSTP_MCPU2_MHSCI1_Msk            (0x0100UL)  /*!< MHSCI1      (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU2_MPCANFD_Pos           (9UL)       /*!< MPCANFD     (Bit  9)              */
+#define R_MSTP_MCPU2_MPCANFD_Msk           (0x0200UL)  /*!< MPCANFD     (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU2_MPI2C0_Pos            (10UL)      /*!< MPI2C0      (Bit 10)              */
+#define R_MSTP_MCPU2_MPI2C0_Msk            (0x0400UL)  /*!< MPI2C0      (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU2_MPI2C1_Pos            (11UL)      /*!< MPI2C1      (Bit 11)              */
+#define R_MSTP_MCPU2_MPI2C1_Msk            (0x0800UL)  /*!< MPI2C1      (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU2_MPI2C2_Pos            (12UL)      /*!< MPI2C2      (Bit 12)              */
+#define R_MSTP_MCPU2_MPI2C2_Msk            (0x1000UL)  /*!< MPI2C2      (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU2_MPI2C3_Pos            (13UL)      /*!< MPI2C3      (Bit 13)              */
+#define R_MSTP_MCPU2_MPI2C3_Msk            (0x2000UL)  /*!< MPI2C3      (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU2_MPADC_Pos             (14UL)      /*!< MPADC       (Bit 14)              */
+#define R_MSTP_MCPU2_MPADC_Msk             (0x4000UL)  /*!< MPADC       (Bitfield-Mask: 0x01) */
+#define R_MSTP_MCPU2_MPTSU_Pos             (15UL)      /*!< MPTSU       (Bit 15)              */
+#define R_MSTP_MCPU2_MPTSU_Msk             (0x8000UL)  /*!< MPTSU       (Bitfield-Mask: 0x01) */
+/* ================================================  PERI_COM_MSTOP  ================================================ */
+#define R_MSTP_PERI_COM_MXSDHI0_Pos        (0UL)       /*!< MXSDHI0     (Bit  0)              */
+#define R_MSTP_PERI_COM_MXSDHI0_Msk        (0x0001UL)  /*!< MXSDHI0     (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_COM_MXSDHI1_Pos        (1UL)       /*!< MXSDHI1     (Bit  1)              */
+#define R_MSTP_PERI_COM_MXSDHI1_Msk        (0x0002UL)  /*!< MXSDHI1     (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_COM_MPGIGE0_Pos        (2UL)       /*!< MPGIGE0     (Bit  2)              */
+#define R_MSTP_PERI_COM_MPGIGE0_Msk        (0x0004UL)  /*!< MPGIGE0     (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_COM_MPGIGE1_Pos        (3UL)       /*!< MPGIGE1     (Bit  3)              */
+#define R_MSTP_PERI_COM_MPGIGE1_Msk        (0x0008UL)  /*!< MPGIGE1     (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_COM_MPUSBT_Pos         (4UL)       /*!< MPUSBT      (Bit  4)              */
+#define R_MSTP_PERI_COM_MPUSBT_Msk         (0x0010UL)  /*!< MPUSBT      (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_COM_MHUSB2H_Pos        (5UL)       /*!< MHUSB2H     (Bit  5)              */
+#define R_MSTP_PERI_COM_MHUSB2H_Msk        (0x0020UL)  /*!< MHUSB2H     (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_COM_MHUSB2F_Pos        (6UL)       /*!< MHUSB2F     (Bit  6)              */
+#define R_MSTP_PERI_COM_MHUSB2F_Msk        (0x0040UL)  /*!< MHUSB2F     (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_COM_MHUSB21_Pos        (7UL)       /*!< MHUSB21     (Bit  7)              */
+#define R_MSTP_PERI_COM_MHUSB21_Msk        (0x0080UL)  /*!< MHUSB21     (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_COM_MXCOM_Pos          (8UL)       /*!< MXCOM       (Bit  8)              */
+#define R_MSTP_PERI_COM_MXCOM_Msk          (0x0100UL)  /*!< MXCOM       (Bitfield-Mask: 0x01) */
+/* ================================================  PERI_CPU_MSTOP  ================================================ */
+#define R_MSTP_PERI_CPU_MXMCPU_Pos         (0UL)       /*!< MXMCPU      (Bit  0)              */
+#define R_MSTP_PERI_CPU_MXMCPU_Msk         (0x0001UL)  /*!< MXMCPU      (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_CPU_MXACPU_Pos         (1UL)       /*!< MXACPU      (Bit  1)              */
+#define R_MSTP_PERI_CPU_MXACPU_Msk         (0x0002UL)  /*!< MXACPU      (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_CPU_MPCST_Pos          (2UL)       /*!< MPCST       (Bit  2)              */
+#define R_MSTP_PERI_CPU_MPCST_Msk          (0x0004UL)  /*!< MPCST       (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_CPU_MPSYC_Pos          (3UL)       /*!< MPSYC       (Bit  3)              */
+#define R_MSTP_PERI_CPU_MPSYC_Msk          (0x0008UL)  /*!< MPSYC       (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_CPU_MPCPG_Pos          (4UL)       /*!< MPCPG       (Bit  4)              */
+#define R_MSTP_PERI_CPU_MPCPG_Msk          (0x0010UL)  /*!< MPCPG       (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_CPU_MHGPIO_Pos         (6UL)       /*!< MHGPIO      (Bit  6)              */
+#define R_MSTP_PERI_CPU_MHGPIO_Msk         (0x0040UL)  /*!< MHGPIO      (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_CPU_MPTZC0_Pos         (7UL)       /*!< MPTZC0      (Bit  7)              */
+#define R_MSTP_PERI_CPU_MPTZC0_Msk         (0x0080UL)  /*!< MPTZC0      (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_CPU_MPTZC1_Pos         (8UL)       /*!< MPTZC1      (Bit  8)              */
+#define R_MSTP_PERI_CPU_MPTZC1_Msk         (0x0100UL)  /*!< MPTZC1      (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_CPU_MPTZC2_Pos         (9UL)       /*!< MPTZC2      (Bit  9)              */
+#define R_MSTP_PERI_CPU_MPTZC2_Msk         (0x0200UL)  /*!< MPTZC2      (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_CPU_MPTZC3_Pos         (10UL)      /*!< MPTZC3      (Bit 10)              */
+#define R_MSTP_PERI_CPU_MPTZC3_Msk         (0x0400UL)  /*!< MPTZC3      (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_CPU_MPSRAM_A_Pos       (11UL)      /*!< MPSRAM_A    (Bit 11)              */
+#define R_MSTP_PERI_CPU_MPSRAM_A_Msk       (0x0800UL)  /*!< MPSRAM_A    (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_CPU_MPSRAM_M_Pos       (12UL)      /*!< MPSRAM_M    (Bit 12)              */
+#define R_MSTP_PERI_CPU_MPSRAM_M_Msk       (0x1000UL)  /*!< MPSRAM_M    (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_CPU_MPIA55_Pos         (13UL)      /*!< MPIA55      (Bit 13)              */
+#define R_MSTP_PERI_CPU_MPIA55_Msk         (0x2000UL)  /*!< MPIA55      (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_CPU_MPIM33_Pos         (14UL)      /*!< MPIM33      (Bit 14)              */
+#define R_MSTP_PERI_CPU_MPIM33_Msk         (0x4000UL)  /*!< MPIM33      (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_CPU_MXREG0_Pos         (15UL)      /*!< MXREG0      (Bit 15)              */
+#define R_MSTP_PERI_CPU_MXREG0_Msk         (0x8000UL)  /*!< MXREG0      (Bitfield-Mask: 0x01) */
+/* ================================================  PERI_DDR_MSTOP  ================================================ */
+#define R_MSTP_PERI_DDR_MPPHY_Pos          (0UL)       /*!< MPPHY       (Bit  0)              */
+#define R_MSTP_PERI_DDR_MPPHY_Msk          (0x0001UL)  /*!< MPPHY       (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_DDR_MXMEMC_REG_Pos     (1UL)       /*!< MXMEMC_REG  (Bit  1)              */
+#define R_MSTP_PERI_DDR_MXMEMC_REG_Msk     (0x0002UL)  /*!< MXMEMC_REG  (Bitfield-Mask: 0x01) */
+/* ================================================  PERI_VIDEO_MSTOP  ============================================== */
+#define R_MSTP_PERI_VIDEO_MPVCP4L_V_Pos    (0UL)       /*!< MPVCP4L_V   (Bit  0)              */
+#define R_MSTP_PERI_VIDEO_MPVCP4L_V_Msk    (0x0001UL)  /*!< MPVCP4L_V   (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_VIDEO_MPVCP4L_C_Pos    (1UL)       /*!< MPVCP4L_C   (Bit  1)              */
+#define R_MSTP_PERI_VIDEO_MPVCP4L_C_Msk    (0x0002UL)  /*!< MPVCP4L_C   (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_VIDEO_MPFCPCS_Pos      (2UL)       /*!< MPFCPCS     (Bit  2)              */
+#define R_MSTP_PERI_VIDEO_MPFCPCS_Msk      (0x0004UL)  /*!< MPFCPCS     (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_VIDEO_MPCRU_Pos        (3UL)       /*!< MPCRU       (Bit  3)              */
+#define R_MSTP_PERI_VIDEO_MPCRU_Msk        (0x0008UL)  /*!< MPCRU       (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_VIDEO_MPISU_Pos        (4UL)       /*!< MPISU       (Bit  4)              */
+#define R_MSTP_PERI_VIDEO_MPISU_Msk        (0x0010UL)  /*!< MPISU       (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_VIDEO_MPDSIPHY_Pos     (5UL)       /*!< MPDSIPHY    (Bit  5)              */
+#define R_MSTP_PERI_VIDEO_MPDSIPHY_Msk     (0x0020UL)  /*!< MPDSIPHY    (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_VIDEO_MPDSIL_Pos       (6UL)       /*!< MPDSIL      (Bit  6)              */
+#define R_MSTP_PERI_VIDEO_MPDSIL_Msk       (0x0040UL)  /*!< MPDSIL      (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_VIDEO_MPVSPD_Pos       (7UL)       /*!< MPVSPD      (Bit  7)              */
+#define R_MSTP_PERI_VIDEO_MPVSPD_Msk       (0x0080UL)  /*!< MPVSPD      (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_VIDEO_MPCPVD_Pos       (8UL)       /*!< MPCPVD      (Bit  8)              */
+#define R_MSTP_PERI_VIDEO_MPCPVD_Msk       (0x0100UL)  /*!< MPCPVD      (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_VIDEO_MPDU_Pos         (9UL)       /*!< MPDU        (Bit  9)              */
+#define R_MSTP_PERI_VIDEO_MPDU_Msk         (0x0200UL)  /*!< MPDU        (Bitfield-Mask: 0x01) */
+#define R_MSTP_PERI_VIDEO_MXVIDEO_Pos      (10UL)      /*!< MXVIDEO     (Bit 10)              */
+#define R_MSTP_PERI_VIDEO_MXVIDEO_Msk      (0x0400UL)  /*!< MXVIDEO     (Bitfield-Mask: 0x01) */
+/* ================================================  REG0_MSTOP  ==================================================== */
+#define R_MSTP_REG0_MPWDT3_Pos             (0UL)       /*!< MPWDT3      (Bit  0)              */
+#define R_MSTP_REG0_MPWDT3_Msk             (0x0001UL)  /*!< MPWDT3      (Bitfield-Mask: 0x01) */
+#define R_MSTP_REG0_MPWDT2_Pos             (1UL)       /*!< MPWDT2      (Bit  1)              */
+#define R_MSTP_REG0_MPWDT2_Msk             (0x0002UL)  /*!< MPWDT2      (Bitfield-Mask: 0x01) */
+#define R_MSTP_REG0_MPWDT0_Pos             (2UL)       /*!< MPWDT0      (Bit  2)              */
+#define R_MSTP_REG0_MPWDT0_Msk             (0x0004UL)  /*!< MPWDT0      (Bitfield-Mask: 0x01) */
+#define R_MSTP_REG0_MPWDT1_Pos             (3UL)       /*!< MPWDT1      (Bit  3)              */
+#define R_MSTP_REG0_MPWDT1_Msk             (0x0008UL)  /*!< MPWDT1      (Bitfield-Mask: 0x01) */
+#define R_MSTP_REG0_MPOSTM0_Pos            (4UL)       /*!< MPOSTM0     (Bit  4)              */
+#define R_MSTP_REG0_MPOSTM0_Msk            (0x0010UL)  /*!< MPOSTM0     (Bitfield-Mask: 0x01) */
+#define R_MSTP_REG0_MPOSTM1_Pos            (5UL)       /*!< MPOSTM1     (Bit  5)              */
+#define R_MSTP_REG0_MPOSTM1_Msk            (0x0020UL)  /*!< MPOSTM1     (Bitfield-Mask: 0x01) */
+#define R_MSTP_REG0_MPOSTM2_Pos            (6UL)       /*!< MPOSTM2     (Bit  6)              */
+#define R_MSTP_REG0_MPOSTM2_Msk            (0x0040UL)  /*!< MPOSTM2     (Bitfield-Mask: 0x01) */
+/* ================================================  REG1_MSTOP  ==================================================== */
+#define R_MSTP_REG1_MXDMAC_S_Pos           (0UL)       /*!< MXDMAC_S    (Bit  0)              */
+#define R_MSTP_REG1_MXDMAC_S_Msk           (0x0001UL)  /*!< MXDMAC_S    (Bitfield-Mask: 0x01) */
+#define R_MSTP_REG1_MPDMAC_S_Pos           (1UL)       /*!< MPDMAC_S    (Bit  1)              */
+#define R_MSTP_REG1_MPDMAC_S_Msk           (0x0002UL)  /*!< MPDMAC_S    (Bitfield-Mask: 0x01) */
+#define R_MSTP_REG1_MXDMAC_NS_Pos          (2UL)       /*!< MXDMAC_NS   (Bit  2)              */
+#define R_MSTP_REG1_MXDMAC_NS_Msk          (0x0004UL)  /*!< MXDMAC_NS   (Bitfield-Mask: 0x01) */
+#define R_MSTP_REG1_MPDMAC_NS_Pos          (3UL)       /*!< MPDMAC_NS   (Bit  3)              */
+#define R_MSTP_REG1_MPDMAC_NS_Msk          (0x0008UL)  /*!< MPDMAC_NS   (Bitfield-Mask: 0x01) */
+#define R_MSTP_REG1_MXMALI_Pos             (4UL)       /*!< MXMALI      (Bit  4)              */
+#define R_MSTP_REG1_MXMALI_Msk             (0x0010UL)  /*!< MXMALI      (Bitfield-Mask: 0x01) */
+#define R_MSTP_REG1_MHTSIPG_Pos            (5UL)       /*!< MHTSIPG     (Bit  5)              */
+#define R_MSTP_REG1_MHTSIPG_Msk            (0x0020UL)  /*!< MHTSIPG     (Bitfield-Mask: 0x01) */
+#define R_MSTP_REG1_MHTSIPG_OTP_Pos        (6UL)       /*!< MHTSIPG_OTP (Bit  6)              */
+#define R_MSTP_REG1_MHTSIPG_OTP_Msk        (0x0040UL)  /*!< MHTSIPG_OTP (Bitfield-Mask: 0x01) */
+#define R_MSTP_REG1_MXGIC_Pos              (7UL)       /*!< MXGIC       (Bit  7)              */
+#define R_MSTP_REG1_MXGIC_Msk              (0x0080UL)  /*!< MXGIC       (Bitfield-Mask: 0x01) */
+/* ================================================  TZCDDR_MSTOP  ================================================== */
+#define R_MSTP_TZCDDR_MSTOP0_Pos           (0UL)       /*!< MSTOP0      (Bit  0)              */
+#define R_MSTP_TZCDDR_MSTOP0_Msk           (0x0001UL)  /*!< MSTOP0      (Bitfield-Mask: 0x01) */
+#define R_MSTP_TZCDDR_MSTOP1_Pos           (1UL)       /*!< MSTOP1      (Bit  1)              */
+#define R_MSTP_TZCDDR_MSTOP1_Msk           (0x0002UL)  /*!< MSTOP1      (Bitfield-Mask: 0x01) */
+#define R_MSTP_TZCDDR_MSTOP2_Pos           (2UL)       /*!< MSTOP2      (Bit  2)              */
+#define R_MSTP_TZCDDR_MSTOP2_Msk           (0x0004UL)  /*!< MSTOP2      (Bitfield-Mask: 0x01) */
+#define R_MSTP_TZCDDR_MSTOP3_Pos           (3UL)       /*!< MSTOP3      (Bit  3)              */
+#define R_MSTP_TZCDDR_MSTOP3_Msk           (0x0008UL)  /*!< MSTOP3      (Bitfield-Mask: 0x01) */
+/* ================================================  MHU_MSTOP  ===================================================== */
+#define R_MSTP_MHU_MSTOP_Pos               (0UL)       /*!< MSTOP       (Bit  0)              */
+#define R_MSTP_MHU_MSTOP_Msk               (0x0001UL)  /*!< MSTOP       (Bitfield-Mask: 0x01) */
+
+#endif

@@ -1,0 +1,121 @@
+From 3295a0253103518f63fd40858b6c2f0a865ca603 Mon Sep 17 00:00:00 2001
+From: micbis <michele.bisogno.ct@renesas.com>
+Date: Tue, 18 May 2021 18:52:37 +0200
+Subject: [PATCH 2/3] target/aarch64: Write Memory function fix for
+ self-modifying code
+
+Writing memory function shall invalidate / flush caches. This is required
+for self-modifying code. The I/D cache invalidate code shall not check
+for the caches to be enabled. In AArch64 the SCTLR I and C bits do NOT
+disable the caches, they prevent code/data allocation. So if some stale
+code/data is present in the cache the CPU may (incorrectly) use it.
+
+Change-Id: I3bcd21770377be60a3788d66cd2a118aef1df403
+Signed-off-by: micbis <michele.bisogno.ct@renesas.com>
+---
+ src/target/aarch64.c     | 17 ++++++++++++++++-
+ src/target/armv8_cache.c | 32 --------------------------------
+ 2 files changed, 16 insertions(+), 33 deletions(-)
+
+diff --git a/src/target/aarch64.c b/src/target/aarch64.c
+index 612924f5a..768babf40 100644
+--- a/src/target/aarch64.c
++++ b/src/target/aarch64.c
+@@ -2488,6 +2488,8 @@ static int aarch64_write_memory(struct target *target, target_addr_t address,
+ {
+ 	int mmu_enabled = 0;
+ 	int retval;
++	struct aarch64_common *aarch64 = target_to_aarch64(target);
++	struct armv8_common *armv8 = &aarch64->armv8_common;
+ 
+ 	/* determine if MMU was enabled on target stop */
+ 	retval = aarch64_mmu(target, &mmu_enabled);
+@@ -2500,7 +2502,20 @@ static int aarch64_write_memory(struct target *target, target_addr_t address,
+ 		if (retval != ERROR_OK)
+ 			return retval;
+ 	}
+-	return aarch64_write_cpu_memory(target, address, size, count, buffer);
++
++	armv8_cache_d_inner_flush_virt(armv8, address & 0xFFFFFFFFFFFFFFFE,
++			size*count);
++
++	retval =  aarch64_write_cpu_memory(target, address, size, count, buffer);
++	if (retval != ERROR_OK)
++		return retval;
++
++	armv8_cache_d_inner_flush_virt(armv8, address & 0xFFFFFFFFFFFFFFFE,
++			size*count);
++	armv8_cache_i_inner_inval_virt(armv8, address & 0xFFFFFFFFFFFFFFFE,
++			size*count);
++
++	return ERROR_OK;
+ }
+ 
+ static int aarch64_handle_target_request(void *priv)
+diff --git a/src/target/armv8_cache.c b/src/target/armv8_cache.c
+index 86e4a5961..41de08125 100644
+--- a/src/target/armv8_cache.c
++++ b/src/target/armv8_cache.c
+@@ -29,26 +29,6 @@
+ #define CACHE_LEVEL_HAS_D_CACHE		0x2
+ #define CACHE_LEVEL_HAS_I_CACHE		0x1
+ 
+-static int armv8_d_cache_sanity_check(struct armv8_common *armv8)
+-{
+-	struct armv8_cache_common *armv8_cache = &armv8->armv8_mmu.armv8_cache;
+-
+-	if (armv8_cache->d_u_cache_enabled)
+-		return ERROR_OK;
+-
+-	return ERROR_TARGET_INVALID;
+-}
+-
+-static int armv8_i_cache_sanity_check(struct armv8_common *armv8)
+-{
+-	struct armv8_cache_common *armv8_cache = &armv8->armv8_mmu.armv8_cache;
+-
+-	if (armv8_cache->i_cache_enabled)
+-		return ERROR_OK;
+-
+-	return ERROR_TARGET_INVALID;
+-}
+-
+ static int armv8_cache_d_inner_flush_level(struct armv8_common *armv8, struct armv8_cachesize *size, int cl)
+ {
+ 	struct arm_dpm *dpm = armv8->arm.dpm;
+@@ -85,10 +65,6 @@ static int armv8_cache_d_inner_clean_inval_all(struct armv8_common *armv8)
+ 	int cl;
+ 	int retval;
+ 
+-	retval = armv8_d_cache_sanity_check(armv8);
+-	if (retval != ERROR_OK)
+-		return retval;
+-
+ 	retval = dpm->prepare(dpm);
+ 	if (retval != ERROR_OK)
+ 		goto done;
+@@ -119,10 +95,6 @@ int armv8_cache_d_inner_flush_virt(struct armv8_common *armv8, target_addr_t va,
+ 	target_addr_t va_line, va_end;
+ 	int retval;
+ 
+-	retval = armv8_d_cache_sanity_check(armv8);
+-	if (retval != ERROR_OK)
+-		return retval;
+-
+ 	retval = dpm->prepare(dpm);
+ 	if (retval != ERROR_OK)
+ 		goto done;
+@@ -158,10 +130,6 @@ int armv8_cache_i_inner_inval_virt(struct armv8_common *armv8, target_addr_t va,
+ 	target_addr_t va_line, va_end;
+ 	int retval;
+ 
+-	retval = armv8_i_cache_sanity_check(armv8);
+-	if (retval != ERROR_OK)
+-		return retval;
+-
+ 	retval = dpm->prepare(dpm);
+ 	if (retval != ERROR_OK)
+ 		goto done;
+-- 
+2.25.1
+
