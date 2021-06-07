@@ -5,7 +5,7 @@ FROM ubuntu:18.04
 ARG host_uid=1000
 ARG host_gid=1000
 ARG USERNAME=RZuser
-ARG WORK_DIR=workdir
+
 ARG TZ="Etc/UTC"
 
 # use bash instead of dash as default /bin/sh
