@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # setup default docker image tag
-IMAGE_TAG=rzg
+IMAGE_TAG=rz_world
 
 # if user setup the tag name, just use it
 if [ $1 ] ; then
