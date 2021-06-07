@@ -266,13 +266,13 @@ xz-utils debianutils iputils-ping libsdl1.2-dev xterm p7zip-full
 **Your container is now set up.**
 
 ### 3.4 Generate the Ubuntu 16.04/18.04 image by using dockerfile
-In order to generate the build environment with docker more easier, You can just use Dockerfile.ubuntu1604 or Dockerfile.ubuntu1804 file. The default image tag is "rzg", you can also replace to yours.
+In order to generate the build environment with docker more easier, You can just use Dockerfile.ubuntu1604 or Dockerfile.ubuntu1804 file. The default image tag is "rz_world", you can also replace to yours.
 ```
 $ cd rzg_stuff/docker_setup
-$ docker build --no-cache --build-arg "host_uid=$(id -u)" --build-arg "host_gid=$(id -g)" --build-arg "USERNAME=$USER" --build-arg "TZ=$(cat /etc/timezone)" --tag rzg -f ./Dockerfile.ubuntu1804 .
+$ docker build --no-cache --build-arg "host_uid=$(id -u)" --build-arg "host_gid=$(id -g)" --build-arg "USERNAME=$USER" --build-arg "TZ=$(cat /etc/timezone)" --tag rz_world -f ./Dockerfile.ubuntu1804 .
 $ docker images
 REPOSITORY   TAG       IMAGE ID       CREATED       SIZE
-rzg          latest    1234567890ab   5 hours ago   1.18GB
+rz_world          latest    1234567890ab   5 hours ago   1.18GB
 $ 
 ```
 
@@ -300,18 +300,21 @@ $ docker rename CONTAINER NEW_NAME
 **4.4 Run the container if you generate the image by the Dockerfile.ubuntu1604/Dockerfile.ubuntu1804 file**
 Make sure you put everything into your host workdir folder. Here is an example below.
 ```
-$ cd $HOME/yocto
+[In Host]
+$ cd $HOME/workdir
 $ ls
 build  extra  meta-gplv2  meta-openembedded  meta-rzg2  poky
-$ docker run -it --rm -v /home/$USER/yocto:/home/$USER/yocto rzg /bin/bash
-dir: ~/yocto
+$ docker run -it --rm -v $PWD:/home/$USER/workdir rz_world /bin/bash
+[In Container]
+dir: ~/
+user@(docker)$ cd /home/$USER/workdir
+dir: ~/workdir
 user@(docker)$ source poky/oe-init-build-env
-dir: ~/yocto
+dir: ~/workdir
 user@(docker)$ bitbake core-image-minimal
-dir: ~/yocto
+dir: ~/workdir
 user@(docker)$ 
 ```
-
 
 ## 5. extra notes
 ```
@@ -375,4 +378,29 @@ You can remove your old container now because it's not needed anymore
 $ docker rm distracted_bohr
 ```
 
+## 7. The useful script to have a build environment for RENESAS RZ series
+ * [Build docker image named "rz_world"]
+``` 
+	$ cd docker_setup
+	$ ./build_rz_world.sh
+	[After done, check if the script create the rz_world image for you]
+	$ docker images
+	REPOSITORY             TAG             IMAGE ID       CREATED         SIZE
+	rz_world               latest          YUOR_IMAGE ID   2 hours ago     1.45GB
 
+```
+
+ * [Go into container refer from "rz_world" image tag]
+You can run ./go_rz_world.sh with argument
+``` 
+	$ cd docker_setup
+	$ ./go_rz_world.sh [/path/to/host/workdir]
+	[After enterd, the workdir will be mapped : "/path/to/host/workdir" <-> "/path/to/container/workdir"]
+```
+Or you can run ./go_rz_world.sh without argument
+``` 
+	$ cd [/your/workdir/in/host]
+	$ /path/to/go_rz_world.sh
+	[After enterd, the workdir will be mapped : "/your/workdir/in/host" <-> "/home/renesas/workdir"]
+```
+Note: If your customize the image tag, please update the ./go_rz_world.sh script, make sure it can find the correct image tag. 
