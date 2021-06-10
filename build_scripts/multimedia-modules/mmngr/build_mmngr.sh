@@ -10,7 +10,8 @@ device=RZG2E
 #device=RZG2H
 
 # These pathes are available in the VLP, path:
-# meta-rzg2/recipes-kernel/kernel-module-gles/kernel-module-gles
+# meta-rzg2/recipes-kernel/kernel-module-mmngr/kernel-module-mmngr 
+# meta-rzg2/recipes-kernel/kernel-module-mmngr/kernel-module-mmngrbuf 
 PATCHES_PATH=../patches/mmngr
 
 # This is the path where the kernel is built
