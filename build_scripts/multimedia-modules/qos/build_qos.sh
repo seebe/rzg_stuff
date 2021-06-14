@@ -5,8 +5,8 @@ set -e
 # Set your parameters here
 
 # These pathes are available in the VLP, path:
-# meta-rzg2/recipes-kernel/kernel-module-vspmif/kernel-module-vspmif 
-PATCHES_PATH=../../patches/vspmif
+# meta-rzg2/recipes-kernel/kernel-module-qos/kernel-module-qos
+PATCHES_PATH=../../patches/qos
 
 # This is the path where the kernel is built
 KERNELSRCPATH=~/repos/my-linux-cip/.out
@@ -20,30 +20,30 @@ TARGET_IP_ADDRESS=192.168.10.125
 # Do not edit
 
 # The sources are available on github
-git clone -b rcar_gen3 git://github.com/renesas-rcar/vspmif_drv.git
+git clone -b rcar-gen3 git://github.com/renesas-rcar/qos_drv.git
 
-pushd vspmif_drv
+pushd qos_drv
 
-# Checkout the version that we need
-git checkout 6172cc7273aae0345db894faa5ab59777549c247
+# Checkout the version we need
+git checkout d32fbee4d7b76056c37935ff31102c3583801a29
 
 # Patch
-git apply ${PATCHES_PATH}/0001-vspm_if_main-Add-missing-linux-header.patch
+git apply ${PATCHES_PATH}/0001-qos_drv-include-mod_devicetable.h.patch
 
 # Prepare environment
 source ${SDK_PATH}/environment-setup-aarch64-poky-linux
+unset KERNELSRC
 export KERNELSRC=${KERNELSRCPATH}
-pushd vspm_if-module/files/vspm_if/drv
+pushd qos-module/files/qos/drv/
 KERNEL_VERSION=$(<${KERNELSRC}/include/config/kernel.release)
 
 # Make
-make -C $KERNELSRC M=$PWD KBUILD_EXTRA_SYMBOLS=../include/vspm.symvers modules
+make
 
-cp ../include/vspm_if.h $KERNELSRC/../include
-cp Module.symvers $KERNELSRC/include/vspm_if.symvers
+cp Module.symvers $KERNELSRC/include/qos.symvers
 
 # Install
-scp vspm_if.ko root@${TARGET_IP_ADDRESS}:/lib/modules/${KERNEL_VERSION}/extra
+scp qos.ko root@${TARGET_IP_ADDRESS}:/lib/modules/${KERNEL_VERSION}/extra
 
 
 

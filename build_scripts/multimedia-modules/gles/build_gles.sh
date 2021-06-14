@@ -20,7 +20,7 @@ GLES_TAR_r8a774c0=./GSX_KM_E3.tar.bz2
 
 # These pathes are available in the VLP, path:
 # meta-rzg2/recipes-kernel/kernel-module-gles/kernel-module-gles
-PATCHES_PATH=./patches/gles
+PATCHES_PATH=../../patches/gles
 
 # This is the path where the kernel is built
 KERNEL_OUT_DIR=~/repos/my-linux-cip/.out
@@ -74,15 +74,15 @@ tar xvf ${GLES_TAR}
 
 # Patch sources
 pushd rogue_km
-git apply ../${PATCHES_PATH}/0001-supporting-kernel-version-4.19-and-later.patch
-git apply ../${PATCHES_PATH}/0002-common-linux-dma_support-replace-__get_order-to-get_.patch
+git apply ${PATCHES_PATH}/0001-supporting-kernel-version-4.19-and-later.patch
+git apply ${PATCHES_PATH}/0002-common-linux-dma_support-replace-__get_order-to-get_.patch
 if [ $device = RZG2H ]
 then 
-  git apply ../${PATCHES_PATH}/0001-r8a7795-Makefile-support-fixed-device-memory-for-PVR.patch
+  git apply ${PATCHES_PATH}/0001-r8a7795-Makefile-support-fixed-device-memory-for-PVR.patch
 fi
 if [ $device = RZG2M ]
 then 
-  git apply ../${PATCHES_PATH}/0001-r8a7796-Makefile-support-fixed-device-memory-for-PVR.patch
+  git apply ${PATCHES_PATH}/0001-r8a7796-Makefile-support-fixed-device-memory-for-PVR.patch
 fi
   
 # Set-up environment

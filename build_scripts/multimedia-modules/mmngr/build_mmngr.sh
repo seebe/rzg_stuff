@@ -12,7 +12,7 @@ device=RZG2E
 # These pathes are available in the VLP, path:
 # meta-rzg2/recipes-kernel/kernel-module-mmngr/kernel-module-mmngr 
 # meta-rzg2/recipes-kernel/kernel-module-mmngr/kernel-module-mmngrbuf 
-PATCHES_PATH=../patches/mmngr
+PATCHES_PATH=../../patches/mmngr
 
 # This is the path where the kernel is built
 KERNELSRCPATH=~/repos/my-linux-cip/.out
