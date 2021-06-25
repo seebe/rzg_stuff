@@ -1,0 +1,81 @@
+# Please set the board boot mode to SCIF boot: SW11 ON-OFF-ON-OFF
+#
+# This script is meant to load ATF (BL2 and BL31) as well as U-Boot
+# directly into RAM using the JTAG, for example to be able
+# to program external flashes, or anyway take advantage of all
+# U-Boot functionalities. It may be useful also to debug U-Boot.
+# We need the initialization done in BL2 and BL31 before loading
+# U-Boot.
+#
+# The flow is:
+# 1) Load BL2 into internal SRAM;
+# 2) Set a breakpoint to the instruction that loads BL31 and U-Boot;
+# 3) Load BL31 and U-Boot via JTAG instead when the breakpoint is hit;
+# 4) Continue the execution and relocate U-Boot symbols
+#
+# The script requires only one change in the ATF: 2 labels in order to
+# set the breakpoints just before and after the code that is supposed
+# to load stuff from the non-volatile memory. Binaries are also
+# provided.
+
+# Connect to OpenOCD
+target remote localhost:3333
+mon reset
+mon halt
+shell sleep 0.5
+
+# Disable SMP
+mon r9a07g044l.a55.0 aarch64 smp off
+
+# Load modified ATF BL2 and symbols
+#load ~/repos/rzg_trusted-firmware-a_private/build/rzg2l/debug/bl2/bl2.elf
+load ~/rzg_stuff/openocd/bl2_mod.elf
+shell sleep 1
+#symbol-file ~/repos/rzg_trusted-firmware-a_private/build/rzg2l/debug/bl2/bl2.elf
+symbol-file ~/rzg_stuff/openocd/bl2_mod.elf
+
+# Restore BOOT_ID to the expected value: 0x3 = QSPI boot
+mon mww 0x10000 0x3
+
+# Insert HW breakpoint. SW breakpoints are failing because EL3 MMU is enabled
+# and apparently memory is set to read only in the corresponding page
+hbreak bl2_load_images:before_load
+hbreak console_flush
+continue
+
+# Set internal RAM to RO to force GDB using HW breakpoints
+mem 0x10000 0x2FFFF ro
+
+# Load ATF BL31
+mem 0x40000000 0x4FFFFFFF rw
+load ~/repos/rzg_trusted-firmware-a_private/build/rzg2l/debug/bl31/bl31.elf
+set $x0=0
+jump bl2_load_images:after_load
+
+# Load U-boot (BL33)
+mem 0x50000000 0xBFFFFFFF rw
+restore ~/repos/rzg_u-boot_private/u-boot.bin binary 0x50000000
+set $x0=0
+jump bl2_load_images:after_load
+
+# Delete breakpoints that are not used anymore
+delete 1
+delete 2
+
+# Load U-Boot symbols before the code relocation
+symbol-file ~/repos/rzg_u-boot_private/u-boot
+shell sleep 1
+
+# Set a Breakpoint to the start of the U-boot relocation routine
+hb relocate_code
+c
+
+# Now we are ready to relocate U-boot symbols, note that "-o" requires a relatively new GDB (9.1 is OK).
+symbol-file ~/repos/rzg_u-boot_private/u-boot -o gd->reloc_off
+
+# Define memory region to access RZ/G2L peripherals
+mem 0x10000000 0x15000000 rw
+
+# Set a breakpoint just before the main loop
+hb run_main_loop
+c
