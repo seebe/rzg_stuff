@@ -1,3 +1,4 @@
+# This script is meant to load the SMARC RZ/G2L Cortex-M33 blinky sample code from the Cortex-A55
 # Please set the board boot mode to SCIF boot: SW11 ON-OFF-ON-OFF
 
 # Connect to OpenOCD
@@ -11,8 +12,9 @@ mon r9a07g044l.a55.0 aarch64 smp off
 shell sleep 1
 
 # Load Cortex-M33 code
-load ~/rzg_stuff/openocd/cm33_sample_code/rzg2l_baremetal_blinky_smarc/Debug/rzg2l_baremetal_blinky_smarc
-symbol-file ~/rzg_stuff/openocd/cm33_sample_code/rzg2l_baremetal_blinky_smarc/Debug/rzg2l_baremetal_blinky_smarc
+# You need to adjust the path to reflect yours
+load ~/eclipse-workspace-testm/rzg2l_baremetal_blinky_smarc.tar.gz_expanded/rzg2l_baremetal_blinky_smarc/Debug/rzg2l_baremetal_blinky_smarc
+symbol-file ~/eclipse-workspace-testm/rzg2l_baremetal_blinky_smarc.tar.gz_expanded/rzg2l_baremetal_blinky_smarc/Debug/rzg2l_baremetal_blinky_smarc 
 shell sleep 1
 # Set SYS_CM33_CFG0/1 (SSG = ON)
 mon mww 0x11020804 0x01003CE5

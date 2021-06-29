@@ -1,3 +1,5 @@
+# This script is meant to stop the processor at the reset vector (Ek874).
+#
 target remote localhost:3333
 shell sleep 0.5
 disconnect

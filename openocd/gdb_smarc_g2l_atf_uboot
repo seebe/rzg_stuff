@@ -28,6 +28,9 @@ shell sleep 0.5
 mon r9a07g044l.a55.0 aarch64 smp off
 
 # Load modified ATF BL2 and symbols
+# You can use your own version (with before_load and after_load defined)
+# or just use the bl2_mod.elf available in the repository. You always 
+# need to adjust the path to reflect yours.
 #load ~/repos/rzg_trusted-firmware-a_private/build/rzg2l/debug/bl2/bl2.elf
 load ~/rzg_stuff/openocd/bl2_mod.elf
 shell sleep 1
@@ -47,12 +50,14 @@ continue
 mem 0x10000 0x2FFFF ro
 
 # Load ATF BL31
+# You need to adjust the path to reflect yours
 mem 0x40000000 0x4FFFFFFF rw
 load ~/repos/rzg_trusted-firmware-a_private/build/rzg2l/debug/bl31/bl31.elf
 set $x0=0
 jump bl2_load_images:after_load
 
 # Load U-boot (BL33)
+# You need to adjust the path to reflect yours
 mem 0x50000000 0xBFFFFFFF rw
 restore ~/repos/rzg_u-boot_private/u-boot.bin binary 0x50000000
 set $x0=0
@@ -63,6 +68,7 @@ delete 1
 delete 2
 
 # Load U-Boot symbols before the code relocation
+# You need to adjust the path to reflect yours
 symbol-file ~/repos/rzg_u-boot_private/u-boot
 shell sleep 1
 
@@ -71,6 +77,7 @@ hb relocate_code
 c
 
 # Now we are ready to relocate U-boot symbols, note that "-o" requires a relatively new GDB (9.1 is OK).
+# You need to adjust the path to reflect yours
 symbol-file ~/repos/rzg_u-boot_private/u-boot -o gd->reloc_off
 
 # Define memory region to access RZ/G2L peripherals

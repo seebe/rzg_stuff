@@ -1,3 +1,4 @@
+# This script is meant to debug the SMARC RZ/G2L Arm Trusted Firmware BL31
 # Please set the board boot mode to SCIF boot: SW11 ON-OFF-ON-OFF
 # This script works only if OpenOCD write memory functions are patched:
 # http://openocd.zylin.com/#/c/6266/
@@ -13,6 +14,7 @@ mon r9a07g044l.a55.0 aarch64 smp off
 shell sleep 0.5
 
 # Load BL2 code and use related symbols
+# You need to adjust the path to reflect yours
 load ~/repos/rzg_trusted-firmware-a/build/rzg2l/debug/bl2/bl2.elf
 shell sleep 1
 symbol-file ~/repos/rzg_trusted-firmware-a/build/rzg2l/debug/bl2/bl2.elf
@@ -41,6 +43,7 @@ shell sleep 1
 clear bl2_main
 
 # Load BL31 code and related symbols
+# You need to adjust the path to reflect yours
 load ~/repos/rzg_trusted-firmware-a/build/rzg2l/debug/bl31/bl31.elf
 shell sleep 1 
 symbol-file  ~/repos/rzg_trusted-firmware-a/build/rzg2l/debug/bl31/bl31.elf
