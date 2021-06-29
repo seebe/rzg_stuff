@@ -1,9 +1,0 @@
-# This script is meant to debug the EK874 FLash Writer
-# WARNING: gdb_ek874_reset_break need to be called before
-# The SCIF output is not working when loading the code because Flash Writer relies on ROM configuration.
-
-# You need to adjust the path to reflect yours
-load "~/repos/rzg2_flash_writer/AArch64_output/AArch64_Flash_writer_SCIF_DUMMY_CERT_E6300400_ek874.axf"
-symbol-file "~/repos/rzg2_flash_writer/AArch64_output/AArch64_Flash_writer_SCIF_DUMMY_CERT_E6300400_ek874.axf"
-b Main 
-c
