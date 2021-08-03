@@ -1,0 +1,195 @@
+; Copyright (C) 2021 Renesas Electronics Corp.
+; 
+; This TeraTerm macro programs the first files starting with "bl2" and "fip"
+; stored in the "Binaries" folder, in the RZ/G2L QSPI FLASH.
+; Assuming the files are there, launch the script and then reset the device.
+; You probably just need to adjust the COM port and Flash Writer srec file name.
+
+; COM6 and 115200 baudrate
+connect '/C=6'
+setbaud 12
+
+; this is the Flash Writer srec
+FLASH_WRITER = "Flash_Writer_SCIF_RZG2L_SMARC_DDR4_2GB.mot"
+
+; #### Normally you do not need to modify anything below this line ####
+
+; get current base path
+getdir BASE_PATH
+strconcat BASE_PATH "\"
+
+; we're going to flash two files
+IMAGE_NUM=2
+IMAGE_ARR=IMAGE_NUM-1
+
+strdim PROGRAM_SIZE_TABLE IMAGE_NUM
+strdim FLASH_ADDRESS_TABLE IMAGE_NUM
+strdim FILE_NAME_TABLE IMAGE_NUM
+strdim TOP_ADDRESS_TABLE IMAGE_NUM
+intdim SREC_NOT_BIN_TABLE IMAGE_NUM
+
+; FLASH_ADDRESS_TABLE[X] (hardcoded)
+FLASH_ADDRESS_TABLE[0] = "00000"
+FLASH_ADDRESS_TABLE[1] = "1D200"
+
+; TOP_ADDRESS_TABLE[X] (hardcoded)
+TOP_ADDRESS_TABLE[0] = "11E00"
+TOP_ADDRESS_TABLE[1] = "00000"
+
+
+; FILE_NAME_TABLE[X]
+; get file names from Binaries folder.
+; first files starting with "bl2" and "fip" are used
+
+filenamebl2="Binaries/"
+filenamefip="Binaries/"
+extpatbl2='Binaries/bl2*.*'
+extpatfip='Binaries/fip*.*'
+
+findfirst dh extpatbl2 filename
+if dh=-1 then
+   messagebox "bl2 file does not exist, please copy a valid bl2 file in the Binaries folder" "Error!"
+   exit
+endif
+strconcat filenamebl2 filename 
+; debug only
+; messagebox filenamebl2 "Debug"
+
+; check whether srec or bin
+strscan filenamebl2 ".bin"
+if result<>0 then
+   ; messagebox "srec not bin =0 i.e. binary" "Debug"
+   SREC_NOT_BIN_TABLE[0]=0
+else
+   strscan filenamebl2 ".srec"
+   if result<>0 then
+       ; messagebox "srec not bin =1 i.e. srec" "Debug"
+       SREC_NOT_BIN_TABLE[0]=1
+   else
+       messagebox "Can't find a valid bl2 .srec or .bin" "Error!"
+	   exit
+   endif
+endif
+
+FILE_NAME_TABLE[0] = filenamebl2
+
+findfirst dh extpatfip filename
+if dh=-1 then
+   messagebox "fip file does not exist, please copy a valid fip file in the Binaries folder"  "Error!"
+   exit
+endif
+strconcat filenamefip filename 
+; debug only
+; messagebox filenamefip "Debug"
+
+; check whether srec or bin
+strscan filenamefip ".bin"
+if result<>0 then
+   SREC_NOT_BIN_TABLE[1]=0
+else
+   strscan filenamefip ".srec"
+   if result<>0 then
+       SREC_NOT_BIN_TABLE[1]=1
+   else
+       messagebox "Can't find a valid fip .srec or .bin" "Error!"
+	   exit
+   endif
+endif
+
+FILE_NAME_TABLE[1] = filenamefip
+
+findclose dh
+
+waitregex "please send !"
+FLASH_WRITER_PATH=BASE_PATH
+strconcat FLASH_WRITER_PATH FLASH_WRITER
+sendfile FLASH_WRITER_PATH 0
+
+setsync 1
+sendln "XCS"
+waitregex "Clear OK?"
+sendln "y"
+
+for i 0 IMAGE_ARR
+   FLASH_ADDRESS=FLASH_ADDRESS_TABLE[i]
+   FILE_NAME=FILE_NAME_TABLE[i]
+   ; we don't need size with srec, rather top address
+   if SREC_NOT_BIN_TABLE[i] then
+      TOP_ADDRESS=TOP_ADDRESS_TABLE[i]
+   else
+      filestat FILE_NAME PROGRAM_SIZE_DEC
+	  call dec2hex
+	  PROGRAM_SIZE=PROGRAM_SIZE_HEX_STRING
+   endif
+   SREC_NOT_BIN=SREC_NOT_BIN_TABLE[i]
+   call write_flash
+next
+exit
+
+; #####
+; Flash Writer
+; #####
+
+:launch_writer
+
+if SREC_NOT_BIN then
+   sendln "XLS2"
+   ; messagebox "XLS2" "Debug"
+else
+   sendln "XLS3"
+   ; messagebox "XLS3" "Debug"
+endif
+
+waitregex "Please Input"
+
+return
+
+; #####
+;  PROGRAM_ADDRESS
+;  BASE_PATH
+;  FLASH_ADDRESS
+;  FILE_NAME
+; #####
+
+:write_flash
+
+call launch_writer
+
+if SREC_NOT_BIN then
+   sendln TOP_ADDRESS
+   waitregex "Please Input"
+else
+   sendln PROGRAM_SIZE
+   waitregex "Please Input"
+endif
+
+sendln FLASH_ADDRESS
+waitregex "please send"
+
+FILE_PATH=BASE_PATH
+strconcat FILE_PATH FILE_NAME
+
+if SREC_NOT_BIN then
+   sendfile FILE_PATH 0
+else
+   sendfile FILE_PATH 1
+endif
+
+waitregex "SPI Data Clear"
+
+waitregex ">"
+
+return
+
+; this is used to convert the file size in hex, since Flash Writer accepts hex only
+:dec2hex
+base=16
+PROGRAM_SIZE_HEX_STRING=''
+tmp=PROGRAM_SIZE_DEC      ;modified so not destructive of PROGRAM_SIZE_DEC 
+while tmp > 0
+   strcopy '0123456789ABCDEF' (tmp%base)+1 1 basedig
+   strconcat basedig PROGRAM_SIZE_HEX_STRING
+   PROGRAM_SIZE_HEX_STRING=basedig
+   tmp=tmp/base
+endwhile
+return
