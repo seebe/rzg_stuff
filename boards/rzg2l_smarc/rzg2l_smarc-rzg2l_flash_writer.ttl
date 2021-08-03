@@ -5,14 +5,40 @@
 ; Assuming the files are there, launch the script and then reset the device.
 ; You probably just need to adjust the COM port and Flash Writer srec file name.
 
-; COM6 and 115200 baudrate
-connect '/C=6'
-setbaud 12
 
 ; this is the Flash Writer srec
 FLASH_WRITER = "Flash_Writer_SCIF_RZG2L_SMARC_DDR4_2GB.mot"
 
+; COM port 
+COM = 6
+
 ; #### Normally you do not need to modify anything below this line ####
+
+; check if COM port number is passed via parameter, else use definition above
+comstr='/C='
+if paramcnt>1 then
+   strconcat comstr params[2]
+   ; messagebox params[2] "Debug"
+else
+   int2str comport COM
+   strconcat comstr comport
+endif
+
+messagebox comstr "Debug"
+connect comstr
+
+testlink
+if result=0 then
+   messagebox "No COM port" "Error!"
+   exit
+endif
+if result=1 then
+   messagebox "No connection to COM port" "Error!"
+   exit
+endif
+
+; baudrate = 115200
+setbaud 12
 
 ; get current base path
 getdir BASE_PATH
