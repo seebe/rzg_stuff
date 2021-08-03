@@ -24,7 +24,7 @@ else
    strconcat comstr comport
 endif
 
-messagebox comstr "Debug"
+; messagebox comstr "Debug"
 connect comstr
 
 testlink
@@ -125,6 +125,8 @@ endif
 FILE_NAME_TABLE[1] = filenamefip
 
 findclose dh
+
+messagebox "Please configure SCIF boot [OFF-ON-OFF-ON] and then reset the board " "User input needed"
 
 waitregex "please send !"
 FLASH_WRITER_PATH=BASE_PATH
