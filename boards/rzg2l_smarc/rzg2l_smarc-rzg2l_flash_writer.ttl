@@ -152,6 +152,12 @@ for i 0 IMAGE_ARR
    SREC_NOT_BIN=SREC_NOT_BIN_TABLE[i]
    call write_flash
 next
+
+messagebox "Macro executed successfully" "Done!"
+
+disconnect 0
+closett
+end
 exit
 
 ; #####
