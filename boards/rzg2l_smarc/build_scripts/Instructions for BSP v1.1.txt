@@ -1,0 +1,45 @@
+BSP 1.1
+
+########################
+# Arm Trusted Firmware
+########################
+git clone --branch v2.3/rzg2l   https://github.com/renesas-rz/rzg_trusted-firmware-a.git
+
+# This was the commit for "BSP v1.1"
+cd rzg_trusted-firmware-a
+git checkout baee1ff9a7ab159453776930bc5fa36ba5f05b7b
+cd ..
+
+# (WS1 boards only)
+# Apply extra patch for WS1 Silicon
+# Make a branch in our git repo so it is easy to update later
+cd rzg_trusted-firmware-a
+git checkout -b ws1_patch
+git am ../patches/BSP_1.1_WS1/trusted-firmware-a/*
+cd ..
+
+# (WS2 boards only)
+# Apply extra patch for WS2 Silicon
+# Make a branch in our git repo so it is easy to update later
+cd rzg_trusted-firmware-a
+git checkout -b ws2_patch
+git am ../patches/BSP_1.1_WS2/trusted-firmware-a/*
+cd ..
+
+
+
+########################
+# u-boot
+########################
+git clone --branch v2020.10/rzg2l   https://github.com/renesas-rz/renesas-u-boot-cip.git"
+
+# This was the commit for "BSP v1.1"
+cd renesas-u-boot-cip
+git checkout 4121d8a2b7021079a0d7f8d691ce523f6ea981f7
+cd ..
+
+
+########################
+# Flash Writer
+########################
+git clone --branch rz_g2l  https://github.com/renesas-rz/rzg2_flash_writer.git

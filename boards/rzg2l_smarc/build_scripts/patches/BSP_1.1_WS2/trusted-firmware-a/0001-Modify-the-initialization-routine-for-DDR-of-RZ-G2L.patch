@@ -1,0 +1,63 @@
+From 5b04f9e37e46785b57e448a5e9106898c1f1be23 Mon Sep 17 00:00:00 2001
+From: Shinji Hirai <shinji.hirai.zn@renesas.com>
+Date: Wed, 14 Jul 2021 13:55:34 +0900
+Subject: [PATCH] Modify the initialization routine for DDR of RZ/G2L
+
+---
+ plat/renesas/rzg2l/drivers/ddr/ddr.c | 19 +++++++++++++++++--
+ 1 file changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/plat/renesas/rzg2l/drivers/ddr/ddr.c b/plat/renesas/rzg2l/drivers/ddr/ddr.c
+index 5bf36aac5..e55357429 100644
+--- a/plat/renesas/rzg2l/drivers/ddr/ddr.c
++++ b/plat/renesas/rzg2l/drivers/ddr/ddr.c
+@@ -33,6 +33,8 @@
+ #define MAX_BEST_VREF_SAVED	(30U)
+ #define VREF_SETP			(1U)
+ 
++#define	SYS_LSI_DEVID	(0x11020A04)
++
+ static inline uint32_t read_mc_reg(uint32_t offset)
+ {
+ 	return mmio_read_32(DDR_MC_BASE + offset);
+@@ -63,6 +65,19 @@ static inline void rmw_phy_reg(uint32_t offset, uint32_t mask, uint32_t val)
+ 	write_phy_reg(offset, (read_phy_reg(offset) & mask) | val);
+ }
+ 
++static void ddr_ctrl_reten_en_n(uint8_t val)
++{
++	val &= 1;
++	if ((mmio_read_32(SYS_LSI_DEVID) >> 28) == 0)
++	{
++		rmw_phy_reg(DDRPHY_R78, 0xFFFEFFFF, (val << 16));
++	}
++	else
++	{
++		write_phy_reg(DDRPHY_R79, (val << 1));
++	}
++}
++
+ static void disable_phy_clk(void)
+ {
+ 	// Initialization Step9
+@@ -892,7 +907,7 @@ void ddr_setup(void)
+ 		;
+ 
+ 	// Step16
+-	rmw_phy_reg(DDRPHY_R78, 0xFFFEFFFF,0x00000000);
++	ddr_ctrl_reten_en_n(0);
+ 	rmw_mc_reg(DENALI_CTL_64, 0xFFFFFEFF, 0x00000000);
+ 	rmw_mc_reg(DENALI_CTL_11, 0xFEFFFFFF, 0x01000000);
+ 	rmw_mc_reg(DENALI_CTL_00, 0xFFFFFFFE, 0x00000001);
+@@ -907,7 +922,7 @@ void ddr_setup(void)
+ 
+ 	// Step17
+ 	cpg_reset_ddr_mc();
+-	rmw_phy_reg(DDRPHY_R78, 0xFFFEFFFF, 0x00010000);
++	ddr_ctrl_reten_en_n(1);
+ 
+ 	// Step18-19
+ 	program_mc1(&lp_auto_entry_en);
+-- 
+2.25.1
+

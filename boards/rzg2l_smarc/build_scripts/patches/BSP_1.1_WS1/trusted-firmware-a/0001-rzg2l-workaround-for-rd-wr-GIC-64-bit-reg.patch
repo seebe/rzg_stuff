@@ -1,0 +1,206 @@
+From 4715da4675fa8e2e3ecf894d5477f6a59a794fc4 Mon Sep 17 00:00:00 2001
+From: Nhan Nguyen <nhan.nguyen.yb@renesas.com>
+Date: Tue, 2 Mar 2021 10:39:49 +0700
+Subject: [PATCH] rzg2l: workaround for rd/wr GIC 64-bit reg
+
+Signed-off-by: Nhan Nguyen <nhan.nguyen.yb@renesas.com>
+---
+ drivers/arm/gic/v3/gicv3_private.h | 85 ++++++++++++++++++++++++++++++
+ plat/renesas/rzg2l/platform.mk     |  2 +
+ 2 files changed, 87 insertions(+)
+
+diff --git a/drivers/arm/gic/v3/gicv3_private.h b/drivers/arm/gic/v3/gicv3_private.h
+index c5d027da2..4980de070 100644
+--- a/drivers/arm/gic/v3/gicv3_private.h
++++ b/drivers/arm/gic/v3/gicv3_private.h
+@@ -68,8 +68,14 @@
+ #define GICD_READ(REG, base, id)	\
+ 	mmio_read_32((base) + GICD_OFFSET(REG, (id)))
+ 
++#if !WA_RZG2L_GIC64BIT
+ #define GICD_READ_64(REG, base, id)	\
+ 	mmio_read_64((base) + GICD_OFFSET_64(REG, (id)))
++#else
++#define GICD_READ_64(REG, base, id)	\
++	(((uint64_t)mmio_read_32((base) + GICD_OFFSET(REG, (id)))) | \
++	 ((uint64_t)mmio_read_32((base) + GICD_OFFSET(REG, (id)) + 4) << 32))
++#endif
+ 
+ #define GICD_WRITE_8(REG, base, id, val)	\
+ 	mmio_write_8((base) + GICD_OFFSET_8(REG, (id)), (val))
+@@ -77,8 +83,14 @@
+ #define GICD_WRITE(REG, base, id, val)	\
+ 	mmio_write_32((base) + GICD_OFFSET(REG, (id)), (val))
+ 
++#if !WA_RZG2L_GIC64BIT
+ #define GICD_WRITE_64(REG, base, id, val)	\
+ 	mmio_write_64((base) + GICD_OFFSET_64(REG, (id)), (val))
++#else
++#define GICD_WRITE_64(REG, base, id, val)	\
++	mmio_write_32((base) + GICD_OFFSET(REG, (id)), (val & 0xFFFFFFFF));	\
++	mmio_write_32((base) + GICD_OFFSET(REG, (id)) + 4, ((val >> 32) & 0xFFFFFFFF))
++#endif
+ 
+ /*
+  * Bit operations on GIC Distributor register corresponding
+@@ -316,7 +328,15 @@ static inline void gicr_write_ctlr(uintptr_t base, uint32_t val)
+ 
+ static inline uint64_t gicr_read_typer(uintptr_t base)
+ {
++#if !WA_RZG2L_GIC64BIT
+ 	return mmio_read_64(base + GICR_TYPER);
++#else
++	uint64_t val;
++
++	val = mmio_read_32(base + GICR_TYPER);
++	val |= ((uint64_t)mmio_read_32(base + GICR_TYPER + 4)) << 32;
++	return val;
++#endif
+ }
+ 
+ static inline uint32_t gicr_read_waker(uintptr_t base)
+@@ -623,12 +643,25 @@ static inline void gicr_write_nsacr(uintptr_t base, unsigned int val)
+  */
+ static inline uint64_t gicr_read_propbaser(uintptr_t base)
+ {
++#if !WA_RZG2L_GIC64BIT
+ 	return mmio_read_64(base + GICR_PROPBASER);
++#else
++	uint64_t val;
++
++	val = mmio_read_32(base + GICR_PROPBASER);
++	val |= ((uint64_t)mmio_read_32(base + GICR_PROPBASER + 4)) << 32;
++	return val;
++#endif
+ }
+ 
+ static inline void gicr_write_propbaser(uintptr_t base, uint64_t val)
+ {
++#if !WA_RZG2L_GIC64BIT
+ 	mmio_write_64(base + GICR_PROPBASER, val);
++#else
++	mmio_write_32(base + GICR_PROPBASER, (val & 0xFFFFFFFF));
++	mmio_write_32(base + GICR_PROPBASER + 4, ((val >> 32) & 0xFFFFFFFF));
++#endif
+ }
+ 
+ /*
+@@ -636,12 +669,25 @@ static inline void gicr_write_propbaser(uintptr_t base, uint64_t val)
+  */
+ static inline uint64_t gicr_read_pendbaser(uintptr_t base)
+ {
++#if !WA_RZG2L_GIC64BIT
+ 	return mmio_read_64(base + GICR_PENDBASER);
++#else
++	uint64_t val;
++
++	val = mmio_read_32(base + GICR_PENDBASER);
++	val |= ((uint64_t)mmio_read_32(base + GICR_PENDBASER + 4)) << 32;
++	return val;
++#endif
+ }
+ 
+ static inline void gicr_write_pendbaser(uintptr_t base, uint64_t val)
+ {
++#if !WA_RZG2L_GIC64BIT
+ 	mmio_write_64(base + GICR_PENDBASER, val);
++#else
++	mmio_write_32(base + GICR_PENDBASER, (val & 0xFFFFFFFF));
++	mmio_write_32(base + GICR_PENDBASER + 4, ((val >> 32) & 0xFFFFFFFF));
++#endif
+ }
+ 
+ /*******************************************************************************
+@@ -659,36 +705,75 @@ static inline void gits_write_ctlr(uintptr_t base, uint32_t val)
+ 
+ static inline uint64_t gits_read_cbaser(uintptr_t base)
+ {
++#if !WA_RZG2L_GIC64BIT
+ 	return mmio_read_64(base + GITS_CBASER);
++#else
++	uint64_t val;
++
++	val = mmio_read_32(base + GITS_CBASER);
++	val |= ((uint64_t)mmio_read_32(base + GITS_CBASER + 4)) << 32;
++	return val;
++#endif
+ }
+ 
+ static inline void gits_write_cbaser(uintptr_t base, uint64_t val)
+ {
++#if !WA_RZG2L_GIC64BIT
+ 	mmio_write_64(base + GITS_CBASER, val);
++#else
++	mmio_write_32(base + GITS_CBASER, (val & 0xFFFFFFFF));
++	mmio_write_32(base + GITS_CBASER + 4, ((val >> 32) & 0xFFFFFFFF));
++#endif
+ }
+ 
+ static inline uint64_t gits_read_cwriter(uintptr_t base)
+ {
++#if !WA_RZG2L_GIC64BIT
+ 	return mmio_read_64(base + GITS_CWRITER);
++#else
++	uint64_t val;
++
++	val = mmio_read_32(base + GITS_CWRITER);
++	val |= ((uint64_t)mmio_read_32(base + GITS_CWRITER + 4)) << 32;
++	return val;
++#endif
+ }
+ 
+ static inline void gits_write_cwriter(uintptr_t base, uint64_t val)
+ {
++#if !WA_RZG2L_GIC64BIT
+ 	mmio_write_64(base + GITS_CWRITER, val);
++#else
++	mmio_write_32(base + GITS_CWRITER, (val & 0xFFFFFFFF));
++	mmio_write_32(base + GITS_CWRITER + 4, ((val >> 32) & 0xFFFFFFFF));
++#endif
+ }
+ 
+ static inline uint64_t gits_read_baser(uintptr_t base,
+ 					unsigned int its_table_id)
+ {
+ 	assert(its_table_id < 8U);
++#if !WA_RZG2L_GIC64BIT
+ 	return mmio_read_64(base + GITS_BASER + (8U * its_table_id));
++#else
++	uint64_t val;
++
++	val = mmio_read_32(base + GITS_BASER + (8U * its_table_id));
++	val |= ((uint64_t)mmio_read_32(base + GITS_BASER + (8U * its_table_id) + 4)) << 32;
++	return val;
++#endif
+ }
+ 
+ static inline void gits_write_baser(uintptr_t base, unsigned int its_table_id,
+ 					uint64_t val)
+ {
+ 	assert(its_table_id < 8U);
++#if !WA_RZG2L_GIC64BIT
+ 	mmio_write_64(base + GITS_BASER + (8U * its_table_id), val);
++#else
++	mmio_write_32(base + GITS_BASER + (8U * its_table_id), (val & 0xFFFFFFFF));
++	mmio_write_32(base + GITS_BASER + (8U * its_table_id) + 4, ((val >> 32) & 0xFFFFFFFF));
++#endif
+ }
+ 
+ /*
+diff --git a/plat/renesas/rzg2l/platform.mk b/plat/renesas/rzg2l/platform.mk
+index d7224aa3c..171467fb1 100644
+--- a/plat/renesas/rzg2l/platform.mk
++++ b/plat/renesas/rzg2l/platform.mk
+@@ -12,7 +12,9 @@ GICV3_SUPPORT_GIC600			:= 1
+ HW_ASSISTED_COHERENCY			:= 1
+ USE_COHERENT_MEM				:= 0
+ DEBUG_RZG2L_FPGA				:= 0
++WA_RZG2L_GIC64BIT				:= 1
+ $(eval $(call add_define,DEBUG_RZG2L_FPGA))
++$(eval $(call add_define,WA_RZG2L_GIC64BIT))
+ 
+ BOARD_RZG2L_15MMSQ	:= 0
+ BOARD_RZG2L_EVA		:= 1
+-- 
+2.25.1
+
