@@ -1,0 +1,186 @@
+Please use the commands below to download the correct repository for building.
+
+---------------------------------------------------
+RZ Flash Writer
+---------------------------------------------------
+
+Repository:
+	$ git clone https://github.com/renesas-rz/rzg2_flash_writer
+
+Branches:
+
+  RZ/G2E, RZ/G2N, RZ/G2M, RZ/G2H:
+	$ cd rzg2_flash_writer ; git checkout master ; cd ..
+
+  RZ/G2L:
+	$ cd rzg2_flash_writer ; git checkout rz_g2l ; cd ..
+
+  RZ/G2L-WS2-PMIC:
+	$ cd rzg2_flash_writer ; git checkout cb40eb7529df ; cd ..
+BOARD="RZG2L_SMARC_PMIC"
+-EXTRA_FLAGS_smarc-rzg2l = "BOARD_TYPE=BOARD_RZG2L_EVA"
++EXTRA_FLAGS_smarc-rzg2l = "BOARD_TYPE=BOARD_RZG2L_EVA_PMIC"
+
+
+  RZ/V2L:
+	(none)
+
+  RZ/V2M:
+	$ cd rzg2_flash_writer ; git checkout rz_v2m ; cd ..
+
+
+---------------------------------------------------
+TF-A
+---------------------------------------------------
+NOTE: Also download mbed (see below)
+
+Repository:
+	$ git clone https://github.com/renesas-rz/rzg_trusted-firmware-a
+
+Branches:
+
+  RZ/G2E, RZ/G2N, RZ/G2M, RZ/G2H:
+  * BSP v1.0.9+
+	cd rzg_trusted-firmware-a ; git checkout v2.5/rzg2 ; cd ..
+
+  * BSP <= v1.0.8
+	cd rzg_trusted-firmware-a ; git checkout v2.4/rzg2 ; cd ..
+
+  RZ/G2L:
+  * BSP v1.1  (WS1 only)
+  	cd rzg_trusted-firmware-a
+  	git checkout v2.3/rzg2l
+  	git checkout -b rzg2l_bsp_v1.1_ws1 baee1ff9a7ab
+	git am ../patches/RZG2L_BSP_v1.1_WS1/rzg_trusted-firmware-a/*.patch
+  	cd ..
+
+  * BSP v1.1-update1  (WS2-Discrete only)
+  	cd rzg_trusted-firmware-a
+  	git checkout v2.3/rzg2l
+  	git checkout -b rzg2l_bsp_v1.1_ws2-discrete baee1ff9a7ab
+	git am ../patches/RZG2L_BSP_v1.1_WS2-Discrete/rzg_trusted-firmware-a/*.patch
+  	cd ..
+
+  * BSP v1.1-update1  (WS2-PMIC only)
+  	cd rzg_trusted-firmware-a
+  	git checkout v2.3/rzg2l
+  	git checkout -b rzg2l_bsp_v1.1_ws2-pmic baee1ff9a7ab
+	git am ../patches/RZG2L_BSP_v1.1_WS2-PMIC/rzg_trusted-firmware-a/*.patch
+  	cd ..
+
+
+  RZ/V2L:
+  	$ cd rzg_trusted-firmware-a ; git checkout develop/rzv2l ; cd ..
+
+
+---------------------------------------------------
+mbed
+---------------------------------------------------
+NOTES: mbed code is needed to build Trusted Firmware-A in BSP v1.0.5+)
+
+Repository:
+	$ git clone git://github.com/ARMmbed/mbedtls.git
+
+Branches:
+  RZ/G2E, RZ/G2N, RZ/G2M, RZ/G2H:
+	$ cd mbedtls ; git checkout mbedtls-2.16.3 ; cd ..
+
+
+---------------------------------------------------
+u-boot
+---------------------------------------------------
+
+Repository:
+	$ git clone https://github.com/renesas-rz/renesas-u-boot-cip
+
+Branches:
+
+  RZ/G2E, RZ/G2N, RZ/G2M, RZ/G2H:
+	(BSP v1.0.8+)
+	$ cd renesas-u-boot-cip ; git checkout v2020.10/rzg2 ; cd ..
+
+	(BSP <= v1.0.7)
+	$ cd renesas-u-boot-cip ; git checkout v2018.09/rzg2 ; cd ..
+
+  RZ/G2L:
+	$ cd renesas-u-boot-cip ; git checkout v2020.10/rzg2l ; cd ..
+  BSP v1.1  (WS1, WS2)
+	$ cd renesas-u-boot-cip ; git checkout -b rzg2l_bsp_v1.1 ddf4cb640b44 ; cd ..
+
+
+  RZ/V2L:
+	$ cd renesas-u-boot-cip ; git checkout develop/rzv2l; cd ..
+
+  RZ/V2M:
+	(none)
+
+  RZ/G1:
+	$ cd renesas-u-boot-cip ; git checkout 2013.01.01/rzg1-iwave ; cd ..
+	$ cd renesas-u-boot-cip ; git checkout 2013.01.01/rzg1-iwave-g1c ; cd ..
+
+
+---------------------------------------------------
+kernel
+---------------------------------------------------
+
+Repository:
+	$ git clone https://github.com/renesas-rz/rz_linux-cip
+
+Branches:
+
+  RZ/G2E, RZ/G2N, RZ/G2M, RZ/G2H:
+  BSP v1.0.8
+	$ cd rz_linux-cip ; git checkout -b rzg2_bsp_v1.0.8 ae1fef4b10f2 ; cd ..
+  BSP v1.0.8-RT
+	$ cd rz_linux-cip ; git checkout -b rzg2_bsp_v1.0.8rt 0882431bf2fe ; cd ..
+  BSP v1.0.9
+	$ cd rz_linux-cip ; git checkout -b rzg2_bsp_v1.0.9 ba8ac89871d7 ; cd ..
+  BSP v1.0.9-RT
+	$ cd rz_linux-cip ; git checkout -b rzg2_bsp_v1.0.9rt f0dfabb6a804 ; cd ..
+
+
+  RZ/G2L:
+  BSP v1.1  (WS1 only)
+	cd rz_linux-cip
+	git checkout -b rzg2l_bsp_v1.1  40bfccf59d26
+	patch -p1 -i ../patches/RZG2L_BSP_v1.1_WS1/rz_linux-cip/0025-arm64-arch_gicv3-Workaround-GIC-access-64bit-issue.patch ; git commit -a -m 0025-arm64-arch_gicv3-Workaround-GIC-access-64bit-issue.patch
+	patch -p1 -i ../patches/RZG2L_BSP_v1.1_WS1/rz_linux-cip/0181-add-dts-uvcs.patch ; git commit -a -m 0181-add-dts-uvcs.patch
+	patch -p1 -i ../patches/RZG2L_BSP_v1.1_WS1/rz_linux-cip/0182-add-mmp-reserverd-range.patch ; git commit -a -m 0182-add-mmp-reserverd-range.patch
+	patch -p1 -i ../patches/RZG2L_BSP_v1.1_WS1/rz_linux-cip/0183-add-vspm_if-node.patch ; git commit -a -m 0183-add-vspm_if-node.patch
+	patch -p1 -i ../patches/RZG2L_BSP_v1.1_WS1/rz_linux-cip/0184-Add-ISU-node-into-device-tree.patch ; git commit -a -m 0184-Add-ISU-node-into-device-tree.patch
+	cd ..
+
+  BSP v1.1-update1 (WS2-Discrete only)
+	cd rz_linux-cip
+	git checkout -b rzg2l_bsp_v1.1-update1 57ad66c455f6
+	patch -p1 -i ../patches/RZG2L_BSP_v1.1_WS2-Discrete/rz_linux-cip/0181-add-dts-uvcs.patch ; git commit -a -m 0181-add-dts-uvcs.patch
+	patch -p1 -i ../patches/RZG2L_BSP_v1.1_WS2-Discrete/rz_linux-cip/0182-add-mmp-reserverd-range.patch ; git commit -a -m 0182-add-mmp-reserverd-range.patch
+	patch -p1 -i ../patches/RZG2L_BSP_v1.1_WS2-Discrete/rz_linux-cip/0183-add-vspm_if-node.patch ; git commit -a -m 0183-add-vspm_if-node.patch
+	patch -p1 -i ../patches/RZG2L_BSP_v1.1_WS2-Discrete/rz_linux-cip/0184-Add-ISU-node-into-device-tree.patch ; git commit -a -m 0184-Add-ISU-node-into-device-tree.patch
+	patch -p1 -i ../patches/RZG2L_BSP_v1.1_WS2-Discrete/rz_linux-cip/0185-Fixed-an-issue-that-caused-flicker-when-outputting-t.patch ; git commit -a -m 0184-Add-ISU-node-into-device-tree.patch
+	cd ..
+
+  BSP v1.1-update1 (WS2-PMIC only)
+	cd rz_linux-cip
+	git checkout -b rzg2l_bsp_v1.1-update1_pmic 57ad66c455f6
+	patch -p1 -i ../patches/RZG2L_BSP_v1.1_WS2-PMIC/rz_linux-cip/0181-add-dts-uvcs.patch ; git commit -a -m 0181-add-dts-uvcs.patch
+	patch -p1 -i ../patches/RZG2L_BSP_v1.1_WS2-PMIC/rz_linux-cip/0182-add-mmp-reserverd-range.patch ; git commit -a -m 0182-add-mmp-reserverd-range.patch
+	patch -p1 -i ../patches/RZG2L_BSP_v1.1_WS2-PMIC/rz_linux-cip/0183-add-vspm_if-node.patch ; git commit -a -m 0183-add-vspm_if-node.patch
+	patch -p1 -i ../patches/RZG2L_BSP_v1.1_WS2-PMIC/rz_linux-cip/0184-Add-ISU-node-into-device-tree.patch ; git commit -a -m 0184-Add-ISU-node-into-device-tree.patch
+	patch -p1 -i ../patches/RZG2L_BSP_v1.1_WS2-PMIC/rz_linux-cip/0185-Fixed-an-issue-that-caused-flicker-when-outputting-t.patch ; git commit -a -m 0184-Add-ISU-node-into-device-tree.patch
+	cd ..
+
+
+  BSP v1.1 + WS2
+	$ cd rz_linux-cip ; git checkout -b rzg2l_bsp_v1.1  57ad66c455f6 ; cd ..
+
+  BSP v1.1 WS2 patch
+
+
+BRANCH = "rzg2l-cip41"
+SRCREV = "57ad66c455f65df790476d590e577e15ca603f83"
+
+
+
+  RZ/V2L:
+
