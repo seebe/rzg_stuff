@@ -23,18 +23,8 @@ else
   source build_common.sh
 fi
 
-if [ "$SETTINGS_FILE" == "" ] ; then
-  echo "WARNING: Environment variable SETTINGS_FILE is not set. Assuming board.ini"
-  SETTINGS_FILE=board.ini
-fi
-
-# Read what we programmed last time
-if [ -e "$SETTINGS_FILE" ] ; then
-  source "$SETTINGS_FILE"
-else
-  echo -e "\nERROR: Settings file ($SETTINGS_FILE) not found."
-  exit
-fi
+# Read our settings (board.ini) or whatever file SETTINGS_FILE was set to
+read_setting
 
 if [ "$MACHINE" == "" ] ; then
   echo "You need to set MACHINE first"

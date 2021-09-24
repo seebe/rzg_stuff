@@ -46,6 +46,15 @@ select_toolchain() {
 }
 
 
+read_setting() {
+  if [ -e "$SETTINGS_FILE" ] ; then
+    source "$SETTINGS_FILE"
+  else
+    echo -e "\nERROR: Settings file ($SETTINGS_FILE) not found."
+    exit
+  fi
+}
+
 # $1 = env variable to save
 # $2 = value
 # Remember, we we share this file with other scripts, so we only want to change
