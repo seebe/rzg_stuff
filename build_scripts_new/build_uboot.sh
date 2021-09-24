@@ -40,19 +40,12 @@ if [ "$MACHINE" == "ek874" ] ; then DEFCONFIG=r8a774c0_ek874_defconfig ; fi
 if [ "$MACHINE" == "smarc-rzg2l" ] ; then DEFCONFIG=smarc-rzg2l_defconfig ; fi
 
 # Set the output directory (because I like all my build files separate from the source code)
-OUT=.out_${MACHINE}
+OUT=.out
 
 # Check for MACHINE setting
 if [ "$MACHINE" == "" ] ; then
   echo ""
   echo "ERROR: Please set MACHINE in settings file ($SETTINGS_FILE)"
-  echo ""
-  exit
-fi
-
-if [ "$DEFCONFIG" == "" ] ; then
-  echo ""
-  echo "ERROR: Please set DEFCONFIG in settings file ($SETTINGS_FILE)"
   echo ""
   exit
 fi
@@ -128,6 +121,14 @@ cd $UBOOT_DIR
 
 # If this is the first time building, we need to configure first
 if [ ! -e "$OUT/.config" ] ; then
+
+  if [ "$DEFCONFIG" == "" ] ; then
+    echo ""
+    echo "ERROR: Please set DEFCONFIG in settings file ($SETTINGS_FILE)"
+    echo ""
+    exit
+  fi
+
   echo $MAKE $DEFCONFIG
   eval $MAKE $DEFCONFIG
 fi

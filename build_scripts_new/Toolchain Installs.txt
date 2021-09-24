@@ -12,9 +12,16 @@ $ cd /opt/arm
 $ sudo wget https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-a/9.2-2019.12/binrel/gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu.tar.xz
 $ sudo tar xf gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu.tar.xz
 
+#-----------------------------------------------------
+#Linaro Toolchain, Version 7.5.0-2019.12
+#-----------------------------------------------------
+sudo mkdir -p /opt/linaro
+cd /opt/linaro
+sudo wget https://releases.linaro.org/components/toolchain/binaries/7.5-2019.12/aarch64-linux-gnu/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
+sudo tar xvf gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
 
 -----------------------------------------------------
-Linaro Toolchain, Version 7.3-2018.05
+Linaro Toolchain, Version 7.3.1-2018.05
 
 For building kernel
 -----------------------------------------------------
