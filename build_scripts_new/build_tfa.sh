@@ -158,9 +158,9 @@ create_bootparams() {
   # - Middle of the file is 0xFF
 
   if [ "$TFA_DEBUG" == "1" ] ; then
-    cd build/rzg2l/debug
+    cd build/${PLATFORM}/debug
   else
-    cd build/rzg2l/release
+    cd build/${PLATFORM}/release
   fi
 
   echo -e "\n[Creating bootparams.bin]"
@@ -196,16 +196,16 @@ create_fip_and_copy() {
   # Build the Fip Tool
   echo -e "\n[Building FIP tool]"
   cd tools/fiptool
-  make PLAT=rzg2l
+  make PLAT=${PLATFORM}
   cd ../..
 
   echo -e "[Create fip.bin]"
-  tools/fiptool/fiptool create --align 16 --soc-fw build/rzg2l/$BUILD_DIR/bl31.bin --nt-fw ../$OUT_DIR/u-boot.bin fip.bin
+  tools/fiptool/fiptool create --align 16 --soc-fw build/${PLATFORM}/$BUILD_DIR/bl31.bin --nt-fw ../$OUT_DIR/u-boot.bin fip.bin
   cp fip.bin ../$OUT_DIR/fip-${MACHINE}.bin
 
   echo -e "[Convert BIN SREC format]"
   #<BL2>
-  ${CROSS_COMPILE}objcopy -I binary -O srec --adjust-vma=0x00011E00 --srec-forceS3 build/rzg2l/$BUILD_DIR/bl2_bp.bin ../$OUT_DIR/bl2_bp-${MACHINE}.srec
+  ${CROSS_COMPILE}objcopy -I binary -O srec --adjust-vma=0x00011E00 --srec-forceS3 build/${PLATFORM}/$BUILD_DIR/bl2_bp.bin ../$OUT_DIR/bl2_bp-${MACHINE}.srec
 
   #<FIP>
   ${CROSS_COMPILE}objcopy -I binary -O srec --adjust-vma=0x00000000 --srec-forceS3 fip.bin ../$OUT_DIR/fip-${MACHINE}.srec
@@ -417,12 +417,37 @@ fi
 # Board Settings
 case "$MACHINE" in 
   "smarc-rzg2l")
-    BOARD_TYPE="BOARD_RZG2L_EVA"
-    #BOARD_TYPE="BOARD_RZG2L_15MMSQ"
-    #BOARD_TYPE="BOARD_RZG2LC_13MMSQ"
 
-    TFA_OPT="BOARD_TYPE=$BOARD_TYPE"
+  # Old directory structure
+  if [ -e plat/renesas/rzg2l/platform.mk ] ; then
     PLATFORM=rzg2l
+    # "BOARD_RZG2L_EVA" was renamed to "RZG2L_SMARC_EVK"
+    # "BOARD_RZG2L_15MMSQ" was renamed to "RZG2L_DEVELOPMENT_BOARD"
+    # "BOARD_RZG2LC_13MMSQ" was renamed to "RZG2LC_DEVELOPMENT_BOARD"
+    grep -q "BOARD_RZG2L_EVA" plat/renesas/rzg2l/platform.mk
+    if [ "$?" == "0" ] ; then
+      # old
+      TFA_OPT="BOARD_TYPE=BOARD_RZG2L_EVA"
+      #TFA_OPT="BOARD_TYPE=BOARD_RZG2L_15MMSQ"
+      #TFA_OPT="BOARD_TYPE=BOARD_RZG2LC_13MMSQ"
+    else
+      # new
+      TFA_OPT="BOARD_TYPE=RZG2L_SMARC_EVK"
+      #TFA_OPT=BOARD_TYPE=RZG2L_DEVELOPMENT_BOARD"
+      #TFA_OPT=BOARD_TYPE=RZG2LC_DEVELOPMENT_BOARD"
+    fi
+  fi
+
+  # New directory structure
+  if [ -e plat/renesas/rz ] ; then
+    PLATFORM=g2l
+    TFA_OPT="BOARD=smarc_2"
+    #TFA_OPT="BOARD=smarc_pmic_2"
+    #TFA_OPT="BOARD=dev15_4" #rzg2l-dev
+    #TFA_OPT="BOARD=dev13_1" #rzg2lc-dev
+  fi
+
+    #PLATFORM=g2l
     TOOL=
     ;;
   "ek874")
