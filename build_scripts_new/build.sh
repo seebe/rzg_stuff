@@ -17,11 +17,12 @@
 # The output files you need will be copied to the 'output_xxxxx' directory. xxx will be the name of your board.
 
 # Supported Boards
-#MACHINE=hihope-rzg2m	# HiHope RZ/G2M
-#MACHINE=hihope-rzg2n	# HiHope RZ/G2N
-#MACHINE=hihope-rzg2h	# HiHope RZ/G2H
-#MACHINE=ek874		# Silicon Linux RZ/G2E
-#MACHINE=smarc-rzg2l	# Renesas RZ/G2L EVK
+# MACHINE=hihope-rzg2m	# HiHope RZ/G2M
+# MACHINE=hihope-rzg2n	# HiHope RZ/G2N
+# MACHINE=hihope-rzg2h	# HiHope RZ/G2H
+# MACHINE=ek874		# Silicon Linux RZ/G2E
+# MACHINE=smarc-rzg2l	# Renesas RZ/G2L EVK
+#   BOARD_VERSION: DISCRETE, PMIC, WS1
 
 
 #----------------------------------------------
@@ -194,7 +195,16 @@ if [ "$1" == "s" ] ; then
       2\ *) FW_BOARD=HIHOPE ; MACHINE=hihope-rzg2n ;;
       3\ *) FW_BOARD=HIHOPE ; MACHINE=hihope-rzg2h ;;
       4\ *) FW_BOARD=EK874 ; MACHINE=ek874 ;;
-      5\ *) FW_BOARD=RZG2L_SMARC ; MACHINE=smarc-rzg2l ;;
+      5\ *) FW_BOARD=RZG2L_SMARC ; MACHINE=smarc-rzg2l
+	whiptail --yesno --yes-button PMIC_Power --no-button Discrete_Power "Board Version:\n\nIs the board 'PMIC Power' version or the 'Discrete Power' version?\n\nThe PMIC version has \"Reneas\" printed in the middle of the SOM board.\nThe Discrete version has \"Renesas\" printed at the edge of the SOM baord.   " 0 0 0
+	if [ "$?" == "0" ] ; then
+		BOARD_VERSION="PMIC"
+		FW_BOARD=RZG2L_SMARC_PMIC
+	else
+		BOARD_VERSION="DISCRETE"
+		FW_BOARD=RZG2L_SMARC
+	fi
+      ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $SELECT" 20 60 1
   else
@@ -205,7 +215,7 @@ if [ "$1" == "s" ] ; then
   # Clear out the current settings file
   echo "" > $SETTINGS_FILE
 
-  # Save our defaults
+  # Save our default directories
   save_setting TFA_DIR $TFA_DIR_DEFAULT
   save_setting UBOOT_DIR $UBOOT_DIR_DEFAULT
   save_setting FW_DIR $FW_DIR_DEFAULT
@@ -214,6 +224,7 @@ if [ "$1" == "s" ] ; then
   # The board
   save_setting MACHINE $MACHINE
   save_setting OUT_DIR output_${MACHINE}
+  save_setting BOARD_VERSION $BOARD_VERSION
 
   # Set Default for Flash Writer script
   save_setting FW_BOARD $FW_BOARD

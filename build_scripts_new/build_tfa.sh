@@ -4,12 +4,12 @@
 # Please read the README.md file first for proper setup
 #---------------------------------------------------------------------------
 
-# HiHope RZ/G2M
-#MACHINE=hihope-rzg2m
-#MACHINE=hihope-rzg2n
-#MACHINE=hihope-rzg2h
-#MACHINE=ek874
-#MACHINE=smarc-rzg2l
+# MACHINE=hihope-rzg2m
+# MACHINE=hihope-rzg2n
+# MACHINE=hihope-rzg2h
+# MACHINE=ek874
+# MACHINE=smarc-rzg2l
+#   BOARD_VERSION: DISCRETE, PMIC, WS1
 
 #TFA_BOOT: 0=SPI Flash, 1=eMMC
 #TFA_ECC_FULL: 0=no ECC, 1=ECC dual channel, 2=ECC single channel
@@ -230,8 +230,14 @@ if [ "$1" == "" ] ; then
     if [ "$TFA_LOG_LEVEL" == "" ] ; then LOG_TEXT="(default)" ; else LOG_TEXT="$TFA_LOG_LEVEL" ; fi
     if [ "$TFA_ECC_FULL" == "" ] ; then ECC_TEXT="(default)" ; else ECC_TEXT="${ECC_TEXT_STR[$TFA_ECC_FULL]}" ; fi
 
+    if [ "$BOARD_VERSION" != "" ] ; then
+      BOARD_VERSION_TEXT="($BOARD_VERSION)"
+    else
+      BOARD_VERSION_TEXT=""
+   fi
+
     SELECT=$(whiptail --title "Trusted Firmware-A Configuration" --menu "Select your build options.\nYou may use [ESC]+[ESC] to cancel/exit.\nUse [Tab] key to select buttons at the bottom.\n\nUse the <Change> button (or enter) to make changes.\nUse the <Build> button to start the build." 0 0 0 --cancel-button Build --ok-button Change \
-	"1.              Select your board:" "  $MACHINE"  \
+	"1.              Select your board:" "  $MACHINE $BOARD_VERSION_TEXT"\
 	"2.                    Boot Device:" "  $BOOT_TEXT" \
 	"3.                   TFA_ECC_FULL:" "  $ECC_TEXT"  \
 	"4.                      Log Level:" "  $TFA_LOG_LEVEL" \
@@ -441,8 +447,13 @@ case "$MACHINE" in
   # New directory structure
   if [ -e plat/renesas/rz ] ; then
     PLATFORM=g2l
-    TFA_OPT="BOARD=smarc_2"
-    #TFA_OPT="BOARD=smarc_pmic_2"
+    if [ "$BOARD_VERSION" == "PMIC" ] ; then
+      TFA_OPT="BOARD=smarc_pmic_2"
+    else
+      TFA_OPT="BOARD=smarc_2"
+    fi
+
+    # Internal Renesas Boards
     #TFA_OPT="BOARD=dev15_4" #rzg2l-dev
     #TFA_OPT="BOARD=dev13_1" #rzg2lc-dev
   fi
@@ -599,6 +610,7 @@ if [ -e build/${PLATFORM}/release/bl2.bin ] && [ "$OUT_DIR" != "" ] ; then
 
   # Save what this was build with
   echo "MACHINE=$MACHINE" > ../$OUT_DIR/manifest_tfa.txt
+  echo "BOARD_VERSION=$BOARD_VERSION" > ../$OUT_DIR/manifest_tfa.txt
   echo "TFA_BOOT=$TFA_BOOT" >> ../$OUT_DIR/manifest_tfa.txt
   echo "TFA_LOG_LEVEL=$TFA_LOG_LEVEL" >> ../$OUT_DIR/manifest_tfa.txt
   echo "TFA_ECC_FULL=$TFA_ECC_FULL" >> ../$OUT_DIR/manifest_tfa.txt
