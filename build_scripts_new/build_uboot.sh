@@ -10,6 +10,7 @@
 #MACHINE=hihope-rzg2h	# HiHope RZ/G2H
 #MACHINE=ek874		# Silicon Linux RZ/G2E
 #MACHINE=smarc-rzg2l    # Renesas SMARC RZ/G2L
+#MACHINE=smarc-rzg2lc   # Renesas SMARC RZ/G2LC
 
 # Read in functions from build_common.sh
 if [ ! -e build_common.sh ] ; then 
@@ -28,6 +29,7 @@ if [ "$MACHINE" == "hihope-rzg2n" ] ; then DEFCONFIG=r8a774b1_hihope-rzg2n_defco
 if [ "$MACHINE" == "hihope-rzg2h" ] ; then DEFCONFIG=r8a774e1_hihope-rzg2h_defconfig ; fi
 if [ "$MACHINE" == "ek874" ] ; then DEFCONFIG=r8a774c0_ek874_defconfig ; fi
 if [ "$MACHINE" == "smarc-rzg2l" ] ; then DEFCONFIG=smarc-rzg2l_defconfig ; fi
+if [ "$MACHINE" == "smarc-rzg2lc" ] ; then DEFCONFIG=smarc-rzg2l_defconfig ; fi
 
 # Set the output directory (because I like all my build files separate from the source code)
 OUT=.out
@@ -47,6 +49,8 @@ do_toolchain_menu() {
 if [ "$UBOOT_TOOLCHAIN_SETUP_NAME" == "" ] ; then
   whiptail --msgbox "Please select a Toolchain" 0 0 0
   do_toolchain_menu
+  save_setting UBOOT_TOOLCHAIN_SETUP_NAME "\"$UBOOT_TOOLCHAIN_SETUP_NAME\""
+  save_setting UBOOT_TOOLCHAIN_SETUP "\"$UBOOT_TOOLCHAIN_SETUP\""
 fi
 
 # NOTE: You will get many warnings such as
@@ -146,7 +150,8 @@ if [ -e $OUT/u-boot.bin ] && [ "$OUT_DIR" != "" ] ; then
 fi
 
 
-if [ -e u-boot.bin ] && [ "$MACHINE" == "smarc-rzg2l" ] ; then
+# The "TFA_FIP" value comes from the settings for the Trusted Firmware-A build
+if [ -e u-boot.bin ] && [ "$TFA_FIP" == "1" ] ; then
   echo -e "\n\n"
   echo -e "\t*****************************************************************"
   echo -e "\t Please rebuild Trusted Firmware-A to package u-boot with BL31 "

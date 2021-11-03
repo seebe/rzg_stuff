@@ -23,6 +23,7 @@
 # MACHINE=ek874		# Silicon Linux RZ/G2E
 # MACHINE=smarc-rzg2l	# Renesas RZ/G2L EVK
 #   BOARD_VERSION: DISCRETE, PMIC, WS1
+# MACHINE=smarc-rzg2lc	# Renesas RZ/G2LC EVK
 
 
 #----------------------------------------------
@@ -151,9 +152,9 @@ Board: $MACHINE
 
 Please select what you want to build:
 
+  ./build.sh f                       # Build Renesas Flash Writer
   ./build.sh t                       # Build Trusted Firmware-A
   ./build.sh u                       # Build u-boot
-  ./build.sh f                       # Build Renesas Flash Writer
   ./build.sh k                       # Build Linux Kernel
 
   ./build.sh s                       # Setup - Choose board and build options
@@ -187,9 +188,11 @@ if [ "$1" == "s" ] ; then
 	"3  hihope-rzg2h" "HiHope RZ/G2H" \
 	"4  ek874" "Silicon Linux RZ/G2E" \
 	"5  smarc-rzg2l" "Renesas SMARC RZ/G2L" \
+	"6  smarc-rzg2lc" "Renesas SMARC RZ/G2LC" \
 	3>&1 1>&2 2>&3)
   RET=$?
   if [ $RET -eq 0 ] ; then
+    BOARD_VERSION=""  # Clear out BOARD_VERSION in case there is not one
     case "$SELECT" in
       1\ *) FW_BOARD=HIHOPE ; MACHINE=hihope-rzg2m ;;
       2\ *) FW_BOARD=HIHOPE ; MACHINE=hihope-rzg2n ;;
@@ -205,6 +208,7 @@ if [ "$1" == "s" ] ; then
 		FW_BOARD=RZG2L_SMARC
 	fi
       ;;
+      6\ *) FW_BOARD=RZG2LC_SMARC ; MACHINE=smarc-rzg2lc ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $SELECT" 20 60 1
   else
@@ -226,11 +230,11 @@ if [ "$1" == "s" ] ; then
   save_setting OUT_DIR output_${MACHINE}
   save_setting BOARD_VERSION $BOARD_VERSION
 
-  # Set Default for Flash Writer script
+  # Set defaults for Flash Writer script
   save_setting FW_BOARD $FW_BOARD
 
-  # Set Default for Flash Writer script
-  if [ "$MACHINE" == "smarc-rzg2l" ] ; then
+  # Set defaults for Flash Writer script
+  if [ "$MACHINE" == "smarc-rzg2l" ] || [ "$MACHINE" == "smarc-rzg2lc" ] ; then
     save_setting TFA_FIP 1
   else
     save_setting TFA_FIP 0

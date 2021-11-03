@@ -10,6 +10,7 @@
 # MACHINE=ek874
 # MACHINE=smarc-rzg2l
 #   BOARD_VERSION: DISCRETE, PMIC, WS1
+# MACHINE=smarc-rzg2lc
 
 #TFA_BOOT: 0=SPI Flash, 1=eMMC
 #TFA_ECC_FULL: 0=no ECC, 1=ECC dual channel, 2=ECC single channel
@@ -48,7 +49,7 @@ if [ "$TFA_DEBUG" == "" ] ; then
 fi
 if [ "$TFA_FIP" == "" ] ; then
 
-  if [ "$MACHINE" == "smarc-rzg2l" ] ; then
+  if [ "$MACHINE" == "smarc-rzg2l" ] || [ "$MACHINE" == "smarc-rzg2lc" ] ; then
     TFA_FIP=1
   else
     TFA_FIP=0
@@ -424,34 +425,34 @@ fi
 case "$MACHINE" in 
   "smarc-rzg2l")
 
-  # Old directory structure
-  if [ -e plat/renesas/rzg2l/platform.mk ] ; then
-    PLATFORM=rzg2l
-    # "BOARD_RZG2L_EVA" was renamed to "RZG2L_SMARC_EVK"
-    # "BOARD_RZG2L_15MMSQ" was renamed to "RZG2L_DEVELOPMENT_BOARD"
-    # "BOARD_RZG2LC_13MMSQ" was renamed to "RZG2LC_DEVELOPMENT_BOARD"
-    grep -q "BOARD_RZG2L_EVA" plat/renesas/rzg2l/platform.mk
-    if [ "$?" == "0" ] ; then
-      # old
-      TFA_OPT="BOARD_TYPE=BOARD_RZG2L_EVA"
-      #TFA_OPT="BOARD_TYPE=BOARD_RZG2L_15MMSQ"
-      #TFA_OPT="BOARD_TYPE=BOARD_RZG2LC_13MMSQ"
-    else
-      # new
-      TFA_OPT="BOARD_TYPE=RZG2L_SMARC_EVK"
-      #TFA_OPT=BOARD_TYPE=RZG2L_DEVELOPMENT_BOARD"
-      #TFA_OPT=BOARD_TYPE=RZG2LC_DEVELOPMENT_BOARD"
+    # Old directory structure
+    if [ -e plat/renesas/rzg2l/platform.mk ] ; then
+      PLATFORM=rzg2l
+      # "BOARD_RZG2L_EVA" was renamed to "RZG2L_SMARC_EVK"
+      # "BOARD_RZG2L_15MMSQ" was renamed to "RZG2L_DEVELOPMENT_BOARD"
+      # "BOARD_RZG2LC_13MMSQ" was renamed to "RZG2LC_DEVELOPMENT_BOARD"
+      grep -q "BOARD_RZG2L_EVA" plat/renesas/rzg2l/platform.mk
+      if [ "$?" == "0" ] ; then
+        # old
+        TFA_OPT="BOARD_TYPE=BOARD_RZG2L_EVA"
+        #TFA_OPT="BOARD_TYPE=BOARD_RZG2L_15MMSQ"
+        #TFA_OPT="BOARD_TYPE=BOARD_RZG2LC_13MMSQ"
+      else
+        # new
+        TFA_OPT="BOARD_TYPE=RZG2L_SMARC_EVK"
+        #TFA_OPT=BOARD_TYPE=RZG2L_DEVELOPMENT_BOARD"
+        #TFA_OPT=BOARD_TYPE=RZG2LC_DEVELOPMENT_BOARD"
+      fi
     fi
-  fi
 
-  # New directory structure
-  if [ -e plat/renesas/rz ] ; then
-    PLATFORM=g2l
-    if [ "$BOARD_VERSION" == "PMIC" ] ; then
-      TFA_OPT="BOARD=smarc_pmic_2"
-    else
-      TFA_OPT="BOARD=smarc_2"
-    fi
+    # New directory structure
+    if [ -e plat/renesas/rz ] ; then
+      PLATFORM=g2l
+      if [ "$BOARD_VERSION" == "PMIC" ] ; then
+        TFA_OPT="BOARD=smarc_pmic_2"
+      else
+        TFA_OPT="BOARD=smarc_2"
+      fi
 
     # Internal Renesas Boards
     #TFA_OPT="BOARD=dev15_4" #rzg2l-dev
@@ -461,6 +462,14 @@ case "$MACHINE" in
     #PLATFORM=g2l
     TOOL=
     ;;
+
+  "smarc-rzg2lc")
+    PLATFORM=g2l
+    TFA_OPT="BOARD=smarc_1"
+
+    TOOL=
+    ;;
+
   "ek874")
     TFA_OPT="LSI=G2E RZG_SA0_SIZE=0 RZG_DRAM_DDR3L_MEMCONF=1 RZG_DRAM_DDR3L_MEMDUAL=1 SPD="none" $G2E_ECC $G2E_LOSSY"
 
