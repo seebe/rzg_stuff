@@ -176,11 +176,19 @@ Branches:
 
   BSP v1.1 WS2 patch
 
+  BSP v1.1 WS2 patch
+	cd rz_linux-cip
+	git checkout -b rzg2l_bsp_v1.1 57ad66c455f6 ; cd ..
 
-BRANCH = "rzg2l-cip41"
-SRCREV = "57ad66c455f65df790476d590e577e15ca603f83"
 
-
+  BSP v1.3
+		BRANCH = "rzg2l-cip41"
+		SRCREV = "c819d510b2b02511f083023bcd8d6cd41f9d003c"
+	cd rz_linux-cip
+	git checkout -b rzg2l_bsp_v1.3 c819d510b2b0
+	git am 0183-add-vspm_if-node.patch
+	git am 0185-Fixed-an-issue-that-caused-flicker-when-outputting-t.patch
+	cd ..
 
   RZ/V2L:
 
