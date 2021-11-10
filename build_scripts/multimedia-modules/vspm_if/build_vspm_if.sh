@@ -2,25 +2,14 @@
 
 set -e
 
-# Set your parameters here
-
-# These pathes are available in the VLP, path:
-# meta-rzg2/recipes-kernel/kernel-module-vspmif/kernel-module-vspmif 
-PATCHES_PATH=../../patches/vspmif
-
-# This is the path where the kernel is built
-KERNELSRCPATH=~/repos/my-linux-cip/.out
-
-# SDK path. It is used to set the cross build environment variables
-SDK_PATH=/opt/poky/2.4.3-we
-
-# The module (.ko) can be installed automatically on the target via scp
-TARGET_IP_ADDRESS=192.168.10.125
-
 # Do not edit
 
+source ../config.ini
+
 # The sources are available on github
-git clone -b rcar_gen3 git://github.com/renesas-rcar/vspmif_drv.git
+if [ ! -d "vspmif_drv" ] ; then
+  git clone -b rcar_gen3 git://github.com/renesas-rcar/vspmif_drv.git
+fi
 
 pushd vspmif_drv
 
@@ -28,11 +17,11 @@ pushd vspmif_drv
 git checkout 6172cc7273aae0345db894faa5ab59777549c247
 
 # Patch
-git apply ${PATCHES_PATH}/0001-vspm_if_main-Add-missing-linux-header.patch
+patch -p1 -N < ${VSPMIF_PATCHES_PATH}/0001-vspm_if_main-Add-missing-linux-header.patch || true
 
 # Prepare environment
 source ${SDK_PATH}/environment-setup-aarch64-poky-linux
-export KERNELSRC=${KERNELSRCPATH}
+export KERNELSRC=${KERNEL_OUT_DIR}
 pushd vspm_if-module/files/vspm_if/drv
 KERNEL_VERSION=$(<${KERNELSRC}/include/config/kernel.release)
 
@@ -43,7 +32,13 @@ cp ../include/vspm_if.h $KERNELSRC/../include
 cp Module.symvers $KERNELSRC/include/vspm_if.symvers
 
 # Install
-scp vspm_if.ko root@${TARGET_IP_ADDRESS}:/lib/modules/${KERNEL_VERSION}/extra
+if [ ${TARGET_INSTALL} = TRUE ]
+then 
+  scp vspm_if.ko root@${TARGET_IP_ADDRESS}:/lib/modules/${KERNEL_VERSION}/extra
+fi
+pushd
+
+cp ./vspm_if-module/files/vspm_if/drv/vspm_if.ko ../../build
 
 
 

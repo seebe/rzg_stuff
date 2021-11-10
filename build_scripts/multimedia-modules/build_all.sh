@@ -1,4 +1,15 @@
 #!/bin/bash
+if [ -z "$(ls -A ./mm_packages)" ]; then
+   echo "mm_packages is empty, please download and copy the multimedia package into it"
+else
+   pushd mm_packages
+   tar -xvf "RZG2_Group_Evaluation_Software_Package_for_Linux_20200619.tar.gz"
+   pushd proprietary
+   unzip -o "*.zip"
+   popd
+   popd
+fi
+
 pushd vspm
 ./build_vspm.sh
 popd

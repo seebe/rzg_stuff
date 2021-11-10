@@ -2,22 +2,14 @@
 
 set -e
 
-# Set your parameters here
-
-# This is the path where the kernel is built
-KERNELSRCPATH=~/repos/my-linux-cip/.out
-
-# SDK path. It is used to set the cross build environment variables
-SDK_PATH=/opt/poky/2.4.3-we
-
-# The module (.ko) can be installed automatically on the target via scp
-TARGET_IP_ADDRESS=192.168.10.125
-
 # Do not edit
 
-# The sources are available on github
-git clone -b rcar_gen3 git://github.com/renesas-rcar/vspm_drv.git
+source ../config.ini
 
+# The sources are available on github
+if [ ! -d "vspm_drv" ] ; then
+  git clone -b rcar_gen3 git://github.com/renesas-rcar/vspm_drv.git
+fi
 pushd vspm_drv
 
 # Checkout the version that we need
@@ -25,7 +17,7 @@ git checkout 7f854a9a1c4760255a54b7c14891d1545ed1bf43
 
 # Prepare environment
 source ${SDK_PATH}/environment-setup-aarch64-poky-linux
-export KERNELSRC=${KERNELSRCPATH}
+export KERNELSRC=${KERNEL_OUT_DIR}
 pushd vspm-module/files/vspm/drv
 KERNEL_VERSION=$(<${KERNELSRC}/include/config/kernel.release)
 
@@ -40,7 +32,13 @@ cp ../include/fdp_drv.h $KERNELSRC/../include/
 cp Module.symvers $KERNELSRC/include/vspm.symvers
 
 # Install
-scp vspm.ko root@${TARGET_IP_ADDRESS}:/lib/modules/${KERNEL_VERSION}/extra
+if [ ${TARGET_INSTALL} = TRUE ]
+then 
+  scp vspm.ko root@${TARGET_IP_ADDRESS}:/lib/modules/${KERNEL_VERSION}/extra
+fi
+pushd
+
+cp ./vspm-module/files/vspm/drv/vspm.ko ../../build
 
 
 

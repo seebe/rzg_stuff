@@ -2,36 +2,10 @@
 
 set -e
 
-# Set your parameters here
-
-# Device to be chosen
-
-device=RZG2E
-#device=RZG2N
-#device=RZG2M
-#device=RZG2H
-
-# The sources are not available in github, so the tar file is required.
-# It cannot be provided with the script because of licensing.
-GLES_TAR_r8a774e1=./GSX_KM_H3.tar.bz2
-GLES_TAR_r8a774b1=./GSX_KM_M3N.tar.bz2
-GLES_TAR_r8a774a1=./GSX_KM_M3.tar.bz2
-GLES_TAR_r8a774c0=./GSX_KM_E3.tar.bz2
-
-# These pathes are available in the VLP, path:
-# meta-rzg2/recipes-kernel/kernel-module-gles/kernel-module-gles
-PATCHES_PATH=../../patches/gles
-
-# This is the path where the kernel is built
-KERNEL_OUT_DIR=~/repos/my-linux-cip/.out
-
-# SDK path. It is used to set the cross build environment variables but also for the installation
-SDK_PATH=/opt/poky/2.4.3-we
-
-# The module (.ko) can be installed automatically on the target via scp
-TARGET_IP_ADDRESS=192.168.10.125
-
 # Do not edit
+
+source ../config.ini
+
 KBUILD_DIR_r8a774e1=/build/linux/r8a7795_linux
 KBUILD_DIR_r8a774b1=/build/linux/r8a77965_linux
 KBUILD_DIR_r8a774a1=/build/linux/r8a7796_linux
@@ -74,15 +48,15 @@ tar xvf ${GLES_TAR}
 
 # Patch sources
 pushd rogue_km
-git apply ${PATCHES_PATH}/0001-supporting-kernel-version-4.19-and-later.patch
-git apply ${PATCHES_PATH}/0002-common-linux-dma_support-replace-__get_order-to-get_.patch
+patch -p1 -N < ${GLES_PATCHES_PATH}/0001-supporting-kernel-version-4.19-and-later.patch || true
+patch -p1 -N < ${GLES_PATCHES_PATH}/0002-common-linux-dma_support-replace-__get_order-to-get_.patch || true
 if [ $device = RZG2H ]
 then 
-  git apply ${PATCHES_PATH}/0001-r8a7795-Makefile-support-fixed-device-memory-for-PVR.patch
+  patch -p1 -N < ${GLES_PATCHES_PATH}/0001-r8a7795-Makefile-support-fixed-device-memory-for-PVR.patch || true
 fi
 if [ $device = RZG2M ]
 then 
-  git apply ${PATCHES_PATH}/0001-r8a7796-Makefile-support-fixed-device-memory-for-PVR.patch
+  patch -p1 -N < ${GLES_PATCHES_PATH}/0001-r8a7796-Makefile-support-fixed-device-memory-for-PVR.patch || true
 fi
   
 # Set-up environment
@@ -99,5 +73,30 @@ make
 # Install, either to a folder:
 make DISCIMAGE=${SDK_PATH}/sysroots/aarch64-poky-linux/ install
 # and/or to the target:
-make INSTALL_TARGET=${TARGET_IP_ADDRESS} install
+if [ ${TARGET_INSTALL} = TRUE ]
+then 
+  make INSTALL_TARGET=${TARGET_IP_ADDRESS} install
+fi
+popd
+
+case $device in
+
+  RZG2E)
+    cp ./binary_r8a7799_linux_release/target_aarch64/pvrsrvkm.ko ../../build
+    ;;
+    
+  RZG2N)
+    cp ./binary_r8a77965_linux_release/target_aarch64/pvrsrvkm.ko ../../build
+    ;;
+
+  RZG2M)
+    cp ./binary_r8a7796_linux_release/target_aarch64/pvrsrvkm.ko ../../build
+    ;;
+
+  RZG2H)
+    cp ./binary_r8a7795_linux_release/target_aarch64/pvrsrvkm.ko ../../build
+    ;;
+
+esac
+
 
