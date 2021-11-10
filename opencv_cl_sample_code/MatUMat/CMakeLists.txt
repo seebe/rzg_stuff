@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 2.8)
+project( MatUmat )
+find_package( OpenCV REQUIRED )
+include_directories( ${OpenCV_INCLUDE_DIRS} )
+add_executable( UMat UMat.cpp )
+add_executable( Mat Mat.cpp )
+target_link_libraries( Mat ${OpenCV_LIBS} )
+target_link_libraries( UMat ${OpenCV_LIBS} )

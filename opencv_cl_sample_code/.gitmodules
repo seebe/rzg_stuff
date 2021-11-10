@@ -1,0 +1,3 @@
+[submodule "rzg_stuff"]
+	path = rzg_stuff
+	url = https://github.com/seebe/rzg_stuff
