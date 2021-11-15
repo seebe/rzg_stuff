@@ -34,6 +34,7 @@ cp Module.symvers $KERNELSRC/include/vspm.symvers
 # Install
 if [ ${TARGET_INSTALL} = TRUE ]
 then 
+  ssh root@${TARGET_IP_ADDRESS} "mkdir -p /lib/modules/${KERNEL_VERSION}/extra"
   scp vspm.ko root@${TARGET_IP_ADDRESS}:/lib/modules/${KERNEL_VERSION}/extra
 fi
 pushd
