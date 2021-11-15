@@ -64,14 +64,14 @@ unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 export KERNELDIR=$KERNEL_OUT_DIR
 export KBUILD_OUTDIR=${KBUILD_OUTDIR}
 export KBUILD_DIR=${KBUILD_DIR}
-source ${SDK_PATH}/environment-setup-aarch64-poky-linux
+eval ${SDK_SETUP}
 pushd ${KBUILD_DIR}
 
 # Make
 make
 
 # Install, either to a folder:
-make DISCIMAGE=${SDK_PATH}/sysroots/aarch64-poky-linux/ install
+make DISCIMAGE=${SDKTARGETSYSROOT} install
 # and/or to the target:
 if [ ${TARGET_INSTALL} = TRUE ]
 then 

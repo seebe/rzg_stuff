@@ -17,7 +17,7 @@ pushd vsp2driver
 git checkout 0ecf35aa05c103ba4d3ab83e3320a22fccd912c3
 
 # Prepare environment
-source ${SDK_PATH}/environment-setup-aarch64-poky-linux
+eval ${SDK_SETUP}
 export KERNELSRC=${KERNEL_OUT_DIR}
 pushd vsp2driver
 KERNEL_VERSION=$(<${KERNELSRC}/include/config/kernel.release)

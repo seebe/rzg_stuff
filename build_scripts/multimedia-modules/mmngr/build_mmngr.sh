@@ -56,7 +56,7 @@ export MMNGR_CONFIG=${MMNGR_CFG}
 export MMNGR_SSP_CONFIG="MMNGR_SSP_DISABLE"
 export MMNGR_IPMMU_MMU_CONFIG="IPMMU_MMU_DISABLE"
 
-source ${SDK_PATH}/environment-setup-aarch64-poky-linux
+eval ${SDK_SETUP}
 export KERNELSRC=${KERNEL_OUT_DIR}
 pushd mmngr_drv/mmngr/mmngr-module/files/mmngr/drv/
 cp ../include/*.h $KERNELSRC/../include

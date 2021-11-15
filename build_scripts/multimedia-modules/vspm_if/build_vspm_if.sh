@@ -20,7 +20,7 @@ git checkout 6172cc7273aae0345db894faa5ab59777549c247
 patch -p1 -N < ${VSPMIF_PATCHES_PATH}/0001-vspm_if_main-Add-missing-linux-header.patch || true
 
 # Prepare environment
-source ${SDK_PATH}/environment-setup-aarch64-poky-linux
+eval ${SDK_SETUP}
 export KERNELSRC=${KERNEL_OUT_DIR}
 pushd vspm_if-module/files/vspm_if/drv
 KERNEL_VERSION=$(<${KERNELSRC}/include/config/kernel.release)

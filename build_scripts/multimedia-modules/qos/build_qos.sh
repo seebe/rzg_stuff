@@ -20,7 +20,7 @@ git checkout d32fbee4d7b76056c37935ff31102c3583801a29
 patch -p1 -N < ${QOS_PATCHES_PATH}/0001-qos_drv-include-mod_devicetable.h.patch || true
 
 # Prepare environment
-source ${SDK_PATH}/environment-setup-aarch64-poky-linux
+eval ${SDK_SETUP}
 unset KERNELSRC
 export KERNELSRC=${KERNEL_OUT_DIR}
 pushd qos-module/files/qos/drv/

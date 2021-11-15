@@ -17,7 +17,7 @@ pushd RCG3VUDRL4101ZDO
 patch -p1 -N < ${UVCS_PATCHES_PATH}/0001-Fixing-build-error-kernel-module-uvcs.patch || true
 
 # Prepare environment
-source ${SDK_PATH}/environment-setup-aarch64-poky-linux
+eval ${SDK_SETUP}
 export KERNELDIR=${KERNEL_OUT_DIR}
 export UVCS_SRC=$PWD/src
 export UVCS_INC=$PWD

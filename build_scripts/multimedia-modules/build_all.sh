@@ -1,6 +1,7 @@
 #!/bin/bash
 if [ -z "$(ls -A ./mm_packages)" ]; then
    echo "mm_packages is empty, please download and copy the multimedia package into it"
+   exit
 else
    pushd mm_packages
    tar -xvf "RZG2_Group_Evaluation_Software_Package_for_Linux_20200619.tar.gz"

@@ -7,4 +7,4 @@ rm -rf ./gles/rogue_km
 rm -rf ./uvcs/RCG3VUDRL4101ZDO
 rm -rf ./qos/qos_drv
 rm -rf ./mm_packages/proprietary
-rm -rf ./build/*
+rm -rf ./build/*.ko

@@ -16,7 +16,7 @@ pushd vspm_drv
 git checkout 7f854a9a1c4760255a54b7c14891d1545ed1bf43
 
 # Prepare environment
-source ${SDK_PATH}/environment-setup-aarch64-poky-linux
+eval ${SDK_SETUP}
 export KERNELSRC=${KERNEL_OUT_DIR}
 pushd vspm-module/files/vspm/drv
 KERNEL_VERSION=$(<${KERNELSRC}/include/config/kernel.release)
