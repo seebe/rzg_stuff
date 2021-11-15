@@ -64,6 +64,7 @@ unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 export KERNELDIR=$KERNEL_OUT_DIR
 export KBUILD_OUTDIR=${KBUILD_OUTDIR}
 export KBUILD_DIR=${KBUILD_DIR}
+KERNEL_VERSION=$(<${KERNEL_OUT_DIR}/include/config/kernel.release)
 eval ${SDK_SETUP}
 pushd ${KBUILD_DIR}
 
@@ -73,27 +74,45 @@ make
 # Install, either to a folder:
 make DISCIMAGE=${SDKTARGETSYSROOT} install
 # and/or to the target:
-if [ ${TARGET_INSTALL} = TRUE ]
-then 
-  make INSTALL_TARGET=${TARGET_IP_ADDRESS} install
-fi
+
+# do not use make install rather scp
+#if [ ${TARGET_INSTALL} = TRUE ]
+#then 
+# make INSTALL_TARGET=${TARGET_IP_ADDRESS} install
+#fi
 popd
 
 case $device in
 
   RZG2E)
+    if [ ${TARGET_INSTALL} = TRUE ] ; then
+      ssh root@${TARGET_IP_ADDRESS} "mkdir -p /lib/modules/${KERNEL_VERSION}/extra"
+      scp ./binary_r8a7799_linux_release/target_aarch64/pvrsrvkm.ko root@${TARGET_IP_ADDRESS}:/lib/modules/${KERNEL_VERSION}/extra
+    fi
     cp ./binary_r8a7799_linux_release/target_aarch64/pvrsrvkm.ko ../../build
     ;;
     
   RZG2N)
+    if [ ${TARGET_INSTALL} = TRUE ] ; then
+      ssh root@${TARGET_IP_ADDRESS} "mkdir -p /lib/modules/${KERNEL_VERSION}/extra"
+      scp ./binary_r8a77965_linux_release/target_aarch64/pvrsrvkm.ko root@${TARGET_IP_ADDRESS}:/lib/modules/${KERNEL_VERSION}/extra
+    fi
     cp ./binary_r8a77965_linux_release/target_aarch64/pvrsrvkm.ko ../../build
     ;;
 
   RZG2M)
+    if [ ${TARGET_INSTALL} = TRUE ] ; then
+      ssh root@${TARGET_IP_ADDRESS} "mkdir -p /lib/modules/${KERNEL_VERSION}/extra"
+      scp ./binary_r8a7796_linux_release/target_aarch64/pvrsrvkm.ko root@${TARGET_IP_ADDRESS}:/lib/modules/${KERNEL_VERSION}/extra
+    fi
     cp ./binary_r8a7796_linux_release/target_aarch64/pvrsrvkm.ko ../../build
     ;;
 
   RZG2H)
+    if [ ${TARGET_INSTALL} = TRUE ] ; then
+      ssh root@${TARGET_IP_ADDRESS} "mkdir -p /lib/modules/${KERNEL_VERSION}/extra"
+      scp ./binary_r8a7795_linux_release/target_aarch64/pvrsrvkm.ko root@${TARGET_IP_ADDRESS}:/lib/modules/${KERNEL_VERSION}/extra
+    fi
     cp ./binary_r8a7795_linux_release/target_aarch64/pvrsrvkm.ko ../../build
     ;;
 
