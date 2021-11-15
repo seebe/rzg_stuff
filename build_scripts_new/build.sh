@@ -156,6 +156,7 @@ Please select what you want to build:
   ./build.sh t                       # Build Trusted Firmware-A
   ./build.sh u                       # Build u-boot
   ./build.sh k                       # Build Linux Kernel
+  ./build.sh m                       # Build Linux Kernel multimedia modules
 
   ./build.sh s                       # Setup - Choose board and build options
 "
@@ -176,6 +177,10 @@ if [ "$1" == "f" ] ; then
 fi
 if [ "$1" == "k" ] ; then
   ./build_kernel.sh $2 $3 $4
+  exit
+fi
+if [ "$1" == "m" ] ; then
+  ./build_mm.sh $2 $3 $4
   exit
 fi
 
