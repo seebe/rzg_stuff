@@ -200,16 +200,23 @@ create_fip_and_copy() {
   make PLAT=${PLATFORM}
   cd ../..
 
+  # RZ/G2L PMIC board have _pmic at the end of the filename
+  if [ "$MACHINE" == "smarc-rzg2l" ] && [ "$BOARD_VERSION" == "PMIC" ] ; then
+    EXTRA="_pmic"
+  else
+    EXTRA=""
+  fi
+
   echo -e "[Create fip.bin]"
   tools/fiptool/fiptool create --align 16 --soc-fw build/${PLATFORM}/$BUILD_DIR/bl31.bin --nt-fw ../$OUT_DIR/u-boot.bin fip.bin
-  cp fip.bin ../$OUT_DIR/fip-${MACHINE}.bin
+  cp fip.bin ../$OUT_DIR/fip-${MACHINE}${EXTRA}.bin
 
   echo -e "[Convert BIN SREC format]"
   #<BL2>
-  ${CROSS_COMPILE}objcopy -I binary -O srec --adjust-vma=0x00011E00 --srec-forceS3 build/${PLATFORM}/$BUILD_DIR/bl2_bp.bin ../$OUT_DIR/bl2_bp-${MACHINE}.srec
+  ${CROSS_COMPILE}objcopy -I binary -O srec --adjust-vma=0x00011E00 --srec-forceS3 build/${PLATFORM}/$BUILD_DIR/bl2_bp.bin ../$OUT_DIR/bl2_bp-${MACHINE}${EXTRA}.srec
 
   #<FIP>
-  ${CROSS_COMPILE}objcopy -I binary -O srec --adjust-vma=0x00000000 --srec-forceS3 fip.bin ../$OUT_DIR/fip-${MACHINE}.srec
+  ${CROSS_COMPILE}objcopy -I binary -O srec --adjust-vma=0x00000000 --srec-forceS3 fip.bin ../$OUT_DIR/fip-${MACHINE}${EXTRA}.srec
 }
 
 
