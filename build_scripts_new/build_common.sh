@@ -42,6 +42,7 @@ select_toolchain() {
   eval "$DO_SET"
 
   DO_SET="export $2=\"$x_TOOLCHAIN_SETUP\""
+  DO_SET=$(echo "$DO_SET" | sed s/\$PATH/\\\\\$PATH/)  # Keep $PATH from being expanded
   eval "$DO_SET"
 }
 
