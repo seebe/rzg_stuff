@@ -15,7 +15,7 @@ CONFIG_DIR=.config_options
 DEPLOY_DIR=.deploy
 
 # Read in functions from build_common.sh
-if [ ! -e build_common.sh ] ; then 
+if [ ! -e build_common.sh ] ; then
   echo -e "\n ERROR: File \"build_common.sh\" not found\n."
   exit
 else
@@ -42,11 +42,17 @@ do_toolchain_menu() {
 
 }
 
+# Use common toolchain if specific toolchain not set
 if [ "$KERNEL_TOOLCHAIN_SETUP_NAME" == "" ] ; then
-  whiptail --msgbox "Please select a Toolchain" 0 0 0
-  do_toolchain_menu
-  save_setting KERNEL_TOOLCHAIN_SETUP_NAME "\"$KERNEL_TOOLCHAIN_SETUP_NAME\""
-  save_setting KERNEL_TOOLCHAIN_SETUP "\"$KERNEL_TOOLCHAIN_SETUP\""
+  if [ "$COMMON_TOOLCHAIN_SETUP_NAME" != "" ] ; then
+    KERNEL_TOOLCHAIN_SETUP_NAME=$COMMON_TOOLCHAIN_SETUP_NAME
+    KERNEL_TOOLCHAIN_SETUP=$COMMON_TOOLCHAIN_SETUP
+  else
+    whiptail --msgbox "Please select a Toolchain" 0 0 0
+    do_toolchain_menu
+    save_setting KERNEL_TOOLCHAIN_SETUP_NAME "\"$KERNEL_TOOLCHAIN_SETUP_NAME\""
+    save_setting KERNEL_TOOLCHAIN_SETUP "\"$KERNEL_TOOLCHAIN_SETUP\""
+  fi
 fi
 
 # Help Menu

@@ -34,7 +34,7 @@ root=,blue
 #USB=DISABLE
 
 # Read in functions from build_common.sh
-if [ ! -e build_common.sh ] ; then 
+if [ ! -e build_common.sh ] ; then
   echo -e "\n ERROR: File \"build_common.sh\" not found\n."
   exit
 else
@@ -139,13 +139,19 @@ do_toolchain_menu() {
   select_toolchain "FW_TOOLCHAIN_SETUP_NAME" "FW_TOOLCHAIN_SETUP"
 }
 
-# If no arguments pass, use GUI interface
-if [ "$1" == "" ] ; then
-
-  if [ "$FW_TOOLCHAIN_SETUP_NAME" == "" ] ; then
+# Use common toolchain if specific toolchain not set
+if [ "$FW_TOOLCHAIN_SETUP_NAME" == "" ] ; then
+  if [ "$COMMON_TOOLCHAIN_SETUP_NAME" != "" ] ; then
+    FW_TOOLCHAIN_SETUP_NAME=$COMMON_TOOLCHAIN_SETUP_NAME
+    FW_TOOLCHAIN_SETUP=$COMMON_TOOLCHAIN_SETUP
+  else
     whiptail --msgbox "Please select a Toolchain" 0 0 0
     do_toolchain_menu
   fi
+fi
+
+# If no arguments pass, use GUI interface
+if [ "$1" == "" ] ; then
 
   while true ; do
 
@@ -185,8 +191,10 @@ if [ "$1" == "" ] ; then
       save_setting FW_SERIAL_FLASH "$FW_SERIAL_FLASH"
       save_setting FW_EMMC "$FW_EMMC"
       save_setting FW_USB "$FW_USB"
-      save_setting FW_TOOLCHAIN_SETUP_NAME "\"$FW_TOOLCHAIN_SETUP_NAME\""
-      save_setting FW_TOOLCHAIN_SETUP "\"$FW_TOOLCHAIN_SETUP\""
+      if [ "$FW_TOOLCHAIN_SETUP_NAME" != "$COMMON_TOOLCHAIN_SETUP_NAME" ] ; then
+        save_setting FW_TOOLCHAIN_SETUP_NAME "\"$FW_TOOLCHAIN_SETUP_NAME\""
+        save_setting FW_TOOLCHAIN_SETUP "\"$FW_TOOLCHAIN_SETUP\""
+      fi
 
       # Set up Toolchain in current environment
       echo "$FW_TOOLCHAIN_SETUP"

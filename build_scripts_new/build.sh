@@ -224,6 +224,12 @@ if [ "$1" == "s" ] ; then
   # Clear out the current settings file
   echo "" > $SETTINGS_FILE
 
+  # Select common toolchain
+  whiptail --msgbox "Please select a Toolchain" 0 0 0
+  select_toolchain "COMMON_TOOLCHAIN_SETUP_NAME" "COMMON_TOOLCHAIN_SETUP"
+  save_setting COMMON_TOOLCHAIN_SETUP_NAME "\"$COMMON_TOOLCHAIN_SETUP_NAME\""
+  save_setting COMMON_TOOLCHAIN_SETUP "\"$COMMON_TOOLCHAIN_SETUP\""
+
   # Save our default directories
   save_setting TFA_DIR $TFA_DIR_DEFAULT
   save_setting UBOOT_DIR $UBOOT_DIR_DEFAULT

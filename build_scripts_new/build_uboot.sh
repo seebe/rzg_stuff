@@ -13,7 +13,7 @@
 #MACHINE=smarc-rzg2lc   # Renesas SMARC RZ/G2LC
 
 # Read in functions from build_common.sh
-if [ ! -e build_common.sh ] ; then 
+if [ ! -e build_common.sh ] ; then
   echo -e "\n ERROR: File \"build_common.sh\" not found\n."
   exit
 else
@@ -44,13 +44,19 @@ fi
 
 do_toolchain_menu() {
   select_toolchain "UBOOT_TOOLCHAIN_SETUP_NAME" "UBOOT_TOOLCHAIN_SETUP"
-} 
+}
 
+# Use common toolchain if specific toolchain not set
 if [ "$UBOOT_TOOLCHAIN_SETUP_NAME" == "" ] ; then
-  whiptail --msgbox "Please select a Toolchain" 0 0 0
-  do_toolchain_menu
-  save_setting UBOOT_TOOLCHAIN_SETUP_NAME "\"$UBOOT_TOOLCHAIN_SETUP_NAME\""
-  save_setting UBOOT_TOOLCHAIN_SETUP "\"$UBOOT_TOOLCHAIN_SETUP\""
+  if [ "$COMMON_TOOLCHAIN_SETUP_NAME" != "" ] ; then
+    UBOOT_TOOLCHAIN_SETUP_NAME=$COMMON_TOOLCHAIN_SETUP_NAME
+    UBOOT_TOOLCHAIN_SETUP=$COMMON_TOOLCHAIN_SETUP
+  else
+    whiptail --msgbox "Please select a Toolchain" 0 0 0
+    do_toolchain_menu
+    save_setting UBOOT_TOOLCHAIN_SETUP_NAME "\"$UBOOT_TOOLCHAIN_SETUP_NAME\""
+    save_setting UBOOT_TOOLCHAIN_SETUP "\"$UBOOT_TOOLCHAIN_SETUP\""
+  fi
 fi
 
 # NOTE: You will get many warnings such as

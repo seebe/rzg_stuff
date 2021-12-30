@@ -17,7 +17,7 @@
 #TFA_FIP: 0=no FIP, 1= yes FIP
 
 # Read in functions from build_common.sh
-if [ ! -e build_common.sh ] ; then 
+if [ ! -e build_common.sh ] ; then
   echo -e "\n ERROR: File \"build_common.sh\" not found\n."
   exit
 else
@@ -69,7 +69,7 @@ DEBUG_STR=("Release Build" "Debug Build")
 ##############################
 do_toolchain_menu() {
   select_toolchain "TFA_TOOLCHAIN_SETUP_NAME" "TFA_TOOLCHAIN_SETUP"
-} 
+}
 
 
 ##############################
@@ -220,9 +220,15 @@ create_fip_and_copy() {
 }
 
 
+# Use common toolchain if specific toolchain not set
 if [ "$TFA_TOOLCHAIN_SETUP_NAME" == "" ] ; then
-  whiptail --msgbox "Please select a Toolchain" 0 0 0
-  do_toolchain_menu
+  if [ "$COMMON_TOOLCHAIN_SETUP_NAME" != "" ] ; then
+    TFA_TOOLCHAIN_SETUP_NAME=$COMMON_TOOLCHAIN_SETUP_NAME
+    TFA_TOOLCHAIN_SETUP=$COMMON_TOOLCHAIN_SETUP
+  else
+    whiptail --msgbox "Please select a Toolchain" 0 0 0
+    do_toolchain_menu
+  fi
 fi
 
 ##############################
@@ -260,8 +266,10 @@ if [ "$1" == "" ] ; then
       save_setting TFA_LOG_LEVEL "$TFA_LOG_LEVEL"
       save_setting TFA_DEBUG "$TFA_DEBUG"
       save_setting TFA_FIP "$TFA_FIP"
-      save_setting TFA_TOOLCHAIN_SETUP_NAME "\"$TFA_TOOLCHAIN_SETUP_NAME\""
-      save_setting TFA_TOOLCHAIN_SETUP "\"$TFA_TOOLCHAIN_SETUP\""
+      if [ "$TFA_TOOLCHAIN_SETUP_NAME" != "$COMMON_TOOLCHAIN_SETUP_NAME" ] ; then
+        save_setting TFA_TOOLCHAIN_SETUP_NAME "\"$TFA_TOOLCHAIN_SETUP_NAME\""
+        save_setting TFA_TOOLCHAIN_SETUP "\"$TFA_TOOLCHAIN_SETUP\""
+      fi
       break;
     elif [ $RET -eq 0 ] ; then
       case "$SELECT" in
@@ -429,7 +437,7 @@ else
 fi
 
 # Board Settings
-case "$MACHINE" in 
+case "$MACHINE" in
   "smarc-rzg2l")
 
     # Old directory structure
