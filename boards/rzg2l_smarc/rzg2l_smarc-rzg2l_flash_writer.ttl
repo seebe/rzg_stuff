@@ -1,16 +1,27 @@
 ; Copyright (C) 2021 Renesas Electronics Corp.
 ; 
 ; This TeraTerm macro programs the first files starting with "bl2" and "fip"
-; stored in the "Binaries" folder, in the RZ/G2L QSPI FLASH.
+; stored in the "Binaries" folder, in the RZ/G2L QSPI FLASH or eMMC.
+; Both bin and srec files can be used but take in account that bin files
+; programming is significantly faster than srec.
 ; Assuming the files are there, launch the script and then reset the device.
-; You probably just need to adjust the COM port and Flash Writer srec file name.
+; You probably just need to adjust the COM port and Flash Writer srec file name
+; as well as select QSPI or eMMC as target
 
-
-; this is the Flash Writer srec
+; This is the Flash Writer srec.
+; If it is parameter is set to "" then Flash Writer is not sent
+; and it is expected to be already running
 FLASH_WRITER = "Flash_Writer_SCIF_RZG2L_SMARC_DDR4_2GB.mot"
 
 ; COM port 
-COM = 6
+COM = 17
+
+; Program QSPI or eMMC. QSPI -> 1, eMMC -> 0
+QSPI_NOT_eMMC = 1
+
+; Remove any user dialog apart from error
+; 1 to remove dialogs, 0 to keep them
+UNATTENDED = 1
 
 ; #### Normally you do not need to modify anything below this line ####
 
@@ -30,10 +41,16 @@ connect comstr
 testlink
 if result=0 then
    messagebox "No COM port" "Error!"
+   disconnect 0
+   closett
+   end
    exit
 endif
 if result=1 then
-   messagebox "No connection to COM port" "Error!"
+   messagebox "No connection to COM port, is COM port already open?" "Error!"
+   disconnect 0
+   closett
+   end
    exit
 endif
 
@@ -49,7 +66,7 @@ IMAGE_NUM=2
 IMAGE_ARR=IMAGE_NUM-1
 
 strdim PROGRAM_SIZE_TABLE IMAGE_NUM
-strdim FLASH_ADDRESS_TABLE IMAGE_NUM
+strdim FLASH_ADDRESS_TABLE IMAGE_NUM+2
 strdim FILE_NAME_TABLE IMAGE_NUM
 strdim TOP_ADDRESS_TABLE IMAGE_NUM
 intdim SREC_NOT_BIN_TABLE IMAGE_NUM
@@ -57,11 +74,13 @@ intdim SREC_NOT_BIN_TABLE IMAGE_NUM
 ; FLASH_ADDRESS_TABLE[X] (hardcoded)
 FLASH_ADDRESS_TABLE[0] = "00000"
 FLASH_ADDRESS_TABLE[1] = "1D200"
+; eMMC sector
+FLASH_ADDRESS_TABLE[2] = "1"
+FLASH_ADDRESS_TABLE[3] = "100"
 
 ; TOP_ADDRESS_TABLE[X] (hardcoded)
 TOP_ADDRESS_TABLE[0] = "11E00"
 TOP_ADDRESS_TABLE[1] = "00000"
-
 
 ; FILE_NAME_TABLE[X]
 ; get file names from Binaries folder.
@@ -126,34 +145,56 @@ FILE_NAME_TABLE[1] = filenamefip
 
 findclose dh
 
-messagebox "Please configure SCIF boot [OFF-ON-OFF-ON] and then reset the board " "User input needed"
-
-waitregex "please send !"
-FLASH_WRITER_PATH=BASE_PATH
-strconcat FLASH_WRITER_PATH FLASH_WRITER
-sendfile FLASH_WRITER_PATH 0
+strlen FLASH_WRITER
+if result=0 then
+   if UNATTENDED=0 then
+      messagebox "Please make sure that Flash Writer is already running " "User input needed"
+   endif
+else
+   if UNATTENDED=0 then
+      messagebox "Please configure SCIF boot [OFF-ON-OFF-ON] and then reset the board " "User input needed"
+      waitregex "please send !"
+   endif
+   FLASH_WRITER_PATH=BASE_PATH
+   strconcat FLASH_WRITER_PATH FLASH_WRITER
+   sendfile FLASH_WRITER_PATH 0
+endif
 
 setsync 1
-sendln "XCS"
-waitregex "Clear OK?"
-sendln "y"
+if QSPI_NOT_eMMC then
+   sendln "XCS"
+   waitregex "Clear OK?"
+   sendln "y"
+else
+   sendln "EM_E"
+   waitregex "Select area"
+   sendln "1"
+endif
 
-for i 0 IMAGE_ARR
+if QSPI_NOT_eMMC then
+   offset = 0
+else
+   offset = 2
+endif
+
+for i offset IMAGE_ARR+offset
    FLASH_ADDRESS=FLASH_ADDRESS_TABLE[i]
-   FILE_NAME=FILE_NAME_TABLE[i]
+   FILE_NAME=FILE_NAME_TABLE[i-offset]
    ; we don't need size with srec, rather top address
-   if SREC_NOT_BIN_TABLE[i] then
-      TOP_ADDRESS=TOP_ADDRESS_TABLE[i]
+   if SREC_NOT_BIN_TABLE[i-offset] then
+      TOP_ADDRESS=TOP_ADDRESS_TABLE[i-offset]
    else
       filestat FILE_NAME PROGRAM_SIZE_DEC
 	  call dec2hex
 	  PROGRAM_SIZE=PROGRAM_SIZE_HEX_STRING
    endif
-   SREC_NOT_BIN=SREC_NOT_BIN_TABLE[i]
+   SREC_NOT_BIN=SREC_NOT_BIN_TABLE[i-offset]
    call write_flash
 next
 
-messagebox "Macro executed successfully" "Done!"
+if UNATTENDED=0 then
+   messagebox "Macro executed successfully" "Done!"
+endif
 
 disconnect 0
 closett
@@ -177,6 +218,46 @@ endif
 waitregex "Please Input"
 
 return
+; #####
+
+; #####
+:launch_writer_eMMC
+
+if SREC_NOT_BIN then
+   sendln "EM_W"
+   ; messagebox "EM_W" "Debug"
+else
+   sendln "EM_WB"
+   ; messagebox "EM_WB" "Debug"
+endif
+
+waitregex "Select area"
+sendln "1"
+
+waitregex "Please Input"
+sendln FLASH_ADDRESS
+
+return
+
+; #####
+:program_EXT_CSD
+; program boot options: PARTITION_CONFIG and BOOT_BUS_CONDITIONS
+
+sendln "EM_SECSD"
+waitregex "Please Input"
+sendln "b1"
+waitregex "Please Input"
+sendln "2"
+
+sendln "EM_SECSD"
+waitregex "Please Input"
+sendln "b3"
+waitregex "Please Input"
+sendln "8"
+
+return
+
+; #####
 
 ; #####
 ;  PROGRAM_ADDRESS
@@ -186,19 +267,26 @@ return
 ; #####
 
 :write_flash
-
-call launch_writer
+if QSPI_NOT_eMMC then
+   call launch_writer
+else
+   call program_EXT_CSD
+   call launch_writer_eMMC
+endif
 
 if SREC_NOT_BIN then
    sendln TOP_ADDRESS
    waitregex "Please Input"
+   sendln FLASH_ADDRESS
+   waitregex "please send"
 else
    sendln PROGRAM_SIZE
    waitregex "Please Input"
+   if QSPI_NOT_eMMC then
+      sendln FLASH_ADDRESS
+      waitregex "please send"
+   else
 endif
-
-sendln FLASH_ADDRESS
-waitregex "please send"
 
 FILE_PATH=BASE_PATH
 strconcat FILE_PATH FILE_NAME
@@ -209,11 +297,20 @@ else
    sendfile FILE_PATH 1
 endif
 
-waitregex "SPI Data Clear"
+if QSPI_NOT_eMMC then
+   waitregex "SPI Data Clear"
+else
+   if SREC_NOT_BIN then
+      waitregex "EM_W Complete!"
+else
+      waitregex "EM_WB Complete!"
+   endif
+endif
 
 waitregex ">"
 
 return
+; #####
 
 ; this is used to convert the file size in hex, since Flash Writer accepts hex only
 :dec2hex
