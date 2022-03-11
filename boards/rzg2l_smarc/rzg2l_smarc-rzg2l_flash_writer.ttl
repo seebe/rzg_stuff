@@ -23,6 +23,10 @@ QSPI_NOT_eMMC = 1
 ; 1 to remove dialogs, 0 to keep them
 UNATTENDED = 1
 
+; Use high baudrate (921600) instead of standard (115200)
+; Make sure that Flash Writer supports the "SUP" command
+USE_HIGH_BAUD = 1
+
 ; #### Normally you do not need to modify anything below this line ####
 
 ; check if COM port number is passed via parameter, else use definition above
@@ -161,6 +165,13 @@ else
 endif
 
 setsync 1
+
+if USE_HIGH_BAUD=1 then
+   sendln "SUP"
+   waitregex "Please change to 921.6Kbps"
+   setbaud 921600 
+endif
+
 if QSPI_NOT_eMMC then
    sendln "XCS"
    waitregex "Clear OK?"
@@ -195,6 +206,8 @@ next
 if UNATTENDED=0 then
    messagebox "Macro executed successfully" "Done!"
 endif
+
+sendln "RESET"
 
 disconnect 0
 closett
