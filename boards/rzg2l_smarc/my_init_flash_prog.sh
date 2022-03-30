@@ -17,7 +17,7 @@ sync
 # Mounting USB thumb drive
 mount ${USB_DRIVE} /mnt
 echo "Programming eMMC, it should take 3-5 minutes please wait..."
-dd if=/mnt/${FILE_NAME} | gzip -dc | dd of=${DISK} bs=1M status=progress
+dd if=/mnt/${FILE_NAME} | gzip -dc | dd of=${DISK} bs=1M
 sync
 echo "Enlarging ext partition to fit the eMMC size..."
 echo ", +" | sfdisk -N 2 ${DISK}
