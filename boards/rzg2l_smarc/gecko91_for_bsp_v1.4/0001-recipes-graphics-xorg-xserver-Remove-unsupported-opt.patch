@@ -1,0 +1,25 @@
+From 03f9a337ae1400612559890d31efb4c494c78971 Mon Sep 17 00:00:00 2001
+From: Huynh Thanh Hung <hung.huynh.wz@renesas.com>
+Date: Mon, 25 Oct 2021 08:35:39 +0700
+Subject: [PATCH] recipes-graphics: xorg-xserver: Remove unsupported options:
+ dri3 and glamor
+
+We do not support these options, so that remove them for building
+successfully
+
+Signed-off-by: Huynh Thanh Hung <hung.huynh.wz@renesas.com>
+---
+ recipes-graphics/xorg-xserver/xserver-xorg_%d.bbappend | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 recipes-graphics/xorg-xserver/xserver-xorg_%d.bbappend
+
+diff --git a/recipes-graphics/xorg-xserver/xserver-xorg_%d.bbappend b/recipes-graphics/xorg-xserver/xserver-xorg_%d.bbappend
+new file mode 100644
+index 0000000..043582a
+--- /dev/null
++++ b/recipes-graphics/xorg-xserver/xserver-xorg_%d.bbappend
+@@ -0,0 +1 @@
++PACKAGECONFIG_remove = " dri3 glamor "
+-- 
+2.7.4
+
