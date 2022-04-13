@@ -1,0 +1,340 @@
+diff -ruN a/recipes-debian/attr/attr_debian.bb b/recipes-debian/attr/attr_debian.bb
+--- a/recipes-debian/attr/attr_debian.bb	1969-12-31 19:00:00.000000000 -0500
++++ b/recipes-debian/attr/attr_debian.bb	2022-04-12 13:37:11.023872783 -0400
+@@ -0,0 +1,26 @@
++SUMMARY = "Utilities for manipulating filesystem extended attributes"
++HOMEPAGE = "http://savannah.nongnu.org/projects/attr/"
++SECTION = "libs"
++
++DEPENDS = "virtual/libintl"
++
++LICENSE = "LGPLv2.1+ & GPLv2+"
++LICENSE_${PN} = "GPLv2+"
++LICENSE_lib${BPN} = "LGPLv2.1+"
++LIC_FILES_CHKSUM = "file://doc/COPYING;md5=2d0aa14b3fce4694e4f615e30186335f \
++                    file://doc/COPYING.LGPL;md5=b8d31f339300bc239d73461d68e77b9c \
++                    file://tools/attr.c;endline=17;md5=be0403261f0847e5f43ed5b08d19593c \
++                    file://libattr/libattr.c;endline=17;md5=7970f77049f8fa1199fff62a7ab724fb"
++
++inherit debian-package
++require recipes-debian/sources/attr.inc
++
++inherit autotools gettext update-alternatives
++
++BBCLASSEXTEND = "native nativesdk"
++
++ALTERNATIVE_PRIORITY = "100"
++ALTERNATIVE_${PN} = "setfattr"
++ALTERNATIVE_TARGET[setfattr] = "${bindir}/setfattr"
++
++PACKAGES =+ "lib${BPN}"
+diff -ruN a/recipes-debian/pseudo/pseudo/0001-Add-statx.patch b/recipes-debian/pseudo/pseudo/0001-Add-statx.patch
+--- a/recipes-debian/pseudo/pseudo/0001-Add-statx.patch	1969-12-31 19:00:00.000000000 -0500
++++ b/recipes-debian/pseudo/pseudo/0001-Add-statx.patch	2022-04-01 02:14:59.000000000 -0400
+@@ -0,0 +1,105 @@
++From 4e41a05de1f34ba00a68ca4f20fb49c4d1cbd2d0 Mon Sep 17 00:00:00 2001
++From: Richard Purdie <richard.purdie@linuxfoundation.org>
++Date: Wed, 6 Nov 2019 12:17:46 +0000
++Subject: [PATCH] Add statx glibc/syscall support
++
++Modern distros (e.g. fedora30) are starting to use the new statx() syscall through
++the newly exposed glibc wrapper function in software like coreutils (e.g. the ls
++command). Add support to intercept this to pseudo.
++
++Signed-off-by: Richard Purdie <richard.purdie@linuxfoundation.org>
++Upstream-Status: Submitted [Emailed to seebs]
++---
++ ports/linux/guts/statx.c | 48 ++++++++++++++++++++++++++++++++++++++++
++ ports/linux/portdefs.h   |  1 +
++ ports/linux/wrapfuncs.in |  1 +
++ 3 files changed, 50 insertions(+)
++ create mode 100644 ports/linux/guts/statx.c
++
++diff --git a/ports/linux/statx/guts/statx.c b/ports/linux/statx/guts/statx.c
++new file mode 100644
++index 0000000..a3259c4
++--- /dev/null
+++++ b/ports/linux/statx/guts/statx.c
++@@ -0,0 +1,42 @@
+++/*
+++ * Copyright (c) 2019 Linux Foundation
+++ * Author: Richard Purdie
+++ *
+++ * SPDX-License-Identifier: LGPL-2.1-only
+++ *
+++ * int
+++ * statx(int dirfd, const char *pathname, int flags, unsigned int mask, struct statx *statxbuf) {
+++ *	int rc = -1;
+++ */
+++	pseudo_msg_t *msg;
+++	PSEUDO_STATBUF buf;
+++	int save_errno;
+++
+++	rc = real_statx(dirfd, pathname, flags, mask, statxbuf);
+++	save_errno = errno;
+++	if (rc == -1) {
+++		return rc;
+++	}
+++
+++	buf.st_uid = statxbuf->stx_uid;
+++	buf.st_gid = statxbuf->stx_gid;
+++	buf.st_dev = makedev(statxbuf->stx_dev_major, statxbuf->stx_dev_minor);
+++	buf.st_ino = statxbuf->stx_ino;
+++	buf.st_mode = statxbuf->stx_mode;
+++	buf.st_rdev = makedev(statxbuf->stx_rdev_major, statxbuf->stx_rdev_minor);
+++	buf.st_nlink = statxbuf->stx_nlink;
+++	msg = pseudo_client_op(OP_STAT, 0, -1, dirfd, pathname, &buf);
+++	if (msg && msg->result == RESULT_SUCCEED) {
+++		pseudo_debug(PDBGF_FILE, "statx(path %s), flags %o, stat rc %d, stat uid %o\n", pathname, flags, rc, statxbuf->stx_uid);
+++		statxbuf->stx_uid = msg->uid;
+++		statxbuf->stx_gid = msg->gid;
+++		statxbuf->stx_mode = msg->mode;
+++		statxbuf->stx_rdev_major = major(msg->rdev);
+++		statxbuf->stx_rdev_minor = minor(msg->rdev);
+++	} else {
+++		pseudo_debug(PDBGF_FILE, "statx(path %s) failed, flags %o, stat rc %d, stat uid %o\n", pathname, flags, rc, statxbuf->stx_uid);
+++	}
+++	errno = save_errno;
+++/*	return rc;
+++ * }
+++ */
++diff --git a/ports/linux/statx/portdefs.h b/ports/linux/statx/portdefs.h
++new file mode 100644
++index 0000000..bf934dc
++--- /dev/null
+++++ b/ports/linux/statx/portdefs.h
++@@ -0,0 +1,6 @@
+++/*
+++ * SPDX-License-Identifier: LGPL-2.1-only
+++ *
+++ */
+++#include <sys/stat.h>
+++#include <sys/sysmacros.h>
++diff --git a/ports/linux/statx/wrapfuncs.in b/ports/linux/statx/wrapfuncs.in
++new file mode 100644
++index 0000000..c9cd4c3
++--- /dev/null
+++++ b/ports/linux/statx/wrapfuncs.in
++@@ -0,0 +1 @@
+++int statx(int dirfd, const char *pathname, int flags, unsigned int mask, struct statx *statxbuf);
++diff --git a/ports/linux/subports b/ports/linux/subports
++index a29044a..49081bf 100755
++--- a/ports/linux/subports
+++++ b/ports/linux/subports
++@@ -54,3 +54,13 @@ else
++ fi
++ rm -f dummy.c dummy.o
++ 
+++cat > dummy.c <<EOF
+++#define _GNU_SOURCE
+++#include <sys/stat.h>
+++struct statx x;
+++EOF
+++if ${CC} -c -o dummy.o dummy.c >/dev/null 2>&1; then
+++	echo "linux/statx"
+++fi
+++rm -f dummy.c dummy.o
+++
++-- 
++2.17.1
+diff -ruN a/recipes-debian/pseudo/pseudo/0001-don-t-renameat2-please.patch b/recipes-debian/pseudo/pseudo/0001-don-t-renameat2-please.patch
+--- a/recipes-debian/pseudo/pseudo/0001-don-t-renameat2-please.patch	1969-12-31 19:00:00.000000000 -0500
++++ b/recipes-debian/pseudo/pseudo/0001-don-t-renameat2-please.patch	2022-04-01 02:14:59.000000000 -0400
+@@ -0,0 +1,73 @@
++From c1375a6df4379c620d4e2a622eb58e5d7a1b556a Mon Sep 17 00:00:00 2001
++From: Seebs <seebs@seebs.net>
++Date: Tue, 9 Apr 2019 18:05:43 -0500
++Subject: [PATCH] don't renameat2 please
++
++commit 6ebc7d6bc8ab973d0ba949eeb363821811ce8dc5 upstream
++
++So renameat2 now has a glibc wrapper in some recent glibc, which
++means that mv can use it, and thus bypass all our clever testing,
++and since we can't intercept the actual syscall (gnulib's implementation
++apparently doesn't hit the glibc syscall() wrapper?), this results
++in files being moved without pseudo knowing about them.
++
++Implementing the semantics properly is Very Hard, but possibly we
++can just fail politely for now.
++
++We'll be back to this later.
++---
++ ChangeLog.txt                |  4 ++++
++ ports/linux/guts/renameat2.c | 20 ++++++++++++++++++++
++ ports/linux/wrapfuncs.in     |  1 +
++ 3 files changed, 25 insertions(+)
++ create mode 100644 ports/linux/guts/renameat2.c
++
++diff --git a/ChangeLog.txt b/ChangeLog.txt
++index e0c66fc..8b98dca 100644
++--- a/ChangeLog.txt
+++++ b/ChangeLog.txt
++@@ -1,3 +1,7 @@
+++2019-04-09:
+++	* (seebs) Make a glibc renameat2 wrapper that just fails because
+++	implementing renameat2 semantics is Surprisingly Hard.
+++
++ 2018-09-20:
++ 	* (seebs) coerce inodes to signed int64_t range when shoving
++ 	  them into sqlite.
++diff --git a/ports/linux/guts/renameat2.c b/ports/linux/guts/renameat2.c
++new file mode 100644
++index 0000000..0df8369
++--- /dev/null
+++++ b/ports/linux/guts/renameat2.c
++@@ -0,0 +1,20 @@
+++/*
+++ * Copyright (c) 2019 Peter Seebach/Seebs <seebs@seebs.net>; see
+++ * guts/COPYRIGHT for information.
+++ *
+++ * [Note: copyright added by code generator, may be
+++ * incorrect. Remove this if you fix it.]
+++ *
+++ * int renameat2(int olddirfd, const char *oldpath, int newdirfd, const char *newpath, unsigned int flags)
+++ *	int rc = -1;
+++ */
+++
+++	/* for now, let's try just failing out hard, and hope things retry with a
+++	 * different syscall.
+++	 */
+++	errno = ENOSYS;
+++	rc = -1;
+++
+++/*	return rc;
+++ * }
+++ */
++diff --git a/ports/linux/wrapfuncs.in b/ports/linux/wrapfuncs.in
++index e47acc3..a129eba 100644
++--- a/ports/linux/wrapfuncs.in
+++++ b/ports/linux/wrapfuncs.in
++@@ -55,3 +55,4 @@ int getpwent_r(struct passwd *pwbuf, char *buf, size_t buflen, struct passwd **p
++ int getgrent_r(struct group *gbuf, char *buf, size_t buflen, struct group **gbufp);
++ int capset(cap_user_header_t hdrp, const cap_user_data_t datap); /* real_func=pseudo_capset */
++ long syscall(long nr, ...); /* hand_wrapped=1 */
+++int renameat2(int olddirfd, const char *oldpath, int newdirfd, const char *newpath, unsigned int flags); /* flags=AT_SYMLINK_NOFOLLOW */
++-- 
++2.20.1
+diff -ruN a/recipes-debian/pseudo/pseudo/moreretries.patch b/recipes-debian/pseudo/pseudo/moreretries.patch
+--- a/recipes-debian/pseudo/pseudo/moreretries.patch	1969-12-31 19:00:00.000000000 -0500
++++ b/recipes-debian/pseudo/pseudo/moreretries.patch	2022-04-01 02:14:59.000000000 -0400
+@@ -0,0 +1,19 @@
++Increase the number of retries in pseudo due to occasional slow
++server shutdowns.
++
++Upstream-Status: Pending
++RP 2016/2/28
++
++Index: git/pseudo_client.c
++===================================================================
++--- git.orig/pseudo_client.c
+++++ git/pseudo_client.c
++@@ -1282,7 +1282,7 @@ pseudo_client_setup(void) {
++ 	}
++ }
++ 
++-#define PSEUDO_RETRIES 20
+++#define PSEUDO_RETRIES 250
++ static pseudo_msg_t *
++ pseudo_client_request(pseudo_msg_t *msg, size_t len, const char *path) {
++ 	pseudo_msg_t *response = 0;
+diff -ruN a/recipes-debian/pseudo/pseudo/toomanyfiles.patch b/recipes-debian/pseudo/pseudo/toomanyfiles.patch
+--- a/recipes-debian/pseudo/pseudo/toomanyfiles.patch	1969-12-31 19:00:00.000000000 -0500
++++ b/recipes-debian/pseudo/pseudo/toomanyfiles.patch	2022-04-01 02:14:59.000000000 -0400
+@@ -0,0 +1,70 @@
++From b0b25fbc041a148d1de09f5a6503cd95973ec77c Mon Sep 17 00:00:00 2001
++From: Richard Purdie <richard.purdie@linuxfoundation.org>
++Date: Tue, 25 Apr 2017 15:25:54 +0100
++Subject: [PATCH 3/3] pseudo: Handle too many files deadlock
++
++Currently if we max out the maximum number of files, pseudo can deadlock, unable to
++accept new connections yet unable to move forward and unblock the other processes
++waiting either.
++
++Rather than hang, when this happens, close out inactive connections, allowing us
++to accept the new ones. The disconnected clients will simply reconnect. There is
++a small risk of data loss here sadly but its better than hanging.
++
++RP
++2017/4/25
++
++Upstream-Status: Submitted [Peter is aware of the issue]
++
++---
++ pseudo_server.c | 10 ++++++++++
++ 1 file changed, 10 insertions(+)
++
++diff --git a/pseudo_server.c b/pseudo_server.c
++index dac3258..15a3e8f 100644
++--- a/pseudo_server.c
+++++ b/pseudo_server.c
++@@ -802,6 +802,7 @@ pseudo_server_loop(void) {
++ 	struct sigaction eat_usr2 = {
++ 		.sa_handler = set_do_list_clients
++ 	};
+++	int hitmaxfiles;
++ 
++ 	clients = malloc(16 * sizeof(*clients));
++ 
++@@ -820,6 +821,7 @@ pseudo_server_loop(void) {
++ 	active_clients = 1;
++ 	max_clients = 16;
++ 	highest_client = 0;
+++	hitmaxfiles = 0;
++ 
++ 	pseudo_debug(PDBGF_SERVER, "server loop started.\n");
++ 	if (listen_fd < 0) {
++@@ -878,10 +880,15 @@ pseudo_server_loop(void) {
++ 					} else {
++ 						serve_client(i);
++ 					}
+++				} else if (hitmaxfiles) {
+++					/* Only close one per loop iteration in the interests of caution */
+++					close_client(i);
+++					hitmaxfiles = 0;
++ 				}
++ 				if (die_forcefully)
++ 					break;
++ 			}
+++			hitmaxfiles = 0;
++ 			if (!die_forcefully && 
++ 			    (FD_ISSET(clients[0].fd, &events) ||
++ 			     FD_ISSET(clients[0].fd, &reads))) {
++@@ -903,6 +910,9 @@ pseudo_server_loop(void) {
++ 					 */
++ 					pseudo_server_timeout = DEFAULT_PSEUDO_SERVER_TIMEOUT;
++ 					die_peacefully = 0;
+++				} else if (errno == EMFILE) {
+++					hitmaxfiles = 1;
+++					pseudo_debug(PDBGF_SERVER, "Hit max open files, dropping a client.\n");
++ 				}
++ 			}
++ 			pseudo_debug(PDBGF_SERVER, "server loop complete [%d clients left]\n", active_clients);
++-- 
++2.15.1
+diff -ruN a/recipes-debian/pseudo/pseudo_debian.bb b/recipes-debian/pseudo/pseudo_debian.bb
+--- a/recipes-debian/pseudo/pseudo_debian.bb	1969-12-31 19:00:00.000000000 -0500
++++ b/recipes-debian/pseudo/pseudo_debian.bb	2022-04-12 13:10:42.382850992 -0400
+@@ -0,0 +1,23 @@
++# base recipe: meta/recipes-devtools/pseudo/pseudo_git.bb
++# base branch: warrior
++# base commit: bf363493fec990eaf7577769f1862d439404bd10
++
++require ${COREBASE}/meta/recipes-devtools/pseudo/pseudo.inc
++
++LICENSE = "LGPLv2.1"
++LIC_FILES_CHKSUM = "file://COPYING;md5=243b725d71bb5df4a1e5920b344b86ad"
++
++inherit debian-package
++require recipes-debian/sources/pseudo.inc
++FILESPATH_append = ":${COREBASE}/meta/recipes-devtools/pseudo/files:${THISDIR}/pseudo"
++DEPENDS += "python3-native"
++
++SRC_URI += " \
++	file://0001-configure-Prune-PIE-flags.patch \
++	file://fallback-passwd \
++	file://fallback-group \
++	file://moreretries.patch \
++	file://toomanyfiles.patch \
++	file://0001-Add-statx.patch \
++	file://0001-don-t-renameat2-please.patch \
++"
