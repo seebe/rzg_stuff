@@ -18,6 +18,8 @@
 ; If it is parameter is set to "" then Flash Writer is not sent
 ; and it is expected to be already running
 FLASH_WRITER = "Flash_Writer_SCIF_RZG2L_SMARC_DDR4_2GB.mot"
+;FLASH_WRITER = "Flash_Writer_SCIF_RZG2UL_SMARC_DDR4_1GB_1PCS.mot"
+;FLASH_WRITER = "Flash_Writer_SCIF_RZFIVE_SMARC.mot"
 
 ; COM port 
 COM = 17
@@ -38,6 +40,9 @@ ENV_VAR_PART_NUM = "2"
 
 ; Environment variables start sector
 ENV_VAR_START_ADDRESS = "FB00"
+
+; RZ/Five programming
+RZ_FIVE_NOT_ARM = 0
 
 ; #### Normally you do not need to modify anything below this line ####
 
@@ -89,7 +94,11 @@ intdim SREC_NOT_BIN_TABLE IMAGE_NUM
 
 ; FLASH_ADDRESS_TABLE[X] (hardcoded)
 FLASH_ADDRESS_TABLE[0] = "00000"
-FLASH_ADDRESS_TABLE[1] = "1D200"
+if RZ_FIVE_NOT_ARM then
+   FLASH_ADDRESS_TABLE[1] = "20000"
+else
+   FLASH_ADDRESS_TABLE[1] = "1D200"
+endif
 ; eMMC sector
 FLASH_ADDRESS_TABLE[2] = "1"
 FLASH_ADDRESS_TABLE[3] = "100"
@@ -100,18 +109,23 @@ TOP_ADDRESS_TABLE[1] = "00000"
 
 ; FILE_NAME_TABLE[X]
 ; get file names from Binaries folder.
-; first files starting with "bl2" and "fip" are used
+; first files starting with "bl2" and "fip" or "spl" and "fit" are used
 
 filenamebl2="Binaries/"
 filenamefip="Binaries/"
 filenameubootenv="Binaries/"
-extpatbl2='Binaries/bl2*.*'
-extpatfip='Binaries/fip*.*'
+if RZ_FIVE_NOT_ARM then
+   extpatbl2='Binaries/spl*.*'
+   extpatfip='Binaries/fit*.*'
+else
+   extpatbl2='Binaries/bl2*.*'
+   extpatfip='Binaries/fip*.*'
+endif
 extpatubootenv='Binaries/u-boot*.*'
 
 findfirst dh extpatbl2 filename
 if dh=-1 then
-   messagebox "bl2 file does not exist, please copy a valid bl2 file in the Binaries folder" "Error!"
+   messagebox "bl2/spl file does not exist, please copy a valid bl2 file in the Binaries folder" "Error!"
    exit
 endif
 strconcat filenamebl2 filename 
@@ -129,7 +143,7 @@ else
        ; messagebox "srec not bin =1 i.e. srec" "Debug"
        SREC_NOT_BIN_TABLE[0]=1
    else
-       messagebox "Can't find a valid bl2 .srec or .bin" "Error!"
+       messagebox "Can't find a valid bl2.spl .srec or .bin" "Error!"
 	   exit
    endif
 endif
@@ -138,7 +152,7 @@ FILE_NAME_TABLE[0] = filenamebl2
 
 findfirst dh extpatfip filename
 if dh=-1 then
-   messagebox "fip file does not exist, please copy a valid fip file in the Binaries folder"  "Error!"
+   messagebox "fip/fit file does not exist, please copy a valid fip file in the Binaries folder"  "Error!"
    exit
 endif
 strconcat filenamefip filename 
@@ -154,7 +168,7 @@ else
    if result<>0 then
        SREC_NOT_BIN_TABLE[1]=1
    else
-       messagebox "Can't find a valid fip .srec or .bin" "Error!"
+       messagebox "Can't find a valid fip/fit .srec or .bin" "Error!"
 	   exit
    endif
 endif
@@ -362,7 +376,7 @@ else
    if QSPI_NOT_eMMC then
       sendln FLASH_ADDRESS
       waitregex "please send"
-   else
+   endif
 endif
 
 FILE_PATH=BASE_PATH
