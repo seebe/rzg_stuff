@@ -16,7 +16,7 @@ ALIGN   = -mstrict-align
 BOOTDIR     = riscv_boot
 OUTPUT_DIR  = riscv_output
 OBJECT_DIR  = riscv_obj
-CROSS_COMPILE ?= riscv64-unknown-linux-gnu-
+CROSS_COMPILE ?= riscv64-elf-
 
 CFLAGS += -O0 -fno-stack-protector -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables
 FILE_NAME   = $(OUTPUT_DIR)/sieve$(FILENAME_ADD)
