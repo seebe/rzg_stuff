@@ -1,0 +1,26 @@
+From 0f891ce47e7203d560801a551184fb7da238aae4 Mon Sep 17 00:00:00 2001
+From: hienhuynh <hien.huynh.px@renesas.com>
+Date: Sun, 6 Mar 2022 01:34:54 +0700
+Subject: [PATCH] Support for linux-kernel v5.10
+
+Signed-off-by: hienhuynh <hien.huynh.px@renesas.com>
+---
+ drivers/gpu/arm/midgard/mali_kbase_core_linux.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/arm/midgard/mali_kbase_core_linux.c b/drivers/gpu/arm/midgard/mali_kbase_core_linux.c
+index 70784dc..5e6206b 100644
+--- a/drivers/gpu/arm/midgard/mali_kbase_core_linux.c
++++ b/drivers/gpu/arm/midgard/mali_kbase_core_linux.c
+@@ -4496,7 +4496,7 @@ int power_control_init(struct kbase_device *kbdev)
+ 
+ 	for (i = 0; i < BASE_MAX_NR_CLOCKS_REGULATORS; i++) {
+ 		kbdev->resets[i] = __of_reset_control_get(kbdev->dev->of_node, NULL, i,
+-							false, false);
++							false, false, true);
+ 		if (IS_ERR_OR_NULL(kbdev->resets[i])) {
+ 			err = PTR_ERR(kbdev->resets[i]);
+ 			kbdev->resets[i] = NULL;
+-- 
+2.25.1
+

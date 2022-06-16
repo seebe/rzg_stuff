@@ -1,0 +1,29 @@
+From b9b600b68c91d7fbf14b3d36d5121049cf9aa2e6 Mon Sep 17 00:00:00 2001
+From: hienhuynh <hien.huynh.px@renesas.com>
+Date: Wed, 16 Feb 2022 15:18:08 +0700
+Subject: [PATCH] Fix compiling error when enable SUPPORT_FIXED_DEVICE_MEMORY
+
+This commit is created to fix compiling error when enable
+SUPPORT_FIXED_DEVICE_MEMORY by removing redundant ')'.
+
+Signed-off-by: hienhuynh <hien.huynh.px@renesas.com>
+---
+ services/system/rogue/rgx_rcar/sysconfig.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/system/rogue/rgx_rcar/sysconfig.c b/services/system/rogue/rgx_rcar/sysconfig.c
+index 572a12e..67e2177 100644
+--- a/services/system/rogue/rgx_rcar/sysconfig.c
++++ b/services/system/rogue/rgx_rcar/sysconfig.c
+@@ -191,7 +191,7 @@ static PVRSRV_ERROR PhysHeapsCreate(PHYS_HEAP_CONFIG **ppasPhysHeapsOut,
+ 	}
+ #if defined(SUPPORT_FIXED_DEVICE_MEMORY)
+ 	printk(KERN_INFO"GSX use fixed device memory. addr: 0x%llx, size: 0x%llx\n",
+-				SUPPORT_FIXED_DEVICE_MEMORY_ADDR, SUPPORT_FIXED_DEVICE_MEMORY_SIZE));
++				SUPPORT_FIXED_DEVICE_MEMORY_ADDR, SUPPORT_FIXED_DEVICE_MEMORY_SIZE);
+ 	pasPhysHeaps[PHYS_HEAP_IDX_GENERAL].ui32PhysHeapID = ui32HeapIDBase + PHYS_HEAP_IDX_GENERAL;
+ 	pasPhysHeaps[PHYS_HEAP_IDX_GENERAL].pszPDumpMemspaceName = "LMA";
+ 	pasPhysHeaps[PHYS_HEAP_IDX_GENERAL].eType = PHYS_HEAP_TYPE_LMA;
+-- 
+2.25.1
+

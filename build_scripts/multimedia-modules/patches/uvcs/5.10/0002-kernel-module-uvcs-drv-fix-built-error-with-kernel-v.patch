@@ -1,0 +1,156 @@
+From 8903ed67902e37627523702123e50b0a14c8cbcd Mon Sep 17 00:00:00 2001
+From: hienhuynh <hien.huynh.px@renesas.com>
+Date: Mon, 8 Nov 2021 13:14:18 +0700
+Subject: [PATCH] kernel-module-uvcs-drv: fix built error with kernel v5.10
+
+This commit is created to fix all compilin errors with kernel v5.10.
+
+Signed-off-by: hienhuynh <hien.huynh.px@renesas.com>
+---
+ src/lkm/uvcs_lkm.c           |  4 ++--
+ src/lkm/uvcs_lkm_uf_io.c     | 26 +++++++++++++-------------
+ src/lkm/uvcs_lkm_uf_thread.c |  4 ++--
+ 3 files changed, 17 insertions(+), 17 deletions(-)
+
+diff --git a/src/lkm/uvcs_lkm.c b/src/lkm/uvcs_lkm.c
+index 82eed05..ab8ce70 100644
+--- a/src/lkm/uvcs_lkm.c
++++ b/src/lkm/uvcs_lkm.c
+@@ -337,7 +337,7 @@ static ssize_t uvcs_write(struct file *filp, const char __user *buff,
+ 	struct uvcs_hdl_info *hdl = filp->private_data;
+ 	unsigned int temp[2];
+ 	ssize_t result;
+-	struct timespec ts;
++	struct timespec64 ts;
+ 	UVCS_RESULT uvcs_ret;
+ 
+ 	if ((hdl == NULL)
+@@ -376,7 +376,7 @@ static ssize_t uvcs_write(struct file *filp, const char __user *buff,
+ 		result = -EFAULT;
+ 
+ 	} else {
+-		getrawmonotonic(&ts);
++		ktime_get_raw_ts64(&ts);
+ 		hdl->req_data[temp[1]].state = UVCS_REQ_USED;
+ 		hdl->req_data[temp[1]].time = ts.tv_nsec;
+ 
+diff --git a/src/lkm/uvcs_lkm_uf_io.c b/src/lkm/uvcs_lkm_uf_io.c
+index 87d675b..de58f77 100644
+--- a/src/lkm/uvcs_lkm_uf_io.c
++++ b/src/lkm/uvcs_lkm_uf_io.c
+@@ -171,11 +171,11 @@ static irqreturn_t uvcs_vlc_int_handler(
+ {
+ 	if (driver_info) {
+ 		struct platform_device *pdev = dev;
+-		struct timespec ts;
++		struct timespec64 ts;
+ 		int i;
+ 		unsigned long flags;
+ 
+-		getrawmonotonic(&ts);
++		ktime_get_raw_ts64(&ts);
+ 		for (i = 0; i < driver_info->vcp_devnum; i++) {
+ 			if ((driver_info->vcpinf[i].irq_vlc == irq)
+ 			&&	(driver_info->vcpinf[i].pdev == pdev)) {
+@@ -205,11 +205,11 @@ static irqreturn_t uvcs_ce_int_handler(
+ {
+ 	if (driver_info) {
+ 		struct platform_device *pdev = dev;
+-		struct timespec ts;
++		struct timespec64 ts;
+ 		int i;
+ 		unsigned long flags;
+ 
+-		getrawmonotonic(&ts);
++		ktime_get_raw_ts64(&ts);
+ 		for (i = 0; i < driver_info->vcp_devnum; i++) {
+ 			if ((driver_info->vcpinf[i].irq_ce == irq)
+ 			&&	(driver_info->vcpinf[i].pdev == pdev)) {
+@@ -236,10 +236,10 @@ static void uvcs_vlc_timer_handler(
+ 	struct uvcs_vcp_hwinf *vcpinfo = from_timer(vcpinfo, data_ptr, timer_vlc);
+ 	unsigned long data = vcpinfo -> timer_vlc_data;
+ 	if (driver_info) {
+-		struct timespec ts;
++		struct timespec64 ts;
+ 		unsigned long flags;
+ 
+-		getrawmonotonic(&ts);
++		ktime_get_raw_ts64(&ts);
+ 		if (data < driver_info->vcp_devnum) {
+ 			spin_lock_irqsave(&driver_info->vcpinf[data].slock_vlc, flags);
+ 			del_timer(&driver_info->vcpinf[data].timer_vlc);
+@@ -260,10 +260,10 @@ static void uvcs_ce_timer_handler(
+ 	struct uvcs_vcp_hwinf *vcpinfo = from_timer(vcpinfo, data_ptr, timer_ce);
+ 	unsigned long data = vcpinfo -> timer_ce_data;
+ 	if (driver_info) {
+-		struct timespec ts;
++		struct timespec64 ts;
+ 		unsigned long flags;
+ 
+-		getrawmonotonic(&ts);
++		ktime_get_raw_ts64(&ts);
+ 		if (data < driver_info->vcp_devnum) {
+ 			spin_lock_irqsave(&driver_info->vcpinf[data].slock_ce, flags);
+ 			del_timer(&driver_info->vcpinf[data].timer_ce);
+@@ -444,8 +444,8 @@ static void uvcs_hw_reset(
+ 	uint rdcnt = 0;
+ 
+ 	if (hw_ip_id < UVCS_CMN_MAX_HW_NUM) {
+-		void __iomem *srcr1 = ioremap_nocache(UVCS_REG_SRCR, UVCS_REG_SIZE_SINGLE);
+-		void __iomem *srstclr1 = ioremap_nocache(UVCS_REG_SRSTCLR, UVCS_REG_SIZE_SINGLE);
++		void __iomem *srcr1 = ioremap(UVCS_REG_SRCR, UVCS_REG_SIZE_SINGLE);
++		void __iomem *srstclr1 = ioremap(UVCS_REG_SRSTCLR, UVCS_REG_SIZE_SINGLE);
+ 
+ 		switch (drv->vcpinf[hw_ip_id].iparch) {
+ 		case UVCS_CMN_IPARCH_VCPL4:
+@@ -891,14 +891,14 @@ int uvcs_get_vcp_resource(
+ 		goto err_exit_1;
+ 	}
+ 
+-	vcpinf->reg_vlc = ioremap_nocache(vcpinf->pa_vlc,
++	vcpinf->reg_vlc = ioremap(vcpinf->pa_vlc,
+ 									UVCS_REG_SIZE_VLC);
+ 	if (vcpinf->reg_vlc == NULL) {
+ 		dev_err(&pdev->dev, "failed to remap (reg_0, %u)\n", iparch);
+ 		goto err_exit_1;
+ 	}
+ 
+-	vcpinf->reg_ce = ioremap_nocache(vcpinf->pa_ce,
++	vcpinf->reg_ce = ioremap(vcpinf->pa_ce,
+ 									UVCS_REG_SIZE_CE);
+ 	if (vcpinf->reg_ce == NULL) {
+ 		dev_err(&pdev->dev, "failed to remap (reg_1, %u)\n", iparch);
+@@ -953,7 +953,7 @@ int uvcs_get_fcp_resource(
+ 	}
+ 	fcpinf->pa_fcp = (u64)res->start;
+ 
+-	fcpinf->reg_fcp = ioremap_nocache(fcpinf->pa_fcp,
++	fcpinf->reg_fcp = ioremap(fcpinf->pa_fcp,
+ 									UVCS_REG_SIZE_FCPC);
+ 	if (fcpinf->reg_fcp == NULL) {
+ 		dev_err(&pdev->dev, "failed to remap (reg)\n");
+diff --git a/src/lkm/uvcs_lkm_uf_thread.c b/src/lkm/uvcs_lkm_uf_thread.c
+index 97bd417..547a461 100644
+--- a/src/lkm/uvcs_lkm_uf_thread.c
++++ b/src/lkm/uvcs_lkm_uf_thread.c
+@@ -85,7 +85,7 @@ static int uvcs_thread(
+ {
+ 	struct uvcs_driver_info *drv = (struct uvcs_driver_info *)data;
+ 	struct uvcs_thr_ctrl *thr = &drv->thread_ctrl;
+-	struct timespec ts;
++	struct timespec64 ts;
+ 	int evt_ret;
+ 
+ 	while (!kthread_should_stop()) {
+@@ -95,7 +95,7 @@ static int uvcs_thread(
+ 			);
+ 		if (!evt_ret) {
+ 			if (thr->evt_req) {
+-				getrawmonotonic(&ts);
++				ktime_get_raw_ts64(&ts);
+ 				thr->evt_req = false;
+ 				uvcs_cmn_execute(drv->uvcs_info, ts.tv_nsec);
+ 			}
+-- 
+2.25.1
+

@@ -1,0 +1,25 @@
+From 0bffac9260d437a2891b92d20b47f99cf992992d Mon Sep 17 00:00:00 2001
+From: Nhat Thieu <nhat.thieu.xr@renesas.com>
+Date: Tue, 8 Mar 2022 12:52:26 +0700
+Subject: [PATCH] Workaround GPU driver: remove power-domains of GPU note
+
+Signed-off-by: Nhat Thieu <nhat.thieu.xr@renesas.com>
+---
+ arch/arm64/boot/dts/renesas/r9a07g044.dtsi | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/renesas/r9a07g044.dtsi b/arch/arm64/boot/dts/renesas/r9a07g044.dtsi
+index 079e3c5..6116987 100644
+--- a/arch/arm64/boot/dts/renesas/r9a07g044.dtsi
++++ b/arch/arm64/boot/dts/renesas/r9a07g044.dtsi
+@@ -695,7 +695,6 @@
+ 				 <&cpg CPG_MOD R9A07G044_GPU_AXI_CLK>,
+ 				 <&cpg CPG_MOD R9A07G044_GPU_ACE_CLK>;
+ 			clock-names = "gpu", "bus", "bus_ace";
+-			power-domains = <&cpg>;
+ 			resets = <&cpg R9A07G044_GPU_RESETN>,
+ 				 <&cpg R9A07G044_GPU_AXI_RESETN>,
+ 				 <&cpg R9A07G044_GPU_ACE_RESETN>;
+-- 
+2.7.4
+

@@ -5,6 +5,7 @@ rm -rf ./vsp2/vsp2driver
 rm -rf ./mmngr/mmngr_drv
 rm -rf ./gles/rogue_km
 rm -rf ./uvcs/RCG3VUDRL4101ZDO
+rm -rf ./uvcs/uvcs_lib_package
 rm -rf ./qos/qos_drv
 rm -rf ./mali/mali_pkg
 rm -rf ./mm_packages/proprietary
