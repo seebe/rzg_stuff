@@ -6,5 +6,7 @@ rm -rf ./mmngr/mmngr_drv
 rm -rf ./gles/rogue_km
 rm -rf ./uvcs/RCG3VUDRL4101ZDO
 rm -rf ./qos/qos_drv
+rm -rf ./mali/mali_pkg
 rm -rf ./mm_packages/proprietary
+rm -rf ./mm_packages/RTK*/
 rm -rf ./build/*.ko

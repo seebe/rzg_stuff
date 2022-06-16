@@ -14,7 +14,17 @@ fi
 pushd vsp2driver
 
 # Checkout the version that we need
-git checkout 0ecf35aa05c103ba4d3ab83e3320a22fccd912c3
+if [ ${KERNEL_VERSION} = 4.19 ]
+then
+  git checkout 0ecf35aa05c103ba4d3ab83e3320a22fccd912c3
+elif [ ${KERNEL_VERSION} = 5.10 ]
+then
+  git checkout b3a116d8ce68371cac21011ca3b3190ae3576987
+else
+  echo "Kernel version not set"
+  popd
+  exit -1
+fi
 
 # Prepare environment
 eval ${SDK_SETUP}
@@ -23,10 +33,10 @@ pushd vsp2driver
 KERNEL_VERSION=$(<${KERNELSRC}/include/config/kernel.release)
 
 # Make
-make -C $KERNELSRC M=$PWD KBUILD_EXTRA_SYMBOLS=../include/vspm.symvers modules
+make -j$(nproc) -C $KERNELSRC M=$PWD KBUILD_EXTRA_SYMBOLS=../include/vspm.symvers modules
 
 cp linux/vsp2.h $KERNELSRC/../include
-cp Module.symvers $KERNELSRC/include/vsp2.symvers
+cp Module.symvers $KERNELSRC/../include/vsp2.symvers
 
 # Install
 if [ ${TARGET_INSTALL} = TRUE ]
@@ -34,10 +44,12 @@ then
   ssh root@${TARGET_IP_ADDRESS} "mkdir -p /lib/modules/${KERNEL_VERSION}/extra"
   scp vsp2.ko root@${TARGET_IP_ADDRESS}:/lib/modules/${KERNEL_VERSION}/extra
 fi
-pushd
+popd
 
-cp ./vsp2driver/vsp2.ko ../../build
+mkdir -p ${DEPLOY_DIR}/lib/modules/${KERNEL_VERSION}/extra
+cp ./vsp2driver/vsp2.ko ${DEPLOY_DIR}/lib/modules/${KERNEL_VERSION}/extra
 
+popd
 
 
 
