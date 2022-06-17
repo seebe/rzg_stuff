@@ -14,6 +14,7 @@ https://www.renesas.com/us/en/products/microcontrollers-microprocessors/rz-mpus/
 
 Kernel 5.10, RZ/G2L, GPU:
 https://www.renesas.com/us/en/products/microcontrollers-microprocessors/rz-arm-based-high-end-32-64-bit-mpus/rzg2l-mali-graphic-library-evaluation-version
+
 Kernel 5.10, RZ/G2L, codec:
 https://www.renesas.com/us/en/software-tool/rz-mpu-video-codec-library-evaluation-version-rzg2l-and-rzv2l
 
@@ -45,5 +46,7 @@ In order to be able to build all modules successfully another Arm toochain has t
 In contrast with what is built by Yocto, the Mali module built issues an harmless but annoying kernel warning periodically.
 The warning can be silenced applyng an additional patch before building.
 Edit file mali/build_mali.sh and append the following line to the patches:
-patch -p1 -N < ../../../silent_mali_kernel_warning.patch || true
+
+		patch -p1 -N < ../../../silent_mali_kernel_warning.patch || true
+
 Then build as per point 5.
