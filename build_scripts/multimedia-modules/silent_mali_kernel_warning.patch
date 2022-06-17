@@ -1,0 +1,12 @@
+--- a/drivers/gpu/arm/midgard/platform/devicetree/mali_kbase_runtime_pm.c
++++ b/drivers/gpu/arm/midgard/platform/devicetree/mali_kbase_runtime_pm.c
+@@ -66,7 +66,9 @@ static void disable_gpu_power_control(struct kbase_device *kbdev)
+ 			;
+ 		else if (__clk_is_enabled(kbdev->clocks[i])) {
+ 			clk_disable_unprepare(kbdev->clocks[i]);
++#if 0
+ 			WARN_ON(__clk_is_enabled(kbdev->clocks[i]));
++#endif
+ 		}
+ 
+ 	}
