@@ -1,7 +1,0 @@
-Fix RZ/G2H eMMC boot for VLP64 v1.0.5 and v1.0.6
-
-For the BSP releases of v1.0.5-RT and v1.0.6, a patch in the arm-trusted-firmware code was missing for RZ/G2H that prevented it from booting from eMMC.
-While RZ/G2H eMMC boot support exists in v1.0.4, for the v1.0.5 code release the base software repository changed from the R-Car repository to the official ARM repository and new "rzg" subdirectory were created. With all these changes, this eMMC boot patch was missed.
-
-Please apply this patch to your code base if you are using a RZ/G2H and booting from eMMC.
-
