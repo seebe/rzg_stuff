@@ -15,6 +15,14 @@ sleep 1
 echo dd if=/dev/zero of=${DISK} bs=512 count=1
 dd if=/dev/zero of=${DISK} bs=512 count=1
 sync
+# Waiting for USB
+while [ ! -e ${USB_DRIVE} ]; do
+    sleep 1
+    counter=$((counter + 1))
+    if [ $counter -ge 50 ]; then
+        exit
+    fi
+done
 # Mounting USB thumb drive
 mount ${USB_DRIVE} /mnt
 echo "Programming eMMC, it should take 3-5 minutes please wait..."
