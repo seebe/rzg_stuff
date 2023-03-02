@@ -1,0 +1,131 @@
+From 1b6d3b3a54b5e6f6535d8b48d7e28f38d0615b3d Mon Sep 17 00:00:00 2001
+From: micbis <michele.bisogno.ct@renesas.com>
+Date: Tue, 21 Feb 2023 11:55:16 +0100
+Subject: [PATCH 1/1] GPIO workaround and switch emmc <-> sd support added
+
+---
+ arch/arm/dts/r9a07g044l-u-boot.dtsi | 22 +++++++++++-----------
+ board/renesas/rzg2l-dev/rzg2l-dev.c | 10 ++++++++++
+ 2 files changed, 21 insertions(+), 11 deletions(-)
+
+diff --git a/arch/arm/dts/r9a07g044l-u-boot.dtsi b/arch/arm/dts/r9a07g044l-u-boot.dtsi
+index 8e82e2c3ee..eac44d7aba 100644
+--- a/arch/arm/dts/r9a07g044l-u-boot.dtsi
++++ b/arch/arm/dts/r9a07g044l-u-boot.dtsi
+@@ -6,61 +6,61 @@
+  */
+ 
+ &pinctrl {
+-	P0: gpio-0 {
++	P0: gpio-00 {
+ 		gpio-controller;
+ 		#gpio-cells = <2>;
+ 		gpio-ranges = <&pinctrl 0 0 2>;
+ 	};
+ 
+-	P1: gpio-1 {
++	P1: gpio-01 {
+ 		gpio-controller;
+ 		#gpio-cells = <2>;
+ 		gpio-ranges = <&pinctrl 0 8 2>;
+ 	};
+ 
+-	P2: gpio-2 {
++	P2: gpio-02 {
+ 		gpio-controller;
+ 		#gpio-cells = <2>;
+ 		gpio-ranges = <&pinctrl 0 16 2>;
+ 	};
+ 
+-	P3: gpio-3 {
++	P3: gpio-03 {
+ 		gpio-controller;
+ 		#gpio-cells = <2>;
+ 		gpio-ranges = <&pinctrl 0 24 2>;
+ 	};
+ 
+-	P4: gpio-4 {
++	P4: gpio-04 {
+ 		gpio-controller;
+ 		#gpio-cells = <2>;
+ 		gpio-ranges = <&pinctrl 0 32 2>;
+ 	};
+ 
+-	P5: gpio-5 {
++	P5: gpio-05 {
+ 		gpio-controller;
+ 		#gpio-cells = <2>;
+ 		gpio-ranges = <&pinctrl 0 40 3>;
+ 	};
+ 
+-	P6: gpio-6 {
++	P6: gpio-06 {
+ 		gpio-controller;
+ 		#gpio-cells = <2>;
+ 		gpio-ranges = <&pinctrl 0 48 2>;
+ 	};
+ 
+-	P7: gpio-7 {
++	P7: gpio-07 {
+ 		gpio-controller;
+ 		#gpio-cells = <2>;
+ 		gpio-ranges = <&pinctrl 0 56 3>;
+ 	};
+ 
+-	P8: gpio-8 {
++	P8: gpio-08 {
+ 		gpio-controller;
+ 		#gpio-cells = <2>;
+ 		gpio-ranges = <&pinctrl 0 64 3>;
+ 	};
+ 
+-	P9: gpio-9 {
++	P9: gpio-09 {
+ 		gpio-controller;
+ 		#gpio-cells = <2>;
+ 		gpio-ranges = <&pinctrl 0 72 2>;
+@@ -299,4 +299,4 @@
+ 		#gpio-cells = <2>;
+ 		gpio-ranges = <&pinctrl 0 384 5>;
+ 	};
+-};
+\ No newline at end of file
++};
+diff --git a/board/renesas/rzg2l-dev/rzg2l-dev.c b/board/renesas/rzg2l-dev/rzg2l-dev.c
+index e8e8dfd39b..e38ce8597d 100644
+--- a/board/renesas/rzg2l-dev/rzg2l-dev.c
++++ b/board/renesas/rzg2l-dev/rzg2l-dev.c
+@@ -45,6 +45,7 @@ DECLARE_GLOBAL_DATA_PTR;
+ #define PFC_P37						(PFC_BASE + 0x037)
+ #define PFC_PM37					(PFC_BASE + 0x16E)
+ #define PFC_PMC37					(PFC_BASE + 0x237)
++
+ #define PFC_PWPR					(PFC_BASE + 0x3014)
+ #define PFC_PMC14					(PFC_BASE + 0x214)
+ #define PFC_PFC14					(PFC_BASE + 0x450)
+@@ -62,13 +63,22 @@ DECLARE_GLOBAL_DATA_PTR;
+ #define HcRhDescriptorA		0x048
+ #define LPSTS			0x102
+ 
++#define PFC_P39					(PFC_BASE + 0x039)
++#define PFC_PM39				(PFC_BASE + 0x172)
++#define PFC_PMC39				(PFC_BASE + 0x239)
++
++
+ void s_init(void)
+ {
+ 	/* SD1 power control: P39_1 = 0; P39_2 = 1; */
+ 	*(volatile u32 *)(PFC_PMC37) &= 0xFFFFFFF9; /* Port func mode 0b00 */
+ 	*(volatile u32 *)(PFC_PM37) = (*(volatile u32 *)(PFC_PM37) & 0xFFFFFFC3) | 0x28; /* Port output mode 0b1010 */
++	*(volatile u32 *)(PFC_PMC39) &= 0xFFFFFFFD;
++	*(volatile u32 *)(PFC_PM39) = (*(volatile u32 *)(PFC_PM39) & 0xFFFFFFF3) | 0x8; /* Port output mode 0b10*/
++
+ #if CONFIG_TARGET_SMARC_RZG2L
+ 	*(volatile u32 *)(PFC_P37) = (*(volatile u32 *)(PFC_P37) & 0xFFFFFFF9) | 0x6;	/* Port 39[2:1] output value 0b11*/
++	*(volatile u32 *)(PFC_P39) = (*(volatile u32 *)(PFC_P39) & 0xFFFFFFFD) | 0x2;	/* Port 41_1 output value 0b1*/
+ #else
+ 
+ 	*(volatile u32 *)(PFC_P37) = (*(volatile u32 *)(PFC_P37) & 0xFFFFFFF9) | 0x4;	/* Port 39[2:1] output value 0b10*/
+-- 
+2.34.1
+
