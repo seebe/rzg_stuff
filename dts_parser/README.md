@@ -2,7 +2,7 @@ You pass the file name of a Device Tree .dts file, and then it will list all the
 
 Also, for each file, it will print out what new nodes were created, as well as nodes that are being modifed/added.
 
-Example:
+**Example of the Device Tree of the RZ/G2L SMARC**
 
 <pre>
 $ cd rz_linux-cip/arch/arm64/boot/dts/renesas
@@ -99,10 +99,11 @@ r9a07g054l2-smarc.dts
   nodes new: 
 	reserved-memory		 
   nodes override: 
-	 
-
 
 </pre>
 
-
-
+**Example of parsing every .dts in the directory and saving it as a txt file**
+<pre>
+$ mkdir parser_output
+$ for file in $(ls *.dts) ; do  echo "$file" ;  python3 dts_parser.py $file > parser_output/${file}.txt ; done
+</pre>
