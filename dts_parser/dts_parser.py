@@ -57,7 +57,6 @@ def process_file(file_path, indent=0):
     include_files = find_includes(file_path, directory)
     nodes_modified = find_nodes_modified(file_path)
 
-    #print(' ' * indent + '[' + os.path.basename(file_path) + ']')
     if indent == 2:
         print('└─', end='')
     if indent == 4:
@@ -66,64 +65,50 @@ def process_file(file_path, indent=0):
         print('    └─', end='')
     if indent == 8:
         print('      └─', end='')
-    #print('[' + os.path.basename(file_path) + ']')
     print(os.path.basename(file_path))
-    #print(' ' * indent + '[' + os.path.basename(file_path) + ']')
     for include_file in include_files:
         process_file(os.path.join(directory, include_file), indent + 2)
 
     # Build the list in reverse order
     file_list_names.append(os.path.basename(file_path))
 
-    # Find override nodes iwth &
+    # Find override nodes with &
     node_list = find_nodes_modified(file_path)
     node_list_str = ""
     count = 0
-    node_list_str = node_list_str + "\n\t"
+    node_list_str = node_list_str + "\n    "
     for node in node_list:
         if count == 4:
-            node_list_str = node_list_str + "\n\t"
+            node_list_str = node_list_str + "\n    "
             count = 0
         count = count + 1
         node_list_str = node_list_str + "&" + node
-        node_list_str = node_list_str + "\t"
-        if (len(node) < 8):
-            node_list_str = node_list_str + "\t"
-        if (len(node) < 16):
-            node_list_str = node_list_str + "\t"
+        spaces_needed = 20 - len(node)
+        if (spaces_needed > 1):
+            for i in range(spaces_needed):
+                node_list_str = node_list_str + " "
+        else:
+            node_list_str = node_list_str + " "
     file_list_nodes_modified.append(node_list_str)
 
     # Find new nodes (no &)
     node_list = find_nodes_new(file_path)
     node_list_str = ""
     count = 0
-    node_list_str = node_list_str + "\n\t"
+    node_list_str = node_list_str + "\n    "
     for node in node_list:
         if count == 4:
-            node_list_str = node_list_str + "\n\t"
+            node_list_str = node_list_str + "\n    "
             count = 0
         count = count + 1
         node_list_str = node_list_str + node
-        node_list_str = node_list_str + "\t"
-        if (len(node) < 8):
-            node_list_str = node_list_str + "\t"
-        if (len(node) < 16):
-            node_list_str = node_list_str + "\t"
+        spaces_needed = 21 - len(node)
+        if (spaces_needed > 1):
+            for i in range(spaces_needed):
+                node_list_str = node_list_str + " "
+        else:
+            node_list_str = node_list_str + " "
     file_list_nodes_new.append(node_list_str)
-
-
-#    if indent == 2:
-#        print('  └─', end='')
-#    if indent == 4:
-#        print('    └─', end='')
-#    if indent == 6:
-#        print('      └─', end='')
-#    if indent == 8:
-#        print('        └─', end='')
-#    for node in nodes:
-#        #print(' ' * (indent + 2) + node)
-#        print('&' + node + ", ", end='')
-#    print("")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -155,21 +140,13 @@ if __name__ == "__main__":
 
     count = len(file_list_names)
     for i in range(count):
-        #print(file_list_names[i], end='')
         print(file_list_names[i] + "")
-        #print("  nodes override: ", end='')
-        #print(file_list_nodes_modified[i], end='')
-        #print(" ")
-        #print("  nodes new: ", end='')
-        #print(file_list_nodes_new[i], end='')
-        print("  nodes new: ", end='')
+
+        print("  nodes new:", end='')
         print(file_list_nodes_new[i], end='')
         print(" ")
-        print("  nodes override: ", end='')
+        print("  nodes override:", end='')
         print(file_list_nodes_modified[i], end='')
         print(" ")
         print(" ")
-#    print(count)
-    #print(file_list_names)
-    #print(file_list_nodes_modified)
 
