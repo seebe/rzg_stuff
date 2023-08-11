@@ -1,9 +1,15 @@
-You pass the file name of a Device Tree .dts file, and then it will list all the #include files so you can know all the files that are include, and in what order.
+# Device Tree Parsing Tool
 
-Also, for each file, it will print out what new nodes were created, as well as nodes that are being modifed/added.
+**Purpose**
+* This tool is to show all the included files for a single .dts file. This is helpful when there are many include files that include other include files and it gets difficult to follow.
+* For each included file, it will also show you which perphal nodes are set in that file. For example, you want to find all the the .dtsi files that configure the i2c channels because you are looking for examples.
 
-**Example of the Device Tree of the RZ/G2L SMARC**
+**Usage**
+* You pass the file name of a Device Tree .dts file, and then it will list all the #include files so you can know all the files that are include, and in what order.
+* Also, for each file, it will print out what new nodes were created, as well as nodes that are being modifed/added. When a node begins with &, it means it is overriding/modifying a previously declared node. In some complext Device Trees, a node my be mofided multiple times, so you have to know the order in which it was modifed to know the final values.
 
+**Example usage on the Device Tree of the RZ/G2L SMARC**
+* For this example, we will just downlaod the single python script file (not this entire repositry).
 <pre>
 $ cd rz_linux-cip/arch/arm64/boot/dts/renesas
 
