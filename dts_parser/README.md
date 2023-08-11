@@ -2,7 +2,7 @@
 
 **Purpose**
 * This tool is to show all the included files for a single .dts file. This is helpful when there are many include files that include other include files and it gets difficult to follow.
-* For each included file, it will also show you which perphal nodes are set in that file. For example, you want to find all the the .dtsi files that configure the i2c channels because you are looking for examples.
+* For each included file, it will also show you which peripheral nodes are set in that file. For example, you want to find all the the .dtsi files that configure the i2c channels because you are looking for examples.
 
 **Usage**
 * You pass the file name of a Device Tree .dts file, and then it will list all the #include files so you can know all the files that are include, and in what order.
