@@ -1,0 +1,6632 @@
+diff --git a/arch/arm/dts/smarc-rzg2l.dts b/arch/arm/dts/smarc-rzg2l.dts
+index 61ff3688b0..d6618c73fd 100644
+--- a/arch/arm/dts/smarc-rzg2l.dts
++++ b/arch/arm/dts/smarc-rzg2l.dts
+@@ -79,7 +79,7 @@
+ 	 * The SD0_PWR_EN pin is associated with P4_1.
+ 	 * A HIGH signal on SD0_PWR_EN will enable supply voltage for SD card.
+ 	*/
+-	bus-width = <8>;
++	bus-width = <4>;
+ 	status = "okay";
+ 	/* This is used for interface that support both eMMC and SD in board */
+ 	mutual-channel;
+@@ -145,6 +145,16 @@
+ 	status = "okay";
+ };
+ 
++&hsusb {
++	dr_mode = "otg";
++	status = "okay";
++};
++
++&hsusb {
++	dr_mode = "otg";
++	status = "okay";
++};
++
+ &wdt0 {
+ 	status = "okay";
+ 	timeout-sec = <60>;
+diff --git a/configs/smarc-rzg2l_defconfig b/configs/smarc-rzg2l_defconfig
+index d9eb063750..59044c6d6d 100644
+--- a/configs/smarc-rzg2l_defconfig
++++ b/configs/smarc-rzg2l_defconfig
+@@ -1,3 +1,25 @@
++CONFIG_USB_GADGET=y
++CONFIG_USB_RENESAS_USBHS=y
++CONFIG_USB_FUNCTION_FASTBOOT=y
++CONFIG_FASTBOOT_BUF_ADDR=0x4D000000
++CONFIG_FASTBOOT_BUF_SIZE=0x8000000
++CONFIG_FASTBOOT_USB_DEV=28
++CONFIG_FASTBOOT_MMC_BOOT_SUPPORT=y
++CONFIG_FASTBOOT_MMC_BOOT1_NAME="mmc0boot0"
++CONFIG_FASTBOOT_MMC_BOOT2_NAME="mmc0boot1"
++CONFIG_FASTBOOT_MMC_USER_SUPPORT=y
++CONFIG_FASTBOOT_MMC_USER_NAME="mmc0"
++CONFIG_FASTBOOT_GPT_NAME="gpt"
++CONFIG_FASTBOOT_MBR_NAME="mbr"
++CONFIG_FASTBOOT_FLASH=y
++#On RZ/G2L 0 is eMMC - 1 is SDCard.
++CONFIG_FASTBOOT_FLASH_MMC_DEV=0
++CONFIG_USB_GADGET_MANUFACTURER="Renesas"
++CONFIG_USB_GADGET_VENDOR_NUM=0x18D1
++CONFIG_USB_GADGET_PRODUCT_NUM=0x4E23
++CONFIG_CMD_FASTBOOT=y
++CONFIG_USB_FUNCTION_MASS_STORAGE=y
++CONFIG_CMD_USB_MASS_STORAGE=y
+ CONFIG_ARM=y
+ CONFIG_ARCH_CPU_INIT=y
+ CONFIG_ARCH_RMOBILE=y
+diff --git a/drivers/usb/gadget/Kconfig b/drivers/usb/gadget/Kconfig
+index 327ea863b1..f6a532abee 100644
+--- a/drivers/usb/gadget/Kconfig
++++ b/drivers/usb/gadget/Kconfig
+@@ -81,6 +81,15 @@ config USB_GADGET_BCM_UDC_OTG_PHY
+ 	help
+ 	  Enable the Broadcom UDC OTG physical device interface.
+ 
++config USB_RENESAS_USBHS
++	bool "Renesas RCar USB2.0 HS controller (gadget mode)"
++	select USB_GADGET_DUALSPEED
++	help
++	  The Renesas Rcar USB 2.0 high-speed gadget controller
++	  integrated into Salvator and Kingfisher boards. Select this
++	  option if you want the driver to operate in Peripheral mode.
++	  This option requires USB_GADGET to be enabled.
++
+ config USB_GADGET_DWC2_OTG
+ 	bool "DesignWare USB2.0 HS OTG controller (gadget mode)"
+ 	select USB_GADGET_DUALSPEED
+diff --git a/drivers/usb/gadget/Makefile b/drivers/usb/gadget/Makefile
+index f560068b41..2a0a6809bb 100644
+--- a/drivers/usb/gadget/Makefile
++++ b/drivers/usb/gadget/Makefile
+@@ -30,6 +30,7 @@ obj-$(CONFIG_USB_FUNCTION_MASS_STORAGE) += f_mass_storage.o
+ obj-$(CONFIG_USB_FUNCTION_FASTBOOT) += f_fastboot.o
+ obj-$(CONFIG_USB_FUNCTION_SDP) += f_sdp.o
+ obj-$(CONFIG_USB_FUNCTION_ROCKUSB) += f_rockusb.o
++obj-$(CONFIG_USB_RENESAS_USBHS) += rcar/
+ endif
+ endif
+ ifdef CONFIG_USB_ETHER
+diff --git a/drivers/usb/gadget/f_fastboot.c b/drivers/usb/gadget/f_fastboot.c
+index 8ba55aab9f..d97af07736 100644
+--- a/drivers/usb/gadget/f_fastboot.c
++++ b/drivers/usb/gadget/f_fastboot.c
+@@ -199,7 +199,7 @@ static void fastboot_complete(struct usb_ep *ep, struct usb_request *req)
+ 	int status = req->status;
+ 	if (!status)
+ 		return;
+-	printf("status: %d ep '%s' trans: %d\n", status, ep->name, req->actual);
++	debug("status: %d ep '%s' trans: %d\n", status, ep->name, req->actual);
+ }
+ 
+ static int fastboot_bind(struct usb_configuration *c, struct usb_function *f)
+@@ -427,7 +427,7 @@ static unsigned int rx_bytes_expected(struct usb_ep *ep)
+ {
+ 	int rx_remain = fastboot_data_remaining();
+ 	unsigned int rem;
+-	unsigned int maxpacket = usb_endpoint_maxp(ep->desc);
++	unsigned int maxpacket = ep->maxpacket;
+ 
+ 	if (rx_remain <= 0)
+ 		return 0;
+@@ -455,7 +455,7 @@ static void rx_handler_dl_image(struct usb_ep *ep, struct usb_request *req)
+ 	unsigned int buffer_size = req->actual;
+ 
+ 	if (req->status != 0) {
+-		printf("Bad status: %d\n", req->status);
++		debug("Bad status: %d\n", req->status);
+ 		return;
+ 	}
+ 
+diff --git a/drivers/usb/gadget/gadget_chips.h b/drivers/usb/gadget/gadget_chips.h
+index 0cdf47c2dd..206c5b4db1 100644
+--- a/drivers/usb/gadget/gadget_chips.h
++++ b/drivers/usb/gadget/gadget_chips.h
+@@ -167,6 +167,12 @@
+ #define gadget_is_mtu3(g)        0
+ #endif
+ 
++#ifdef CONFIG_USB_RENESAS_USBHS
++#define gadget_is_rcar3(g)	(!strcmp("renesas_usbhs_udc", (g)->name))
++#else
++#define gadget_is_rcar3(g)	0
++#endif
++
+ /**
+  * usb_gadget_controller_number - support bcdDevice id convention
+  * @gadget: the controller being driven
+@@ -232,5 +238,7 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
+ 		return 0x25;
+ 	else if (gadget_is_mtu3(gadget))
+ 		return 0x26;
++	else if (gadget_is_rcar3(gadget))
++		return 0x27;
+ 	return -ENOENT;
+ }
+diff --git a/drivers/usb/gadget/rcar/Makefile b/drivers/usb/gadget/rcar/Makefile
+new file mode 100755
+index 0000000000..fdb7cb35b6
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/Makefile
+@@ -0,0 +1,7 @@
++#
++# for Renesas USB
++#
++
++obj-$(CONFIG_USB_RENESAS_USBHS) += common.o mod.o pipe.o fifo.o rcar3.o \
++		 mod_gadget.o usbhs_gadget.o phy.o ehci-rcar_gen3.o g2l.o
++
+diff --git a/drivers/usb/gadget/rcar/common.c b/drivers/usb/gadget/rcar/common.c
+new file mode 100755
+index 0000000000..89312e5220
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/common.c
+@@ -0,0 +1,636 @@
++/*
++ * Renesas USB driver
++ *
++ * Copyright (C) 2011 Renesas Solutions Corp.
++ * Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
++ *
++ * Ported to u-boot
++ * Copyright (C) 2016 GlobalLogic
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ *
++ */
++#include <linux/err.h>
++#include "common.h"
++#include "rcar3.h"
++#include <asm/io.h>
++#include "rza.h"
++
++/*
++ *		image of renesas_usbhs
++ *
++ * ex) gadget case
++
++ * mod.c
++ * mod_gadget.c
++ * mod_host.c		pipe.c		fifo.c
++ *
++ *			+-------+	+-----------+
++ *			| pipe0 |------>| fifo pio  |
++ * +------------+	+-------+	+-----------+
++ * | mod_gadget |=====> | pipe1 |--+
++ * +------------+	+-------+  |	+-----------+
++ *			| pipe2 |  |  +-| fifo dma0 |
++ * +------------+	+-------+  |  |	+-----------+
++ * | mod_host   |	| pipe3 |<-|--+
++ * +------------+	+-------+  |	+-----------+
++ *			| ....  |  +--->| fifo dma1 |
++ *			| ....  |	+-----------+
++ */
++
++
++#define USBHSF_RUNTIME_PWCTRL	(1 << 0)
++
++/* status */
++#define usbhsc_flags_init(p)   do {(p)->flags = 0; } while (0)
++#define usbhsc_flags_set(p, b) ((p)->flags |=  (b))
++#define usbhsc_flags_clr(p, b) ((p)->flags &= ~(b))
++#define usbhsc_flags_has(p, b) ((p)->flags &   (b))
++
++/*
++ * platform call back
++ *
++ * renesas usb support platform callback function.
++ * Below macro call it.
++ * if platform doesn't have callback, it return 0 (no error)
++ */
++#define usbhs_platform_call(priv, func, args...)\
++	(!(priv) ? -ENODEV :			\
++	 !((priv)->pfunc.func) ? 0 :		\
++	 (priv)->pfunc.func(args))
++
++struct usbhs_regname {
++	u32		regaddr;	/*Address of the usbhs register */
++	const char *regname;	/*String Name of the register*/
++} ;
++
++/*Structure for debugfs to set the register name by the address*/
++static const struct usbhs_regname usbhs_regnames[] = {
++	{ 0x0,  "SYSCFG" }, { 0x2,  "BUSWAIT" }, { 0x4,  "SYSSTS" },
++	{ 0x8,  "DVSTCTR"},	{ 0xC,  "TESTMODE" }, { 0x14,  "CFIFO" },
++	{ 0x20,  "CFIFOSEL" }, { 0x22, "CFIFOCTR" }, { 0x28,  "D0FIFOSEL" },
++	{ 0x2A,  "D0FIFOCTR" }, { 0x2C,  "D1FIFOSEL"}, { 0x2E,  "D1FIFOCTR" },
++	{ 0x30,  "INTENB0" }, { 0x36,  "BRDYENB" }, { 0x38,  "NRDYENB" },
++	{ 0x3A,  "BEMPENB" }, { 0x3C, "SOFCFG" }, { 0x40, "INTSTS0" },
++	{ 0x46, "BRDYSTS" }, { 0x48, "NRDYSTS"  }, { 0x4A, "BEMPSTS" },
++	{ 0x4C, "FRMNUM" }, { 0x4E, "UFRMNUM" }, { 0x50, "USBADDR" },
++	{ 0x54, "USBREQ" }, { 0x56, "USBVAL" }, { 0x58, "USBINDX" },
++	{ 0x5A, "USBLENG" }, { 0x5E, "DCPMAXP" }, { 0x60, "DCPCTR" },
++	{ 0x64, "PIPESEL" }, { 0x68, "PIPECFG" }, { 0x6A, "PIPEBUF" },
++	{ 0x6C, "PIPEMAXP" }, { 0x6E, "PIPEPERI" }, { 0x70, "PIPE1CTR" },
++	{ 0x72, "PIPE2CTR" }, { 0x74, "PIPE3CTR" }, { 0x76, "PIPE4CTR" },
++	{ 0x78, "PIPE5CTR" }, { 0x7A, "PIPE6CTR" }, { 0x7C, "PIPE7CTR" },
++	{ 0x7E, "PIPE8CTR" }, { 0x80, "PIPE9CTR" }, { 0x82, "PIPEACTR" },
++	{ 0x84, "PIPEBCTR" }, { 0x86, "PIPECCTR" }, { 0x88, "PIPEDCTR" },
++	{ 0x8A, "PIPEECTR" }, { 0x8C, "PIPEFCTR" }, { 0x90, "PIPE1TRE" },
++	{ 0x92, "PIPE1TRN" }, { 0x94, "PIPE2TRE" }, { 0x96, "PIPE2TRN" },
++	{ 0x98, "PIPE3TRE" }, { 0x9A, "PIPE3TRN" }, { 0x9C, "PIPE4TRE" },
++	{ 0x9E, "PIPE4TRN" }, { 0xA0, "PIPE5TRE" }, { 0xA2, "PIPE5TRN" },
++	{ 0xA4, "PIPEBTRE" }, { 0xA6, "PIPEBTRN" }, { 0xA8, "PIPECTRE" },
++	{ 0xAA, "PIPECTRN" }, { 0xAC, "PIPEDTRE" }, { 0xAE, "PIPEDTRN" },
++	{ 0xB0, "PIPEETRE" }, { 0xB2, "PIPEETRN" }, { 0xB4, "PIPEFTRE" },
++	{ 0xB6, "PIPEFTRN" }, { 0xB8, "PIPE9TRE" }, { 0xBA, "PIPE9TRN" },
++	{ 0xBC, "PIPEATRE" }, { 0xBE, "PIPEATRN" }, { 0xF0, "D2FIFOSEL" },
++	{ 0xF2, "D2FIFOCTR" }, { 0xF4, "D3FIFOSEL" }, { 0xF6, "D3FIFOCTR" },
++	{ 0x102, "LPSTS" }, { 0x140, "BCCTRL" }, { 0x184, "UGCTRL2" },
++};
++
++/*
++ *		common functions
++ */
++u16 usbhs_read(struct usbhs_priv *priv, u32 reg)
++{
++	return readw(priv->base + reg);
++}
++
++void usbhs_write(struct usbhs_priv *priv, u32 reg, u16 data)
++{
++	writew(data, priv->base + reg);
++}
++
++void usbhs_bset(struct usbhs_priv *priv, u32 reg, u16 mask, u16 data)
++{
++	u16 val = usbhs_read(priv, reg);
++
++	val &= ~mask;
++	val |= data & mask;
++
++	usbhs_write(priv, reg, val);
++}
++
++struct usbhs_priv *usbhs_pdev_to_priv(struct platform_device *pdev)
++{
++	return dev_get_drvdata(&pdev->dev);
++}
++
++/*
++ *		syscfg functions
++ */
++static void usbhs_sys_clock_ctrl(struct usbhs_priv *priv, int enable)
++{
++	usbhs_bset(priv, SYSCFG, SCKE, enable ? SCKE : 0);
++}
++
++void usbhs_sys_host_ctrl(struct usbhs_priv *priv, int enable)
++{
++	u16 mask = DCFM | DRPD | DPRPU | HSE | USBE;
++	u16 val  = DCFM | DRPD | HSE | USBE;
++	int has_otg = usbhs_get_dparam(priv, has_otg);
++
++	if (has_otg)
++		usbhs_bset(priv, DVSTCTR, (EXTLP | PWEN), (EXTLP | PWEN));
++
++	/*
++	 * if enable
++	 *
++	 * - select Host mode
++	 * - D+ Line/D- Line Pull-down
++	 */
++	usbhs_bset(priv, SYSCFG, mask, enable ? val : 0);
++}
++
++void usbhs_sys_function_ctrl(struct usbhs_priv *priv, int enable)
++{
++	u16 mask = DCFM | DRPD | DPRPU | HSE | USBE;
++	u16 val  = HSE | USBE;
++
++	/* CNEN bit is required for function operation */
++	if (usbhs_get_dparam(priv, has_cnen)) {
++		mask |= CNEN;
++		val  |= CNEN;
++	}
++	/*
++	 * if enable
++	 *
++	 * - select Function mode
++	 * - D+ Line Pull-up is disabled
++	 *      When D+ Line Pull-up is enabled,
++	 *      calling usbhs_sys_function_pullup(,1)
++	 */
++	usbhs_bset(priv, SYSCFG, mask, enable ? val : 0);
++}
++
++void usbhs_sys_function_pullup(struct usbhs_priv *priv, int enable)
++{
++	usbhs_bset(priv, SYSCFG, DPRPU, enable ? DPRPU : 0);
++}
++
++void usbhs_sys_set_test_mode(struct usbhs_priv *priv, u16 mode)
++{
++	usbhs_write(priv, TESTMODE, mode);
++}
++
++/*
++ *		frame functions
++ */
++int usbhs_frame_get_num(struct usbhs_priv *priv)
++{
++	return usbhs_read(priv, FRMNUM) & FRNM_MASK;
++}
++
++/*
++ *		usb request functions
++ */
++void usbhs_usbreq_get_val(struct usbhs_priv *priv, struct usb_ctrlrequest *req)
++{
++	u16 val;
++
++	val = usbhs_read(priv, USBREQ);
++	req->bRequest		= (val >> 8) & 0xFF;
++	req->bRequestType	= (val >> 0) & 0xFF;
++
++	req->wValue	= usbhs_read(priv, USBVAL);
++	req->wIndex	= usbhs_read(priv, USBINDX);
++	req->wLength	= usbhs_read(priv, USBLENG);
++}
++
++void usbhs_usbreq_set_val(struct usbhs_priv *priv, struct usb_ctrlrequest *req)
++{
++	usbhs_write(priv, USBREQ,  (req->bRequest << 8) | req->bRequestType);
++	usbhs_write(priv, USBVAL,  req->wValue);
++	usbhs_write(priv, USBINDX, req->wIndex);
++	usbhs_write(priv, USBLENG, req->wLength);
++
++	usbhs_bset(priv, DCPCTR, SUREQ, SUREQ);
++}
++
++/*
++ *		bus/vbus functions
++ */
++void usbhs_bus_send_sof_enable(struct usbhs_priv *priv)
++{
++	u16 status = usbhs_read(priv, DVSTCTR) & (USBRST | UACT);
++
++	if (status != USBRST) {
++		struct device *dev __attribute__((unused));
++		dev_err(dev, "usbhs should be reset\n");
++	}
++
++	usbhs_bset(priv, DVSTCTR, (USBRST | UACT), UACT);
++}
++
++void usbhs_bus_send_reset(struct usbhs_priv *priv)
++{
++	usbhs_bset(priv, DVSTCTR, (USBRST | UACT), USBRST);
++}
++
++int usbhs_bus_get_speed(struct usbhs_priv *priv)
++{
++	u16 dvstctr = usbhs_read(priv, DVSTCTR);
++
++	switch (RHST & dvstctr) {
++	case RHST_LOW_SPEED:
++		return USB_SPEED_LOW;
++	case RHST_FULL_SPEED:
++		return USB_SPEED_FULL;
++	case RHST_HIGH_SPEED:
++		return USB_SPEED_HIGH;
++	}
++
++	return USB_SPEED_UNKNOWN;
++}
++
++int usbhs_vbus_ctrl(struct usbhs_priv *priv, int enable)
++{
++	struct platform_device *pdev = usbhs_priv_to_pdev(priv);
++
++	return usbhs_platform_call(priv, set_vbus, pdev, enable);
++}
++
++static void usbhsc_bus_init(struct usbhs_priv *priv)
++{
++	usbhs_write(priv, DVSTCTR, 0);
++
++	usbhs_vbus_ctrl(priv, 0);
++}
++
++/*
++ *		device configuration
++ */
++int usbhs_set_device_config(struct usbhs_priv *priv, int devnum,
++			   u16 upphub, u16 hubport, u16 speed)
++{
++	struct device *dev __attribute__((unused));
++	u16 usbspd = 0;
++	u32 reg = DEVADD0 + (2 * devnum);
++
++	if (devnum > 10) {
++		dev_err(dev, "cannot set speed to unknown device %d\n", devnum);
++		return -EIO;
++	}
++
++	if (upphub > 0xA) {
++		dev_err(dev, "unsupported hub number %d\n", upphub);
++		return -EIO;
++	}
++
++	switch (speed) {
++	case USB_SPEED_LOW:
++		usbspd = USBSPD_SPEED_LOW;
++		break;
++	case USB_SPEED_FULL:
++		usbspd = USBSPD_SPEED_FULL;
++		break;
++	case USB_SPEED_HIGH:
++		usbspd = USBSPD_SPEED_HIGH;
++		break;
++	default:
++		dev_err(dev, "unsupported speed %d\n", speed);
++		return -EIO;
++	}
++
++	usbhs_write(priv, reg,	UPPHUB(upphub)	|
++				HUBPORT(hubport)|
++				USBSPD(usbspd));
++
++	return 0;
++}
++
++/*
++ *		interrupt functions
++ */
++void usbhs_xxxsts_clear(struct usbhs_priv *priv, u16 sts_reg, u16 bit)
++{
++	u16 pipe_mask = (u16)GENMASK(usbhs_get_dparam(priv, pipe_size), 0);
++
++	usbhs_write(priv, sts_reg, ~(1 << bit) & pipe_mask);
++}
++
++/*
++ *		local functions
++ */
++static void usbhsc_set_buswait(struct usbhs_priv *priv)
++{
++	int wait = usbhs_get_dparam(priv, buswait_bwait);
++
++	/* set bus wait if platform have */
++	if (wait)
++		usbhs_bset(priv, BUSWAIT, 0x000F, wait);
++}
++
++/*
++ *		platform default param
++ */
++
++/* commonly used on newer SH-Mobile and R-Car SoCs */
++static struct renesas_usbhs_driver_pipe_config usbhsc_new_pipe[] = {
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_CONTROL, 64, 0x00, false),
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_ISOC, 1024, 0x08, true),
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_ISOC, 1024, 0x28, true),
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_BULK, 512, 0x48, true),
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_BULK, 512, 0x58, true),
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_BULK, 512, 0x68, true),
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_INT, 64, 0x04, false),
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_INT, 64, 0x05, false),
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_INT, 64, 0x06, false),
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_BULK, 512, 0x78, true),
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_BULK, 512, 0x88, true),
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_BULK, 512, 0x98, true),
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_BULK, 512, 0xa8, true),
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_BULK, 512, 0xb8, true),
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_BULK, 512, 0xc8, true),
++	RENESAS_USBHS_PIPE(USB_ENDPOINT_XFER_BULK, 512, 0xd8, true),
++};
++
++/*
++ *		power control
++ */
++static void usbhsc_power_ctrl(struct usbhs_priv *priv, int enable)
++{
++	struct platform_device *pdev = usbhs_priv_to_pdev(priv);
++	struct device *dev __attribute__((unused));
++
++	pr_dbg("++%s(0x%p, %d)\n", __func__, pdev, enable);
++
++	if (enable) {
++		/* enable PM */
++		pm_runtime_get_sync(dev);
++
++		/* enable platform power */
++		usbhs_platform_call(priv, power_ctrl, pdev, priv->base, enable);
++
++		/* USB on */
++		usbhs_sys_clock_ctrl(priv, enable);
++	} else {
++		/* USB off */
++		usbhs_sys_clock_ctrl(priv, enable);
++
++		/* disable platform power */
++		usbhs_platform_call(priv, power_ctrl, pdev, priv->base, enable);
++
++		/* disable PM */
++		pm_runtime_put_sync(dev);
++	}
++	pr_dbg("--%s\n", __func__);
++}
++
++/*
++ *		hotplug
++ */
++static void usbhsc_hotplug(struct usbhs_priv *priv)
++{
++	struct platform_device *pdev = usbhs_priv_to_pdev(priv);
++	int id;
++	int enable;
++	int ret;
++
++	/*
++	 * get vbus status from platform
++	 */
++
++	pr_dbg("++%s\n", __func__);
++
++	/*
++	 * Hack: We need to enable it here to avoid entering host mode
++	 * and fifo select error
++	 * Since this is u-boot, we may sacrifice real hotbplug function.
++	 */
++	enable = 1;
++	/*
++	 * get id from platform
++	 */
++	id = usbhs_platform_call(priv, get_id, pdev);
++
++	pr_dbg("perform enable\n");
++	ret = usbhs_mod_change(priv, id);
++	if (ret < 0)
++		return;
++
++	dev_dbg(&pdev->dev, "%s enable\n", __func__);
++
++	usbhsc_power_ctrl(priv, enable);
++
++	/* bus init */
++	usbhsc_set_buswait(priv);
++	usbhsc_bus_init(priv);
++
++	/* module start */
++	usbhs_mod_call(priv, start, priv);
++
++	pr_dbg("--%s\n", __func__);
++}
++
++/*
++ *		notify hotplug
++ */
++
++void usbhsc_notify_hotplug(struct usbhs_priv *priv)
++{
++	pr_dbg("+-%s\n", __func__);
++	usbhsc_hotplug(priv);
++}
++
++static int usbhsc_drvcllbck_notify_hotplug(struct platform_device *pdev)
++{
++	struct usbhs_priv *priv = usbhs_pdev_to_priv(pdev);
++	int delay = usbhs_get_dparam(priv, detection_delay);
++
++	pr_dbg("+-%s\n", __func__);
++	mdelay(delay);
++	usbhsc_notify_hotplug(priv);
++
++	return 0;
++}
++
++/*
++ *		platform functions
++ */
++
++
++#define USBHS_BASE	0x11C60000
++int usbhs_probe(struct platform_device *pdev)
++{
++	struct usbhs_priv *priv;
++	int ret;
++
++	pr_dbg("++%s\n", __func__);
++
++	/* usb private data */
++	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
++	if (!priv)
++		return -ENOMEM;
++
++	priv->base = (void *)USBHS_BASE;
++	if (IS_ERR(priv->base))
++		return PTR_ERR(priv->base);
++
++
++	/*
++	 * care platform info
++	 */
++	pr_dbg("priv->dparam.type = %ld\n", priv->dparam.type);
++	priv->dparam.type = USBHS_TYPE_G2L;
++
++	priv->pfunc = usbhs_g2l_ops;
++	if (!priv->dparam.pipe_configs) {
++		priv->dparam.pipe_configs = usbhsc_new_pipe;
++		priv->dparam.has_cnen = 1;
++		priv->dparam.cfifo_byte_addr = 1;
++		priv->dparam.pipe_size = ARRAY_SIZE(usbhsc_new_pipe);
++	}
++
++	if (!priv->dparam.pio_dma_border)
++		priv->dparam.pio_dma_border = 64; /* 64byte */
++
++	if (priv->pfunc.get_vbus)
++		usbhsc_flags_set(priv, USBHSF_RUNTIME_PWCTRL);
++
++	/*
++	 * priv settings
++	 */
++	priv->pdev	= pdev;
++	spin_lock_init(usbhs_priv_to_lock(priv));
++
++	/* Fix fifo selection error */
++	if (priv->pfunc.power_ctrl) {
++		platform_set_drvdata(pdev, priv);
++		usbhsc_power_ctrl(priv, 1);
++	}
++
++	/* call pipe and module init */
++	ret = usbhs_pipe_probe(priv);
++	if (ret < 0)
++		return ret;
++
++	ret = usbhs_fifo_probe(priv);
++	if (ret < 0)
++		goto probe_end_pipe_exit;
++
++	ret = usbhs_mod_probe(priv);
++	if (ret < 0)
++		goto probe_end_fifo_exit;
++
++	/* dev_set_drvdata should be called after usbhs_mod_init */
++	platform_set_drvdata(pdev, priv);
++
++	/*
++	 * deviece reset here because
++	 * USB device might be used in boot loader.
++	 */
++	usbhs_sys_clock_ctrl(priv, 0);
++
++	/*
++	 * platform call
++	 *
++	 * USB phy setup might depend on CPU/Board.
++	 * If platform has its callback functions,
++	 * call it here.
++	 */
++	ret = usbhs_platform_call(priv, hardware_init, pdev);
++	if (ret < 0) {
++		dev_err(&pdev->dev, "platform init failed.\n");
++		goto probe_end_mod_exit;
++	}
++
++	/* reset phy for connection */
++	usbhs_platform_call(priv, phy_reset, pdev);
++
++	/* power control */
++	pm_runtime_enable(&pdev->dev);
++	if (!usbhsc_flags_has(priv, USBHSF_RUNTIME_PWCTRL)) {
++		usbhsc_power_ctrl(priv, 1);
++		usbhs_mod_autonomy_mode(priv);
++	}
++
++	/*
++	 * manual call notify_hotplug for cold plug
++	 */
++	usbhsc_drvcllbck_notify_hotplug(pdev);
++
++	dev_info(&pdev->dev, "probed\n");
++
++	pr_dbg("--%s\n", __func__);
++
++	return ret;
++
++probe_end_mod_exit:
++	usbhs_mod_remove(priv);
++probe_end_fifo_exit:
++	usbhs_fifo_remove(priv);
++probe_end_pipe_exit:
++	usbhs_pipe_remove(priv);
++
++	dev_info(&pdev->dev, "probe failed\n");
++
++	pr_dbg("--%s(-1)\n", __func__);
++
++	return ret;
++}
++
++int usbhs_remove(struct platform_device *pdev)
++{
++	struct usbhs_priv *priv = usbhs_pdev_to_priv(pdev);
++
++	pr_dbg("++%s\n", __func__);
++
++	/* power off */
++	if (!usbhsc_flags_has(priv, USBHSF_RUNTIME_PWCTRL))
++		usbhsc_power_ctrl(priv, 0);
++
++	usbhs_mod_remove(priv);
++	usbhs_fifo_remove(priv);
++	usbhs_pipe_remove(priv);
++
++	pr_dbg("--%s\n", __func__);
++
++	return 0;
++}
++
++void usbhs_dump_regs(struct usbhs_priv *priv)
++{
++	int i;
++	u16 reg16;
++	u32 reg32;
++
++	if (!priv) {
++		printf("Error: usbhs_priv structure is NULL\n");
++		return;
++	}
++	printf("\r\n");
++	for (i = 0; i < ARRAY_SIZE(usbhs_regnames)-1; i++) {
++		reg16  = usbhs_read(priv, usbhs_regnames[i].regaddr);
++		printf("%s [0x%x] = 0x%x\n", usbhs_regnames[i].regname,
++							 usbhs_regnames[i].regaddr,
++							 reg16);
++	}
++	/*Last register is a special one since it's 32-bit*/
++
++	reg32 = readl(priv->base + usbhs_regnames[i].regaddr);
++
++	printf("%s [0x%x] = 0x%x\n", usbhs_regnames[i].regname,
++						 usbhs_regnames[i].regaddr,
++						 reg32);
++}
++
++
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("Renesas USB driver");
++MODULE_AUTHOR("Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>");
++
+diff --git a/drivers/usb/gadget/rcar/common.h b/drivers/usb/gadget/rcar/common.h
+new file mode 100755
+index 0000000000..df08bf237c
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/common.h
+@@ -0,0 +1,361 @@
++/*
++ * Renesas USB driver
++ *
++ * Copyright (C) 2011 Renesas Solutions Corp.
++ * Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
++ *
++ * Ported to u-boot
++ * Copyright (C) 2016 GlobalLogic
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ *
++ */
++#ifndef RENESAS_USB_DRIVER_H
++#define RENESAS_USB_DRIVER_H
++
++#include "renesas_usb.h"
++#include <linux/delay.h>
++#include <linux/bug.h>
++
++struct usbhs_priv;
++
++#include "mod.h"
++#include "pipe.h"
++
++/*
++ *
++ *		register define
++ *
++ */
++#define SYSCFG		0x0000
++#define BUSWAIT		0x0002
++#define DVSTCTR		0x0008
++#define TESTMODE	0x000C
++#define CFIFO		0x0014
++#define CFIFOSEL	0x0020
++#define CFIFOCTR	0x0022
++#define D0FIFO		0x0100
++#define D0FIFOSEL	0x0028
++#define D0FIFOCTR	0x002A
++#define D1FIFO		0x0120
++#define D1FIFOSEL	0x002C
++#define D1FIFOCTR	0x002E
++#define INTENB0		0x0030
++#define INTENB1		0x0032
++#define BRDYENB		0x0036
++#define NRDYENB		0x0038
++#define BEMPENB		0x003A
++#define INTSTS0		0x0040
++#define INTSTS1		0x0042
++#define BRDYSTS		0x0046
++#define NRDYSTS		0x0048
++#define BEMPSTS		0x004A
++#define FRMNUM		0x004C
++#define USBREQ		0x0054	/* USB request type register */
++#define USBVAL		0x0056	/* USB request value register */
++#define USBINDX		0x0058	/* USB request index register */
++#define USBLENG		0x005A	/* USB request length register */
++#define DCPCFG		0x005C
++#define DCPMAXP		0x005E
++#define DCPCTR		0x0060
++#define PIPESEL		0x0064
++#define PIPECFG		0x0068
++#define PIPEBUF		0x006A
++#define PIPEMAXP	0x006C
++#define PIPEPERI	0x006E
++#define PIPEnCTR	0x0070
++#define PIPE1TRE	0x0090
++#define PIPE1TRN	0x0092
++#define PIPE2TRE	0x0094
++#define PIPE2TRN	0x0096
++#define PIPE3TRE	0x0098
++#define PIPE3TRN	0x009A
++#define PIPE4TRE	0x009C
++#define PIPE4TRN	0x009E
++#define PIPE5TRE	0x00A0
++#define PIPE5TRN	0x00A2
++#define PIPEBTRE	0x00A4
++#define PIPEBTRN	0x00A6
++#define PIPECTRE	0x00A8
++#define PIPECTRN	0x00AA
++#define PIPEDTRE	0x00AC
++#define PIPEDTRN	0x00AE
++#define PIPEETRE	0x00B0
++#define PIPEETRN	0x00B2
++#define PIPEFTRE	0x00B4
++#define PIPEFTRN	0x00B6
++#define PIPE9TRE	0x00B8
++#define PIPE9TRN	0x00BA
++#define PIPEATRE	0x00BC
++#define PIPEATRN	0x00BE
++#define DEVADD0		0x00D0 /* Device address n configuration */
++#define DEVADD1		0x00D2
++#define DEVADD2		0x00D4
++#define DEVADD3		0x00D6
++#define DEVADD4		0x00D8
++#define DEVADD5		0x00DA
++#define DEVADD6		0x00DC
++#define DEVADD7		0x00DE
++#define DEVADD8		0x00E0
++#define DEVADD9		0x00E2
++#define DEVADDA		0x00E4
++#define D2FIFOSEL	0x00F0	/* for R-Car Gen2 */
++#define D2FIFOCTR	0x00F2	/* for R-Car Gen2 */
++#define D3FIFOSEL	0x00F4	/* for R-Car Gen2 */
++#define D3FIFOCTR	0x00F6	/* for R-Car Gen2 */
++#define SUSPMODE        0x0102  /* for RZ/A */
++/* SUSPMODE */
++#define SUSPM           (1 << 14)       /* SuspendM Control */
++
++/* SYSCFG */
++#define SCKE	(1 << 10)	/* USB Module Clock Enable */
++#define CNEN	(1 << 8)	/* Single-ended receiver operation Enable */
++#define HSE	(1 << 7)	/* High-Speed Operation Enable */
++#define DCFM	(1 << 6)	/* Controller Function Select */
++#define DRPD	(1 << 5)	/* D+ Line/D- Line Resistance Control */
++#define DPRPU	(1 << 4)	/* D+ Line Resistance Control */
++#define USBE	(1 << 0)	/* USB Module Operation Enable */
++
++/* DVSTCTR */
++#define EXTLP	(1 << 10)	/* Controls the EXTLP pin output state */
++#define PWEN	(1 << 9)	/* Controls the PWEN pin output state */
++#define USBRST	(1 << 6)	/* Bus Reset Output */
++#define UACT	(1 << 4)	/* USB Bus Enable */
++#define RHST	(0x7)		/* Reset Handshake */
++#define  RHST_LOW_SPEED  1	/* Low-speed connection */
++#define  RHST_FULL_SPEED 2	/* Full-speed connection */
++#define  RHST_HIGH_SPEED 3	/* High-speed connection */
++
++/* CFIFOSEL */
++#define DREQE	(1 << 12)	/* DMA Transfer Request Enable */
++#define MBW_32	(0x2 << 10)	/* CFIFO Port Access Bit Width */
++
++/* CFIFOCTR */
++#define BVAL	(1 << 15)	/* Buffer Memory Enable Flag */
++#define BCLR	(1 << 14)	/* CPU buffer clear */
++#define FRDY	(1 << 13)	/* FIFO Port Ready */
++#define DTLN_MASK (0x0FFF)	/* Receive Data Length */
++
++/* INTENB0 */
++#define VBSE	(1 << 15)	/* Enable IRQ VBUS_0 and VBUSIN_0 */
++#define RSME	(1 << 14)	/* Enable IRQ Resume */
++#define SOFE	(1 << 13)	/* Enable IRQ Frame Number Update */
++#define DVSE	(1 << 12)	/* Enable IRQ Device State Transition */
++#define CTRE	(1 << 11)	/* Enable IRQ Control Stage Transition */
++#define BEMPE	(1 << 10)	/* Enable IRQ Buffer Empty */
++#define NRDYE	(1 << 9)	/* Enable IRQ Buffer Not Ready Response */
++#define BRDYE	(1 << 8)	/* Enable IRQ Buffer Ready */
++
++/* INTENB1 */
++#define BCHGE	(1 << 14)	/* USB Bus Change Interrupt Enable */
++#define DTCHE	(1 << 12)	/* Disconnection Detect Interrupt Enable */
++#define ATTCHE	(1 << 11)	/* Connection Detect Interrupt Enable */
++#define EOFERRE	(1 << 6)	/* EOF Error Detect Interrupt Enable */
++#define SIGNE	(1 << 5)	/* Setup Transaction Error Interrupt Enable */
++#define SACKE	(1 << 4)	/* Setup Transaction ACK Interrupt Enable */
++
++/* INTSTS0 */
++#define VBINT	(1 << 15)	/* VBUS0_0 and VBUS1_0 Interrupt Status */
++#define DVST	(1 << 12)	/* Device State Transition Interrupt Status */
++#define CTRT	(1 << 11)	/* Control Stage Interrupt Status */
++#define BEMP	(1 << 10)	/* Buffer Empty Interrupt Status */
++#define BRDY	(1 << 8)	/* Buffer Ready Interrupt Status */
++#define NRDY	(1 << 9)	/* Buffer Ready Interrupt Status */
++#define VBSTS	(1 << 7)	/* VBUS_0 and VBUSIN_0 Input Status */
++#define VALID	(1 << 3)	/* USB Request Receive */
++
++#define DVSQ_MASK		(0x3 << 4)	/* Device State */
++#define  POWER_STATE		(0 << 4)
++#define  DEFAULT_STATE		(1 << 4)
++#define  ADDRESS_STATE		(2 << 4)
++#define  CONFIGURATION_STATE	(3 << 4)
++
++#define CTSQ_MASK		(0x7)	/* Control Transfer Stage */
++#define  IDLE_SETUP_STAGE	0	/* Idle stage or setup stage */
++#define  READ_DATA_STAGE	1	/* Control read data stage */
++#define  READ_STATUS_STAGE	2	/* Control read status stage */
++#define  WRITE_DATA_STAGE	3	/* Control write data stage */
++#define  WRITE_STATUS_STAGE	4	/* Control write status stage */
++#define  NODATA_STATUS_STAGE	5	/* Control write NoData status stage */
++#define  SEQUENCE_ERROR		6	/* Control transfer sequence error */
++
++/* INTSTS1 */
++#define OVRCR	(1 << 15) /* OVRCR Interrupt Status */
++#define BCHG	(1 << 14) /* USB Bus Change Interrupt Status */
++#define DTCH	(1 << 12) /* USB Disconnection Detect Interrupt Status */
++#define ATTCH	(1 << 11) /* ATTCH Interrupt Status */
++#define EOFERR	(1 << 6)  /* EOF Error Detect Interrupt Status */
++#define SIGN	(1 << 5)  /* Setup Transaction Error Interrupt Status */
++#define SACK	(1 << 4)  /* Setup Transaction ACK Response Interrupt Status */
++
++/* PIPECFG */
++/* DCPCFG */
++#define TYPE_NONE	(0 << 14)	/* Transfer Type */
++#define TYPE_BULK	(1 << 14)
++#define TYPE_INT	(2 << 14)
++#define TYPE_ISO	(3 << 14)
++#define BFRE		(1 << 10)	/* BRDY Interrupt Operation Spec. */
++#define DBLB		(1 << 9)	/* Double Buffer Mode */
++#define SHTNAK		(1 << 7)	/* Pipe Disable in Transfer End */
++#define DIR_OUT		(1 << 4)	/* Transfer Direction */
++
++/* PIPEMAXP */
++/* DCPMAXP */
++#define DEVSEL_MASK	(0xF << 12)	/* Device Select */
++#define DCP_MAXP_MASK	(0x7F)
++#define PIPE_MAXP_MASK	(0x7FF)
++
++/* PIPEBUF */
++#define BUFSIZE_SHIFT	10
++#define BUFSIZE_MASK	(0x1F << BUFSIZE_SHIFT)
++#define BUFNMB_MASK	(0xFF)
++
++/* PIPEnCTR */
++/* DCPCTR */
++#define BSTS		(1 << 15)	/* Buffer Status */
++#define SUREQ		(1 << 14)	/* Sending SETUP Token */
++#define CSSTS		(1 << 12)	/* CSSTS Status */
++#define	ACLRM		(1 << 9)	/* Buffer Auto-Clear Mode */
++#define SQCLR		(1 << 8)	/* Toggle Bit Clear */
++#define SQSET		(1 << 7)	/* Toggle Bit Set */
++#define SQMON		(1 << 6)	/* Toggle Bit Check */
++#define PBUSY		(1 << 5)	/* Pipe Busy */
++#define PID_MASK	(0x3)		/* Response PID */
++#define  PID_NAK	0
++#define  PID_BUF	1
++#define  PID_STALL10	2
++#define  PID_STALL11	3
++
++#define CCPL		(1 << 2)	/* Control Transfer End Enable */
++
++/* PIPEnTRE */
++#define TRENB		(1 << 9)	/* Transaction Counter Enable */
++#define TRCLR		(1 << 8)	/* Transaction Counter Clear */
++
++/* FRMNUM */
++#define FRNM_MASK	(0x7FF)
++
++/* DEVADDn */
++#define UPPHUB(x)	(((x) & 0xF) << 11)	/* HUB Register */
++#define HUBPORT(x)	(((x) & 0x7) << 8)	/* HUB Port for Target Device */
++#define USBSPD(x)	(((x) & 0x3) << 6)	/* Device Transfer Rate */
++#define USBSPD_SPEED_LOW	0x1
++#define USBSPD_SPEED_FULL	0x2
++#define USBSPD_SPEED_HIGH	0x3
++
++/*
++ *		struct
++ */
++struct usbhs_priv {
++
++	void __iomem *base;
++	unsigned int irq;
++	unsigned long irqflags;
++
++	struct renesas_usbhs_platform_callback	pfunc;
++	struct renesas_usbhs_driver_param	dparam;
++
++	struct platform_device *pdev;
++
++	void *edev;
++
++	spinlock_t		lock;
++
++	u32 flags;
++
++	/*
++	 * module control
++	 */
++	struct usbhs_mod_info mod_info;
++
++	/*
++	 * pipe control
++	 */
++	struct usbhs_pipe_info pipe_info;
++
++	/*
++	 * fifo control
++	 */
++	struct usbhs_fifo_info fifo_info;
++
++	struct usb_phy *usb_phy;
++	struct phy *phy;
++};
++
++/*
++* init
++*/
++
++int usbhs_probe(struct platform_device *pdev);
++int usbhs_remove(struct platform_device *pdev);
++
++
++/*
++ * common
++ */
++u16 usbhs_read(struct usbhs_priv *priv, u32 reg);
++void usbhs_write(struct usbhs_priv *priv, u32 reg, u16 data);
++void usbhs_bset(struct usbhs_priv *priv, u32 reg, u16 mask, u16 data);
++
++#define usbhs_lock(p, f) spin_lock_irqsave(usbhs_priv_to_lock(p), f)
++#define usbhs_unlock(p, f) spin_unlock_irqrestore(usbhs_priv_to_lock(p), f)
++
++/*
++ * sysconfig
++ */
++void usbhs_sys_host_ctrl(struct usbhs_priv *priv, int enable);
++void usbhs_sys_function_ctrl(struct usbhs_priv *priv, int enable);
++void usbhs_sys_function_pullup(struct usbhs_priv *priv, int enable);
++void usbhs_sys_set_test_mode(struct usbhs_priv *priv, u16 mode);
++
++/*
++ * usb request
++ */
++void usbhs_usbreq_get_val(struct usbhs_priv *priv, struct usb_ctrlrequest *req);
++void usbhs_usbreq_set_val(struct usbhs_priv *priv, struct usb_ctrlrequest *req);
++
++/*
++ * bus
++ */
++void usbhs_bus_send_sof_enable(struct usbhs_priv *priv);
++void usbhs_bus_send_reset(struct usbhs_priv *priv);
++int usbhs_bus_get_speed(struct usbhs_priv *priv);
++int usbhs_vbus_ctrl(struct usbhs_priv *priv, int enable);
++
++/*
++ * frame
++ */
++int usbhs_frame_get_num(struct usbhs_priv *priv);
++
++/*
++ * device config
++ */
++int usbhs_set_device_config(struct usbhs_priv *priv, int devnum, u16 upphub,
++			   u16 hubport, u16 speed);
++
++/*
++ * interrupt functions
++ */
++void usbhs_xxxsts_clear(struct usbhs_priv *priv, u16 sts_reg, u16 bit);
++
++/*
++ * data
++ */
++
++void usbhs_dump_regs(struct usbhs_priv *priv);
++
++struct usbhs_priv *usbhs_pdev_to_priv(struct platform_device *pdev);
++#define usbhs_get_dparam(priv, param)	(priv->dparam.param)
++#define usbhs_priv_to_pdev(priv)	(priv->pdev)
++#define usbhs_priv_to_dev(priv)		(&priv->pdev->dev)
++#define usbhs_priv_to_lock(priv)	(&priv->lock)
++
++#endif /* RENESAS_USB_DRIVER_H */
++
+diff --git a/drivers/usb/gadget/rcar/ehci-rcar.h b/drivers/usb/gadget/rcar/ehci-rcar.h
+new file mode 100755
+index 0000000000..7d8332af32
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/ehci-rcar.h
+@@ -0,0 +1,95 @@
++/*
++ * arch/arm/include/asm/arch-rcar_gen3/ehci-rcar.h
++ *	This file is USB-related definitions.
++ *
++ * Copyright (C) 2015-2017 Renesas Electronics Corporation
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++#ifndef __EHCI_RCAR_H__
++#define __EHCI_RCAR_H__
++
++#include <asm/types.h>
++
++/* Register offset */
++#define OHCI_OFFSET	0x00
++#define OHCI_SIZE	0x100
++#define EHCI_OFFSET	0x100		/* offset: 0100H */
++#define EHCI_SIZE	0x100
++#define AHB_OFFSET	0x200
++#define USB_CORE_OFFSET	0x300
++
++#define EHCI_USBCMD	(EHCI_OFFSET + 0x0020)
++
++/* USBCTR */
++#define DIRPD		(1 << 2)
++#define PLL_RST		(1 << 1)
++
++/* INT_ENABLE(offset:200H) */
++#define USBH_INTBEN		(1 << 2)
++#define USBH_INTAEN		(1 << 1)
++
++/* AHB_BUS_CTR */				/* hw default is .. */
++#define PROT_TYPE_CACHEABLE	(1 << 15)	/* 0: non-cacheable trns */
++#define PROT_TYPE_BUFFERABLE	(1 << 14)	/* 0: non-bufferable trns */
++#define PROT_TYPE_PRIVILEGED	(1 << 13)	/* 0: user access */
++#define PROT_TYPE_DATA		(1 << 12)	/* 0: opcode */
++#define PROT_MODE		(1 << 8)
++#define ALIGN_ADDRESS_1K	(0 << 4)	/* h/w default */
++#define ALIGN_ADDRESS_64BYTE	(1 << 4)
++#define ALIGN_ADDRESS_32BYTE	(2 << 4)
++#define ALIGN_ADDRESS_16BYTE	(3 << 4)
++#define MAX_BURST_LEN_INCR16	(0 << 0)	/* h/w default */
++#define MAX_BURST_LEN_INCR8	(1 << 0)
++#define MAX_BURST_LEN_INCR4	(2 << 0)
++#define MAX_BURST_LEN_SINGLE	(3 << 0)
++
++#define SMSTPCR7	0xE615014C
++#define SMSTPCR700	(1 << 0)	/* EHCI3 */
++#define SMSTPCR701	(1 << 1)	/* EHCI2 */
++#define SMSTPCR702	(1 << 2)	/* EHCI1 */
++#define SMSTPCR703	(1 << 3)	/* EHCI0 */
++#define SMSTPCR704	(1 << 4)	/* HSUSB */
++#define SMSTPCR705	(1 << 5)	/* HSUSB3 */
++
++/* Init AHB master and slave functions of the host logic */
++#define AHB_BUS_CTR_INIT 0
++
++struct ahb_bridge {
++	u32 int_enable;
++	u32 int_status;
++	u32 ahb_bus_ctr;
++	u32 usbctr;
++};
++
++struct rmobile_ehci_reg {
++	u32 hciversion;		/* hciversion/caplength */
++	u32 hcsparams;		/* hcsparams */
++	u32 hccparams;		/* hccparams */
++	u32 hcsp_portroute;	/* hcsp_portroute */
++	u32 usbcmd;		/* usbcmd */
++	u32 usbsts;		/* usbsts */
++	u32 usbintr;		/* usbintr */
++	u32 frindex;		/* frindex */
++	u32 ctrldssegment;	/* ctrldssegment */
++	u32 periodiclistbase;	/* periodiclistbase */
++	u32 asynclistaddr;	/* asynclistaddr */
++	u32 dummy[9];
++	u32 configflag;		/* configflag */
++	u32 portsc;		/* portsc */
++};
++
++struct usb_core_reg {
++	u32 revid;
++	u32 regen_cg_ctrl;
++	u32 spd_ctrl;
++	u32 spd_rsm_timset;
++	u32 oc_timset;
++	u32 sbrn_fladj_pw;
++};
++
++int usbhs_lowlevel_init(int index, enum usb_init_type init);
++
++#endif /* __EHCI_RCAR_H__ */
++
+diff --git a/drivers/usb/gadget/rcar/ehci-rcar_gen3.c b/drivers/usb/gadget/rcar/ehci-rcar_gen3.c
+new file mode 100755
+index 0000000000..09618d86ee
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/ehci-rcar_gen3.c
+@@ -0,0 +1,78 @@
++/*
++ * drivers/usb/host/ehci-rcar_gen3.
++ * 	This file is EHCI HCD (Host Controller Driver) for USB.
++ *
++ * Copyright (C) 2015-2017 Renesas Electronics Corporation
++ *
++ * SPDX-License-Identifier:     GPL-2.0+
++ */
++
++#include <common.h>
++#include <errno.h>
++#include <asm/io.h>
++#include <usb.h>
++#include "ehci-rcar.h"
++
++#define BASE_HSUSB	0xE6590000
++#define REG_LPSTS	(BASE_HSUSB + 0x0102)	/* 16bit */
++#define SUSPM		0x4000
++#define SUSPM_SUSPEND	0x0000
++#define SUSPM_NORMAL	0x4000
++#define REG_UGCTRL2	(BASE_HSUSB + 0x0184)	/* 32bit */
++#define USB0SEL		0x00000030
++#define USB0SEL_EHCI	0x00000010
++#define USB0SEL_HSUSB	0x00000020
++#define USB0SEL_OTG	0x00000030
++
++static u32 usb_base_address[] = {
++	0xEE080000,	/* USB0 (EHCI) */
++	0xEE0A0000,	/* USB1 (EHCI) */
++	0xEE0C0000,	/* USB2 (EHCI) */
++	0xEE0E0000,	/* USB3 (EHCI) */
++};
++int usbhs_lowlevel_init(int index, enum usb_init_type init)
++{
++	u32 base;
++
++	struct ahb_bridge *ahb;
++	struct usb_core_reg *ucore;
++
++	base = usb_base_address[index];
++	switch (index) {
++	case 0:
++		clrbits_le32(SMSTPCR7, SMSTPCR703);
++		break;
++	case 1:
++		clrbits_le32(SMSTPCR7, SMSTPCR702);
++		break;
++	case 2:
++		clrbits_le32(SMSTPCR7, SMSTPCR701);
++		break;
++	case 3:
++		clrbits_le32(SMSTPCR7, SMSTPCR700);
++		break;
++	default:
++		return -EINVAL;
++	}
++	clrbits_le32(SMSTPCR7, SMSTPCR704);
++
++	ahb = (struct ahb_bridge *)(uintptr_t)(base + AHB_OFFSET);
++	ucore = (struct usb_core_reg *)(uintptr_t)(base + USB_CORE_OFFSET);
++
++	/* Enable interrupt */
++	setbits_le32(&ahb->int_enable, USBH_INTBEN | USBH_INTAEN);
++	writel(0x014e029b, &ucore->spd_rsm_timset);
++	writel(0x000209ab, &ucore->oc_timset);
++
++	/* Choice USB0SEL */
++	clrsetbits_le32(REG_UGCTRL2, USB0SEL, USB0SEL_EHCI);
++
++	/* Clock & Reset */
++	clrbits_le32(&ahb->usbctr, PLL_RST);
++
++	/* low power status */
++	clrsetbits_le16(REG_LPSTS, SUSPM, SUSPM_NORMAL);
++
++	return 0;
++}
++
+diff --git a/drivers/usb/gadget/rcar/fifo.c b/drivers/usb/gadget/rcar/fifo.c
+new file mode 100755
+index 0000000000..4672e3f2e5
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/fifo.c
+@@ -0,0 +1,1429 @@
++/*
++ * Renesas USB driver
++ *
++ * Copyright (C) 2011 Renesas Solutions Corp.
++ * Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
++ *
++ * Ported to u-boot
++ * Copyright (C) 2016 GlobalLogic
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ *
++ */
++
++#include <asm/io.h>
++#include "common.h"
++#include "pipe.h"
++
++struct dma_chan{
++};
++
++/*This should never be enabled for u-boot.
++*Leave it here to keep code coherence with kernel driver
++*/
++
++#define USBHS_DMA_ENABLE 0
++
++#define usbhsf_get_cfifo(p)	(&((p)->fifo_info.cfifo))
++#define usbhsf_is_cfifo(p, f)	(usbhsf_get_cfifo(p) == f)
++
++#define usbhsf_fifo_is_busy(f)	((f)->pipe) /* see usbhs_pipe_select_fifo */
++
++/*
++ *		packet initialize
++ */
++void usbhs_pkt_init(struct usbhs_pkt *pkt)
++{
++	INIT_LIST_HEAD(&pkt->node);
++}
++
++/*
++ *		packet control function
++ */
++static int usbhsf_null_handle(struct usbhs_pkt *pkt, int *is_done)
++{
++	struct device *dev __attribute__((unused));
++
++	dev_err(dev, "null handler\n");
++
++	return -EINVAL;
++}
++
++static const struct usbhs_pkt_handle usbhsf_null_handler = {
++	.prepare = usbhsf_null_handle,
++	.try_run = usbhsf_null_handle,
++};
++
++void usbhs_pkt_push(struct usbhs_pipe *pipe, struct usbhs_pkt *pkt,
++		    void (*done)(struct usbhs_priv *priv,
++				 struct usbhs_pkt *pkt),
++		    void *buf, int len, int zero, int sequence)
++{
++	struct usbhs_priv *priv __attribute__((unused));
++	struct device *dev __attribute__((unused));
++	unsigned long flags;
++
++	if (!done) {
++		dev_err(dev, "no done function\n");
++		return;
++	}
++
++	/********************  spin lock ********************/
++	usbhs_lock(priv, flags);
++
++	if (!pipe->handler) {
++		dev_err(dev, "no handler function\n");
++		pipe->handler = &usbhsf_null_handler;
++	}
++
++	list_move_tail(&pkt->node, &pipe->list);
++
++	/*
++	 * each pkt must hold own handler.
++	 * because handler might be changed by its situation.
++	 * dma handler -> pio handler.
++	 */
++	pkt->pipe	= pipe;
++	pkt->buf	= buf;
++	pkt->handler	= pipe->handler;
++	pkt->length	= len;
++	pkt->zero	= zero;
++	pkt->actual	= 0;
++	pkt->done	= done;
++	pkt->sequence	= sequence;
++
++	usbhs_unlock(priv, flags);
++	/********************  spin unlock ******************/
++}
++
++static void __usbhsf_pkt_del(struct usbhs_pkt *pkt)
++{
++	list_del_init(&pkt->node);
++}
++
++static struct usbhs_pkt *__usbhsf_pkt_get(struct usbhs_pipe *pipe)
++{
++	if (list_empty(&pipe->list))
++		return NULL;
++
++	return list_first_entry(&pipe->list, struct usbhs_pkt, node);
++}
++
++static void usbhsf_fifo_clear(struct usbhs_pipe *pipe,
++			      struct usbhs_fifo *fifo);
++static void usbhsf_fifo_unselect(struct usbhs_pipe *pipe,
++				 struct usbhs_fifo *fifo);
++static struct dma_chan *usbhsf_dma_chan_get(struct usbhs_fifo *fifo,
++					    struct usbhs_pkt *pkt);
++#define usbhsf_dma_map(p)	__usbhsf_dma_map_ctrl(p, 1)
++#define usbhsf_dma_unmap(p)	__usbhsf_dma_map_ctrl(p, 0)
++static int __usbhsf_dma_map_ctrl(struct usbhs_pkt *pkt, int map);
++struct usbhs_pkt *usbhs_pkt_pop(struct usbhs_pipe *pipe, struct usbhs_pkt *pkt)
++{
++	struct usbhs_priv *priv __attribute__((unused));
++	struct usbhs_fifo *fifo = usbhs_pipe_to_fifo(pipe);
++	unsigned long flags;
++
++	/********************  spin lock ********************/
++	usbhs_lock(priv, flags);
++
++	usbhs_pipe_disable(pipe);
++
++	if (!pkt)
++		pkt = __usbhsf_pkt_get(pipe);
++
++	if (pkt) {
++		struct dma_chan *chan = NULL;
++
++		if (fifo)
++			chan = usbhsf_dma_chan_get(fifo, pkt);
++		if (chan) {
++			usbhsf_fifo_clear(pipe, fifo);
++			usbhsf_dma_unmap(pkt);
++		}
++
++		__usbhsf_pkt_del(pkt);
++	}
++
++	if (fifo)
++		usbhsf_fifo_unselect(pipe, fifo);
++
++	usbhs_unlock(priv, flags);
++	/********************  spin unlock ******************/
++
++	return pkt;
++}
++
++enum {
++	USBHSF_PKT_PREPARE,
++	USBHSF_PKT_TRY_RUN,
++	USBHSF_PKT_DMA_DONE,
++};
++
++static int usbhsf_pkt_handler(struct usbhs_pipe *pipe, int type)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct usbhs_pkt *pkt;
++	struct device *dev __attribute__((unused));
++	int (*func)(struct usbhs_pkt *pkt, int *is_done);
++	unsigned long flags;
++	int ret = 0;
++	int is_done = 0;
++
++	/********************  spin lock ********************/
++	usbhs_lock(priv, flags);
++
++	pkt = __usbhsf_pkt_get(pipe);
++	if (!pkt)
++		goto __usbhs_pkt_handler_end;
++
++	switch (type) {
++	case USBHSF_PKT_PREPARE:
++		func = pkt->handler->prepare;
++		break;
++	case USBHSF_PKT_TRY_RUN:
++		func = pkt->handler->try_run;
++		break;
++	case USBHSF_PKT_DMA_DONE:
++		func = pkt->handler->dma_done;
++		break;
++	default:
++		dev_err(dev, "unknown pkt handler\n");
++		goto __usbhs_pkt_handler_end;
++	}
++
++	if (likely(func))
++		ret = func(pkt, &is_done);
++
++	if (is_done)
++		__usbhsf_pkt_del(pkt);
++
++__usbhs_pkt_handler_end:
++	usbhs_unlock(priv, flags);
++	/********************  spin unlock ******************/
++
++	if (is_done) {
++		pkt->done(priv, pkt);
++		usbhs_pkt_start(pipe);
++	}
++
++	return ret;
++}
++
++void usbhs_pkt_start(struct usbhs_pipe *pipe)
++{
++	usbhsf_pkt_handler(pipe, USBHSF_PKT_PREPARE);
++}
++
++/*
++ *		irq enable/disable function
++ */
++#define usbhsf_irq_empty_ctrl(p, e) usbhsf_irq_callback_ctrl(p, irq_bempsts, e)
++#define usbhsf_irq_ready_ctrl(p, e) usbhsf_irq_callback_ctrl(p, irq_brdysts, e)
++#define usbhsf_irq_callback_ctrl(pipe, status, enable)			\
++	({								\
++		struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);	\
++		struct usbhs_mod *mod = usbhs_mod_get_current(priv);	\
++		u16 status = (1 << usbhs_pipe_number(pipe));		\
++		if (!mod)						\
++			return;						\
++		if (enable)						\
++			mod->status |= status;				\
++		else							\
++			mod->status &= ~status;				\
++		usbhs_irq_callback_update(priv, mod);			\
++	})
++
++static void usbhsf_tx_irq_ctrl(struct usbhs_pipe *pipe, int enable)
++{
++	/*
++	 * And DCP pipe can NOT use "ready interrupt" for "send"
++	 * it should use "empty" interrupt.
++	 * see
++	 *   "Operation" - "Interrupt Function" - "BRDY Interrupt"
++	 *
++	 * on the other hand, normal pipe can use "ready interrupt" for "send"
++	 * even though it is single/double buffer
++	 */
++	if (usbhs_pipe_is_dcp(pipe))
++		usbhsf_irq_empty_ctrl(pipe, enable);
++	else
++		usbhsf_irq_ready_ctrl(pipe, enable);
++}
++
++static void usbhsf_rx_irq_ctrl(struct usbhs_pipe *pipe, int enable)
++{
++	usbhsf_irq_ready_ctrl(pipe, enable);
++}
++
++/*
++ *		FIFO ctrl
++ */
++static void usbhsf_send_terminator(struct usbhs_pipe *pipe,
++				   struct usbhs_fifo *fifo)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++
++	usbhs_bset(priv, fifo->ctr, BVAL, BVAL);
++}
++
++static int usbhsf_fifo_barrier(struct usbhs_priv *priv,
++			       struct usbhs_fifo *fifo)
++{
++	int timeout = 1024;
++
++	do {
++		/* The FIFO port is accessible */
++		if (usbhs_read(priv, fifo->ctr) & FRDY)
++			return 0;
++
++		udelay(10);
++	} while (timeout--);
++
++	return -EBUSY;
++}
++
++static void usbhsf_fifo_clear(struct usbhs_pipe *pipe,
++			      struct usbhs_fifo *fifo)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++
++	if (!usbhs_pipe_is_dcp(pipe))
++		usbhsf_fifo_barrier(priv, fifo);
++
++	usbhs_write(priv, fifo->ctr, BCLR);
++}
++
++static int usbhsf_fifo_rcv_len(struct usbhs_priv *priv,
++			       struct usbhs_fifo *fifo)
++{
++	return usbhs_read(priv, fifo->ctr) & DTLN_MASK;
++}
++
++static void usbhsf_fifo_unselect(struct usbhs_pipe *pipe,
++				 struct usbhs_fifo *fifo)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++
++	usbhs_pipe_select_fifo(pipe, NULL);
++	usbhs_write(priv, fifo->sel, 0);
++}
++
++static int usbhsf_fifo_select(struct usbhs_pipe *pipe,
++			      struct usbhs_fifo *fifo,
++			      int write)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct device *dev __attribute__((unused));
++	int timeout = 1024;
++	u16 mask = ((1 << 5) | 0xF);		/* mask of ISEL | CURPIPE */
++	u16 base = usbhs_pipe_number(pipe);	/* CURPIPE */
++
++	if (usbhs_pipe_is_busy(pipe) ||
++	    usbhsf_fifo_is_busy(fifo))
++		return -EBUSY;
++
++	if (usbhs_pipe_is_dcp(pipe)) {
++		base |= (1 == write) << 5;	/* ISEL */
++
++#if USBHS_DMA_ENABLE
++		if (usbhs_mod_is_host(priv))
++			usbhs_dcp_dir_for_host(pipe, write);
++#endif
++	}
++
++	/* "base" will be used below  */
++	if (usbhs_get_dparam(priv, has_sudmac) && !usbhsf_is_cfifo(priv, fifo))
++		usbhs_write(priv, fifo->sel, base);
++	else
++		usbhs_write(priv, fifo->sel, base | MBW_32);
++
++	/* check ISEL and CURPIPE value */
++	while (timeout--) {
++		if (base == (mask & usbhs_read(priv, fifo->sel))) {
++			usbhs_pipe_select_fifo(pipe, fifo);
++			return 0;
++		}
++		udelay(100);
++	}
++
++	dev_err(dev, "fifo select error\n");
++	usbhs_dump_regs(priv);
++
++	return -EIO;
++}
++
++/*
++ *		DCP status stage
++ */
++static int usbhs_dcp_dir_switch_to_write(struct usbhs_pkt *pkt, int *is_done)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct usbhs_fifo *fifo = usbhsf_get_cfifo(priv); /* CFIFO */
++	struct device *dev __attribute__((unused));
++	int ret;
++
++	usbhs_pipe_disable(pipe);
++
++	ret = usbhsf_fifo_select(pipe, fifo, 1);
++	if (ret < 0) {
++		dev_err(dev, "%s() faile\n", __func__);
++		return ret;
++	}
++
++	usbhs_pipe_sequence_data1(pipe); /* DATA1 */
++
++	usbhsf_fifo_clear(pipe, fifo);
++	usbhsf_send_terminator(pipe, fifo);
++
++	usbhsf_fifo_unselect(pipe, fifo);
++
++	usbhsf_tx_irq_ctrl(pipe, 1);
++	usbhs_pipe_enable(pipe);
++
++	return ret;
++}
++
++static int usbhs_dcp_dir_switch_to_read(struct usbhs_pkt *pkt, int *is_done)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct usbhs_fifo *fifo = usbhsf_get_cfifo(priv); /* CFIFO */
++	struct device *dev __attribute__((unused));
++	int ret;
++
++	usbhs_pipe_disable(pipe);
++
++	ret = usbhsf_fifo_select(pipe, fifo, 0);
++	if (ret < 0) {
++		dev_err(dev, "%s() fail\n", __func__);
++		return ret;
++	}
++
++	usbhs_pipe_sequence_data1(pipe); /* DATA1 */
++	usbhsf_fifo_clear(pipe, fifo);
++
++	usbhsf_fifo_unselect(pipe, fifo);
++
++	usbhsf_rx_irq_ctrl(pipe, 1);
++	usbhs_pipe_enable(pipe);
++
++	return ret;
++
++}
++
++static int usbhs_dcp_dir_switch_done(struct usbhs_pkt *pkt, int *is_done)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++
++	if (pkt->handler == &usbhs_dcp_status_stage_in_handler)
++		usbhsf_tx_irq_ctrl(pipe, 0);
++	else
++		usbhsf_rx_irq_ctrl(pipe, 0);
++
++	pkt->actual = pkt->length;
++	*is_done = 1;
++
++	return 0;
++}
++
++const struct usbhs_pkt_handle usbhs_dcp_status_stage_in_handler = {
++	.prepare = usbhs_dcp_dir_switch_to_write,
++	.try_run = usbhs_dcp_dir_switch_done,
++};
++
++const struct usbhs_pkt_handle usbhs_dcp_status_stage_out_handler = {
++	.prepare = usbhs_dcp_dir_switch_to_read,
++	.try_run = usbhs_dcp_dir_switch_done,
++};
++
++/*
++ *		DCP data stage (push)
++ */
++static int usbhsf_dcp_data_stage_try_push(struct usbhs_pkt *pkt, int *is_done)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++
++	usbhs_pipe_sequence_data1(pipe); /* DATA1 */
++
++	/*
++	 * change handler to PIO push
++	 */
++	pkt->handler = &usbhs_fifo_pio_push_handler;
++
++	return pkt->handler->prepare(pkt, is_done);
++}
++
++const struct usbhs_pkt_handle usbhs_dcp_data_stage_out_handler = {
++	.prepare = usbhsf_dcp_data_stage_try_push,
++};
++
++/*
++ *		DCP data stage (pop)
++ */
++static int usbhsf_dcp_data_stage_prepare_pop(struct usbhs_pkt *pkt,
++					     int *is_done)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct usbhs_fifo *fifo = usbhsf_get_cfifo(priv);
++
++	if (usbhs_pipe_is_busy(pipe))
++		return 0;
++
++	/*
++	 * prepare pop for DCP should
++	 *  - change DCP direction,
++	 *  - clear fifo
++	 *  - DATA1
++	 */
++	usbhs_pipe_disable(pipe);
++
++	usbhs_pipe_sequence_data1(pipe); /* DATA1 */
++
++	usbhsf_fifo_select(pipe, fifo, 0);
++	usbhsf_fifo_clear(pipe, fifo);
++	usbhsf_fifo_unselect(pipe, fifo);
++
++	/*
++	 * change handler to PIO pop
++	 */
++	pkt->handler = &usbhs_fifo_pio_pop_handler;
++
++	return pkt->handler->prepare(pkt, is_done);
++}
++
++const struct usbhs_pkt_handle usbhs_dcp_data_stage_in_handler = {
++	.prepare = usbhsf_dcp_data_stage_prepare_pop,
++};
++
++/*
++ *		PIO push handler
++ */
++static int usbhsf_pio_try_push(struct usbhs_pkt *pkt, int *is_done)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct device *dev __attribute__((unused));
++	struct usbhs_fifo *fifo = usbhsf_get_cfifo(priv); /* CFIFO */
++	void __iomem *addr = priv->base + fifo->port;
++	u8 *buf;
++	int maxp = usbhs_pipe_get_maxpacket(pipe);
++	int total_len;
++	int i, ret, len;
++	int is_short;
++
++	usbhs_pipe_data_sequence(pipe, pkt->sequence);
++	pkt->sequence = -1; /* -1 sequence will be ignored */
++
++	usbhs_pipe_set_trans_count_if_bulk(pipe, pkt->length);
++
++	ret = usbhsf_fifo_select(pipe, fifo, 1);
++	if (ret < 0)
++		return 0;
++
++	ret = usbhs_pipe_is_accessible(pipe);
++	if (ret < 0) {
++		/* inaccessible pipe is not an error */
++		ret = 0;
++		goto usbhs_fifo_write_busy;
++	}
++
++	ret = usbhsf_fifo_barrier(priv, fifo);
++	if (ret < 0)
++		goto usbhs_fifo_write_busy;
++
++	buf		= pkt->buf    + pkt->actual;
++	len		= pkt->length - pkt->actual;
++	len		= min(len, maxp);
++	total_len	= len;
++	is_short	= total_len < maxp;
++
++	/*
++	 * FIXME
++	 *
++	 * 32-bit access only
++	 */
++	if (len >= 4 && !((unsigned long)buf & 0x03)) {
++		iowrite32_rep((unsigned long)addr, buf, len / 4);
++		len %= 4;
++		buf += total_len - len;
++	}
++
++	/* the rest operation */
++	if (usbhs_get_dparam(priv, cfifo_byte_addr)) {
++		for (i = 0; i < len; i++)
++			iowrite8(buf[i], addr + (i & 0x03));
++	} else {
++		for (i = 0; i < len; i++)
++			iowrite8(buf[i], addr + (0x03 - (i & 0x03)));
++	}
++
++	/*
++	 * variable update
++	 */
++	pkt->actual += total_len;
++
++	if (pkt->actual < pkt->length)
++		*is_done = 0;		/* there are remainder data */
++	else if (is_short)
++		*is_done = 1;		/* short packet */
++	else
++		*is_done = !pkt->zero;	/* send zero packet ? */
++
++	/*
++	 * pipe/irq handling
++	 */
++	if (is_short)
++		usbhsf_send_terminator(pipe, fifo);
++
++	usbhsf_tx_irq_ctrl(pipe, !*is_done);
++	usbhs_pipe_running(pipe, !*is_done);
++	usbhs_pipe_enable(pipe);
++
++	dev_dbg(dev, "  send %d (%d/ %d/ %d/ %d)\n",
++		usbhs_pipe_number(pipe),
++		pkt->length, pkt->actual, *is_done, pkt->zero);
++
++	usbhsf_fifo_unselect(pipe, fifo);
++
++	return 0;
++
++usbhs_fifo_write_busy:
++	usbhsf_fifo_unselect(pipe, fifo);
++
++	/*
++	 * pipe is busy.
++	 * retry in interrupt
++	 */
++	usbhsf_tx_irq_ctrl(pipe, 1);
++	usbhs_pipe_running(pipe, 1);
++
++	return ret;
++}
++
++static int usbhsf_pio_prepare_push(struct usbhs_pkt *pkt, int *is_done)
++{
++	if (usbhs_pipe_is_running(pkt->pipe))
++		return 0;
++
++	return usbhsf_pio_try_push(pkt, is_done);
++}
++
++const struct usbhs_pkt_handle usbhs_fifo_pio_push_handler = {
++	.prepare = usbhsf_pio_prepare_push,
++	.try_run = usbhsf_pio_try_push,
++};
++
++/*
++ *		PIO pop handler
++ */
++static int usbhsf_prepare_pop(struct usbhs_pkt *pkt, int *is_done)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct usbhs_fifo *fifo = usbhsf_get_cfifo(priv);
++
++	if (usbhs_pipe_is_busy(pipe))
++		return 0;
++
++	if (usbhs_pipe_is_running(pipe))
++		return 0;
++
++	/*
++	 * pipe enable to prepare packet receive
++	 */
++	usbhs_pipe_data_sequence(pipe, pkt->sequence);
++	pkt->sequence = -1; /* -1 sequence will be ignored */
++
++	if (usbhs_pipe_is_dcp(pipe))
++		usbhsf_fifo_clear(pipe, fifo);
++
++	usbhs_pipe_set_trans_count_if_bulk(pipe, pkt->length);
++	usbhs_pipe_enable(pipe);
++	usbhs_pipe_running(pipe, 1);
++	usbhsf_rx_irq_ctrl(pipe, 1);
++
++	return 0;
++}
++
++static int usbhsf_pio_try_pop(struct usbhs_pkt *pkt, int *is_done)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct device *dev __attribute__((unused));
++	struct usbhs_fifo *fifo = usbhsf_get_cfifo(priv); /* CFIFO */
++	void __iomem *addr = priv->base + fifo->port;
++	u8 *buf;
++	u32 data = 0;
++	int maxp = usbhs_pipe_get_maxpacket(pipe);
++	int rcv_len, len;
++	int i, ret;
++	int total_len = 0;
++
++	ret = usbhsf_fifo_select(pipe, fifo, 0);
++	if (ret < 0)
++		return 0;
++
++	ret = usbhsf_fifo_barrier(priv, fifo);
++	if (ret < 0)
++		goto usbhs_fifo_read_busy;
++
++	rcv_len = usbhsf_fifo_rcv_len(priv, fifo);
++
++	buf		= pkt->buf    + pkt->actual;
++	len		= pkt->length - pkt->actual;
++	len		= min(len, rcv_len);
++	total_len	= len;
++
++	/*
++	 * update actual length first here to decide disable pipe.
++	 * if this pipe keeps BUF status and all data were popped,
++	 * then, next interrupt/token will be issued again
++	 */
++	pkt->actual += total_len;
++
++	if ((pkt->actual == pkt->length) ||	/* receive all data */
++	    (total_len < maxp)) {		/* short packet */
++		*is_done = 1;
++		usbhsf_rx_irq_ctrl(pipe, 0);
++		usbhs_pipe_running(pipe, 0);
++		/*
++		 * If function mode, since this controller is possible to enter
++		 * Control Write status stage at this timing, this driver
++		 * should not disable the pipe. If such a case happens, this
++		 * controller is not able to complete the status stage.
++		 */
++		if (!usbhs_mod_is_host(priv) && !usbhs_pipe_is_dcp(pipe))
++			usbhs_pipe_disable(pipe);	/* disable pipe first */
++	}
++
++	/*
++	 * Buffer clear if Zero-Length packet
++	 *
++	 * see
++	 * "Operation" - "FIFO Buffer Memory" - "FIFO Port Function"
++	 */
++	if (0 == rcv_len) {
++		pkt->zero = 1;
++		usbhsf_fifo_clear(pipe, fifo);
++		goto usbhs_fifo_read_end;
++	}
++
++	/*
++	 * FIXME
++	 *
++	 * 32-bit access only
++	 */
++	if (len >= 4 && !((unsigned long)buf & 0x03)) {
++		ioread32_rep((unsigned long)addr, buf, len / 4);
++		len %= 4;
++		buf += total_len - len;
++	}
++
++	/* the rest operation */
++	for (i = 0; i < len; i++) {
++		if (!(i & 0x03))
++			data = ioread32(addr);
++
++		buf[i] = (data >> ((i & 0x03) * 8)) & 0xff;
++	}
++
++usbhs_fifo_read_end:
++	dev_dbg(dev, "  recv %d (%d/ %d/ %d/ %d)\n",
++		usbhs_pipe_number(pipe),
++		pkt->length, pkt->actual, *is_done, pkt->zero);
++
++usbhs_fifo_read_busy:
++	usbhsf_fifo_unselect(pipe, fifo);
++
++	return ret;
++}
++
++const struct usbhs_pkt_handle usbhs_fifo_pio_pop_handler = {
++	.prepare = usbhsf_prepare_pop,
++	.try_run = usbhsf_pio_try_pop,
++};
++
++/*
++ *		DCP ctrol statge handler
++ */
++static int usbhsf_ctrl_stage_end(struct usbhs_pkt *pkt, int *is_done)
++{
++	usbhs_dcp_control_transfer_done(pkt->pipe);
++
++	*is_done = 1;
++
++	return 0;
++}
++
++const struct usbhs_pkt_handle usbhs_ctrl_stage_end_handler = {
++	.prepare = usbhsf_ctrl_stage_end,
++	.try_run = usbhsf_ctrl_stage_end,
++};
++
++/*
++ *		DMA fifo functions
++ */
++static struct dma_chan *usbhsf_dma_chan_get(struct usbhs_fifo *fifo,
++					    struct usbhs_pkt *pkt)
++{
++	if (&usbhs_fifo_dma_push_handler == pkt->handler)
++		return fifo->tx_chan;
++
++	if (&usbhs_fifo_dma_pop_handler == pkt->handler)
++		return fifo->rx_chan;
++
++	return NULL;
++}
++
++#if USBHS_DMA_ENABLE
++static struct usbhs_fifo *usbhsf_get_dma_fifo(struct usbhs_priv *priv,
++					      struct usbhs_pkt *pkt)
++{
++	struct usbhs_fifo *fifo;
++	int i;
++
++	usbhs_for_each_dfifo(priv, fifo, i) {
++		if (usbhsf_dma_chan_get(fifo, pkt) &&
++		    !usbhsf_fifo_is_busy(fifo))
++			return fifo;
++	}
++
++	return NULL;
++}
++#endif
++
++#define usbhsf_dma_start(p, f)	__usbhsf_dma_ctrl(p, f, DREQE)
++#define usbhsf_dma_stop(p, f)	__usbhsf_dma_ctrl(p, f, 0)
++static void __usbhsf_dma_ctrl(struct usbhs_pipe *pipe,
++			      struct usbhs_fifo *fifo,
++			      u16 dreqe)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++
++	usbhs_bset(priv, fifo->sel, DREQE, dreqe);
++}
++
++static int __usbhsf_dma_map_ctrl(struct usbhs_pkt *pkt, int map)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct usbhs_pipe_info *info = usbhs_priv_to_pipeinfo(priv);
++
++	return info->dma_map_ctrl(pkt, map);
++}
++
++
++#if USBHS_DMA_ENABLE
++static void usbhsf_dma_complete(void *arg);
++static void xfer_work(struct work_struct *work)
++{
++	struct usbhs_pkt *pkt = container_of(work, struct usbhs_pkt, work);
++	struct usbhs_pipe *pipe = pkt->pipe;
++	struct usbhs_fifo *fifo = usbhs_pipe_to_fifo(pipe);
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct dma_async_tx_descriptor *desc;
++	struct dma_chan *chan = usbhsf_dma_chan_get(fifo, pkt);
++	struct device *dev = usbhs_priv_to_dev(priv);
++	enum dma_transfer_direction dir;
++
++	dir = usbhs_pipe_is_dir_in(pipe) ? DMA_DEV_TO_MEM : DMA_MEM_TO_DEV;
++
++	desc = dmaengine_prep_slave_single(chan, pkt->dma + pkt->actual,
++					pkt->trans, dir,
++					DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
++	if (!desc)
++		return;
++
++	desc->callback		= usbhsf_dma_complete;
++	desc->callback_param	= pipe;
++
++	pkt->cookie = dmaengine_submit(desc);
++	if (pkt->cookie < 0) {
++		dev_err(dev, "Failed to submit dma descriptor\n");
++		return;
++	}
++
++	dev_dbg(dev, "  %s %d (%d/ %d)\n",
++		fifo->name, usbhs_pipe_number(pipe), pkt->length, pkt->zero);
++
++	usbhs_pipe_running(pipe, 1);
++	usbhsf_dma_start(pipe, fifo);
++	usbhs_pipe_set_trans_count_if_bulk(pipe, pkt->trans);
++	dma_async_issue_pending(chan);
++	usbhs_pipe_enable(pipe);
++}
++#endif
++/*
++ *		DMA push handler
++ */
++static int usbhsf_dma_prepare_push(struct usbhs_pkt *pkt, int *is_done)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++#if USBHS_DMA_ENABLE
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct usbhs_fifo *fifo;
++	int len = pkt->length - pkt->actual;
++	int ret;
++	uintptr_t align_mask;
++#endif
++	if (usbhs_pipe_is_busy(pipe))
++		return 0;
++#if USBHS_DMA_ENABLE
++	/* use PIO if packet is less than pio_dma_border or pipe is DCP */
++	if ((len < usbhs_get_dparam(priv, pio_dma_border)) ||
++	    usbhs_pipe_is_dcp(pipe))
++		goto usbhsf_pio_prepare_push;
++
++	/* check data length if this driver don't use USB-DMAC */
++	if (!usbhs_get_dparam(priv, has_usb_dmac) && len & 0x7)
++		goto usbhsf_pio_prepare_push;
++
++	/* check buffer alignment */
++	align_mask = usbhs_get_dparam(priv, has_usb_dmac) ?
++					USBHS_USB_DMAC_XFER_SIZE - 1 : 0x7;
++	if ((uintptr_t)(pkt->buf + pkt->actual) & align_mask)
++		goto usbhsf_pio_prepare_push;
++
++	/* return at this time if the pipe is running */
++	if (usbhs_pipe_is_running(pipe))
++		return 0;
++
++	/* get enable DMA fifo */
++	fifo = usbhsf_get_dma_fifo(priv, pkt);
++	if (!fifo)
++		goto usbhsf_pio_prepare_push;
++
++	if (usbhsf_dma_map(pkt) < 0)
++		goto usbhsf_pio_prepare_push;
++
++	ret = usbhsf_fifo_select(pipe, fifo, 0);
++	if (ret < 0)
++		goto usbhsf_pio_prepare_push_unmap;
++
++	pkt->trans = len;
++
++	usbhsf_tx_irq_ctrl(pipe, 0);
++	INIT_WORK(&pkt->work, xfer_work);
++	schedule_work(&pkt->work);
++
++	return 0;
++
++usbhsf_pio_prepare_push_unmap:
++	usbhsf_dma_unmap(pkt);
++usbhsf_pio_prepare_push:
++#endif
++	/*
++	 * change handler to PIO
++	 */
++	pkt->handler = &usbhs_fifo_pio_push_handler;
++
++	return pkt->handler->prepare(pkt, is_done);
++}
++
++static int usbhsf_dma_push_done(struct usbhs_pkt *pkt, int *is_done)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++	int is_short = pkt->trans % usbhs_pipe_get_maxpacket(pipe);
++
++	pkt->actual += pkt->trans;
++
++	if (pkt->actual < pkt->length)
++		*is_done = 0;		/* there are remainder data */
++	else if (is_short)
++		*is_done = 1;		/* short packet */
++	else
++		*is_done = !pkt->zero;	/* send zero packet? */
++
++	usbhs_pipe_running(pipe, !*is_done);
++
++	usbhsf_dma_stop(pipe, pipe->fifo);
++	usbhsf_dma_unmap(pkt);
++	usbhsf_fifo_unselect(pipe, pipe->fifo);
++
++	if (!*is_done) {
++		/* change handler to PIO */
++		pkt->handler = &usbhs_fifo_pio_push_handler;
++		return pkt->handler->try_run(pkt, is_done);
++	}
++
++	return 0;
++}
++
++const struct usbhs_pkt_handle usbhs_fifo_dma_push_handler = {
++	.prepare	= usbhsf_dma_prepare_push,
++	.dma_done	= usbhsf_dma_push_done,
++};
++
++/*
++ *		DMA pop handler
++ */
++
++static int usbhsf_dma_prepare_pop_with_rx_irq(struct usbhs_pkt *pkt,
++					      int *is_done)
++{
++	return usbhsf_prepare_pop(pkt, is_done);
++}
++
++#if USBHS_DMA_ENABLE
++static int usbhsf_dma_prepare_pop_with_usb_dmac(struct usbhs_pkt *pkt,
++						int *is_done)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct usbhs_fifo *fifo;
++	int ret;
++
++	if (usbhs_pipe_is_busy(pipe))
++		return 0;
++
++	/* use PIO if packet is less than pio_dma_border or pipe is DCP */
++	if ((pkt->length < usbhs_get_dparam(priv, pio_dma_border)) ||
++	    usbhs_pipe_is_dcp(pipe))
++		goto usbhsf_pio_prepare_pop;
++
++	fifo = usbhsf_get_dma_fifo(priv, pkt);
++	if (!fifo)
++		goto usbhsf_pio_prepare_pop;
++
++	if ((uintptr_t)pkt->buf & (USBHS_USB_DMAC_XFER_SIZE - 1))
++		goto usbhsf_pio_prepare_pop;
++
++	usbhs_pipe_config_change_bfre(pipe, 1);
++
++	ret = usbhsf_fifo_select(pipe, fifo, 0);
++	if (ret < 0)
++		goto usbhsf_pio_prepare_pop;
++
++	if (usbhsf_dma_map(pkt) < 0)
++		goto usbhsf_pio_prepare_pop_unselect;
++
++	/* DMA */
++
++	/*
++	 * usbhs_fifo_dma_pop_handler :: prepare
++	 * enabled irq to come here.
++	 * but it is no longer needed for DMA. disable it.
++	 */
++	usbhsf_rx_irq_ctrl(pipe, 0);
++
++	pkt->trans = pkt->length;
++
++	INIT_WORK(&pkt->work, xfer_work);
++	schedule_work(&pkt->work);
++
++	return 0;
++
++usbhsf_pio_prepare_pop_unselect:
++	usbhsf_fifo_unselect(pipe, fifo);
++usbhsf_pio_prepare_pop:
++
++	/*
++	 * change handler to PIO
++	 */
++	pkt->handler = &usbhs_fifo_pio_pop_handler;
++	usbhs_pipe_config_change_bfre(pipe, 0);
++
++	return pkt->handler->prepare(pkt, is_done);
++}
++#endif
++
++static int usbhsf_dma_prepare_pop(struct usbhs_pkt *pkt, int *is_done)
++{
++#if USBHS_DMA_ENABLE
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pkt->pipe);
++
++	if (usbhs_get_dparam(priv, has_usb_dmac))
++		return usbhsf_dma_prepare_pop_with_usb_dmac(pkt, is_done);
++	else
++#endif
++		return usbhsf_dma_prepare_pop_with_rx_irq(pkt, is_done);
++}
++
++static int usbhsf_dma_try_pop_with_rx_irq(struct usbhs_pkt *pkt, int *is_done)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++#if USBHS_DMA_ENABLE
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct usbhs_fifo *fifo;
++	int len, ret;
++#endif
++	if (usbhs_pipe_is_busy(pipe))
++		return 0;
++#if USBHS_DMA_ENABLE
++	if (usbhs_pipe_is_dcp(pipe))
++		goto usbhsf_pio_prepare_pop;
++
++	/* get enable DMA fifo */
++	fifo = usbhsf_get_dma_fifo(priv, pkt);
++	if (!fifo)
++		goto usbhsf_pio_prepare_pop;
++
++	if ((uintptr_t)(pkt->buf + pkt->actual) & 0x7) /* 8byte alignment */
++		goto usbhsf_pio_prepare_pop;
++
++	ret = usbhsf_fifo_select(pipe, fifo, 0);
++	if (ret < 0)
++		goto usbhsf_pio_prepare_pop;
++
++	/* use PIO if packet is less than pio_dma_border */
++	len = usbhsf_fifo_rcv_len(priv, fifo);
++	len = min(pkt->length - pkt->actual, len);
++	if (len & 0x7) /* 8byte alignment */
++		goto usbhsf_pio_prepare_pop_unselect;
++
++	if (len < usbhs_get_dparam(priv, pio_dma_border))
++		goto usbhsf_pio_prepare_pop_unselect;
++
++	ret = usbhsf_fifo_barrier(priv, fifo);
++	if (ret < 0)
++		goto usbhsf_pio_prepare_pop_unselect;
++
++	if (usbhsf_dma_map(pkt) < 0)
++		goto usbhsf_pio_prepare_pop_unselect;
++
++	/* DMA */
++
++	/*
++	 * usbhs_fifo_dma_pop_handler :: prepare
++	 * enabled irq to come here.
++	 * but it is no longer needed for DMA. disable it.
++	 */
++	usbhsf_rx_irq_ctrl(pipe, 0);
++
++	pkt->trans = len;
++
++	INIT_WORK(&pkt->work, xfer_work);
++	schedule_work(&pkt->work);
++
++	return 0;
++
++usbhsf_pio_prepare_pop_unselect:
++	usbhsf_fifo_unselect(pipe, fifo);
++usbhsf_pio_prepare_pop:
++#endif
++
++	/*
++	 * change handler to PIO
++	 */
++	pkt->handler = &usbhs_fifo_pio_pop_handler;
++
++	return pkt->handler->try_run(pkt, is_done);
++}
++
++static int usbhsf_dma_try_pop(struct usbhs_pkt *pkt, int *is_done)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pkt->pipe);
++
++	BUG_ON(usbhs_get_dparam(priv, has_usb_dmac));
++
++	return usbhsf_dma_try_pop_with_rx_irq(pkt, is_done);
++}
++
++static int usbhsf_dma_pop_done_with_rx_irq(struct usbhs_pkt *pkt, int *is_done)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++	int maxp = usbhs_pipe_get_maxpacket(pipe);
++
++	usbhsf_dma_stop(pipe, pipe->fifo);
++	usbhsf_dma_unmap(pkt);
++	usbhsf_fifo_unselect(pipe, pipe->fifo);
++
++	pkt->actual += pkt->trans;
++
++	if ((pkt->actual == pkt->length) ||	/* receive all data */
++	    (pkt->trans < maxp)) {		/* short packet */
++		*is_done = 1;
++		usbhs_pipe_running(pipe, 0);
++	} else {
++		/* re-enable */
++		usbhs_pipe_running(pipe, 0);
++		usbhsf_prepare_pop(pkt, is_done);
++	}
++
++	return 0;
++}
++
++#if USBHS_DMA_ENABLE
++static size_t usbhs_dma_calc_received_size(struct usbhs_pkt *pkt,
++					   struct dma_chan *chan, int dtln)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++	struct dma_tx_state state;
++	size_t received_size;
++	int maxp = usbhs_pipe_get_maxpacket(pipe);
++
++	dmaengine_tx_status(chan, pkt->cookie, &state);
++	received_size = pkt->length - state.residue;
++
++	if (dtln) {
++		received_size -= USBHS_USB_DMAC_XFER_SIZE;
++		received_size &= ~(maxp - 1);
++		received_size += dtln;
++	}
++
++	return received_size;
++}
++
++static int usbhsf_dma_pop_done_with_usb_dmac(struct usbhs_pkt *pkt,
++					     int *is_done)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct usbhs_fifo *fifo = usbhs_pipe_to_fifo(pipe);
++	struct dma_chan *chan = usbhsf_dma_chan_get(fifo, pkt);
++	int rcv_len;
++
++	/*
++	 * Since the driver disables rx_irq in DMA mode, the interrupt handler
++	 * cannot the BRDYSTS. So, the function clears it here because the
++	 * driver may use PIO mode next time.
++	 */
++	usbhs_xxxsts_clear(priv, BRDYSTS, usbhs_pipe_number(pipe));
++
++	rcv_len = usbhsf_fifo_rcv_len(priv, fifo);
++	usbhsf_fifo_clear(pipe, fifo);
++	pkt->actual = usbhs_dma_calc_received_size(pkt, chan, rcv_len);
++
++	usbhsf_dma_stop(pipe, fifo);
++	usbhsf_dma_unmap(pkt);
++	usbhsf_fifo_unselect(pipe, pipe->fifo);
++
++	/* The driver can assume the rx transaction is always "done" */
++	*is_done = 1;
++
++	return 0;
++}
++#endif
++static int usbhsf_dma_pop_done(struct usbhs_pkt *pkt, int *is_done)
++{
++#if USBHS_DMA_ENABLE
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pkt->pipe);
++
++	if (usbhs_get_dparam(priv, has_usb_dmac))
++		return usbhsf_dma_pop_done_with_usb_dmac(pkt, is_done);
++	else
++#endif
++		return usbhsf_dma_pop_done_with_rx_irq(pkt, is_done);
++}
++
++const struct usbhs_pkt_handle usbhs_fifo_dma_pop_handler = {
++	.prepare	= usbhsf_dma_prepare_pop,
++	.try_run	= usbhsf_dma_try_pop,
++	.dma_done	= usbhsf_dma_pop_done
++};
++
++
++static void usbhsf_dma_quit(struct usbhs_priv *priv, struct usbhs_fifo *fifo)
++{
++	fifo->tx_chan = NULL;
++	fifo->rx_chan = NULL;
++}
++
++static void usbhsf_dma_init_pdev(struct usbhs_fifo *fifo)
++{
++	/*Set junk not NULL value*/
++	fifo->tx_chan =(void *) 0xdeadbeef;
++	fifo->rx_chan =(void *) 0xdeadbee0;
++}
++
++static void usbhsf_dma_init(struct usbhs_priv *priv, struct usbhs_fifo *fifo,
++			    int channel)
++{
++	struct device *dev __attribute__((unused));
++
++	usbhsf_dma_init_pdev(fifo);
++
++	if (fifo->tx_chan || fifo->rx_chan)
++		dev_dbg(dev, "enable DMAEngine (%s%s%s)\n",
++			 fifo->name,
++			 fifo->tx_chan ? "[TX]" : "    ",
++			 fifo->rx_chan ? "[RX]" : "    ");
++}
++
++/*
++ *		irq functions
++ */
++static int usbhsf_irq_empty(struct usbhs_priv *priv,
++			    struct usbhs_irq_state *irq_state)
++{
++	struct usbhs_pipe *pipe;
++	struct device *dev __attribute__((unused));
++	int i, ret;
++
++	if (!irq_state->bempsts) {
++		dev_err(dev, "debug %s !!\n", __func__);
++		return -EIO;
++	}
++
++	dev_dbg(dev, "irq empty [0x%04x]\n", irq_state->bempsts);
++
++	/*
++	 * search interrupted "pipe"
++	 * not "uep".
++	 */
++	usbhs_for_each_pipe_with_dcp(pipe, priv, i) {
++		if (!(irq_state->bempsts & (1 << i)))
++			continue;
++
++		ret = usbhsf_pkt_handler(pipe, USBHSF_PKT_TRY_RUN);
++		if (ret < 0)
++			dev_err(dev, "irq_empty run_error %d : %d\n", i, ret);
++	}
++
++	return 0;
++}
++
++static int usbhsf_irq_ready(struct usbhs_priv *priv,
++			    struct usbhs_irq_state *irq_state)
++{
++	struct usbhs_pipe *pipe;
++	struct device *dev __attribute__((unused));
++	int i, ret;
++
++	if (!irq_state->brdysts) {
++		dev_err(dev, "debug %s !!\n", __func__);
++		return -EIO;
++	}
++
++	dev_dbg(dev, "irq ready [0x%04x]\n", irq_state->brdysts);
++
++	/*
++	 * search interrupted "pipe"
++	 * not "uep".
++	 */
++	usbhs_for_each_pipe_with_dcp(pipe, priv, i) {
++		if (!(irq_state->brdysts & (1 << i)))
++			continue;
++
++		ret = usbhsf_pkt_handler(pipe, USBHSF_PKT_TRY_RUN);
++		if (ret < 0) {
++			dev_err(dev, "irq_ready run_error %d : %d\n", i, ret);
++			usbhs_dump_regs(priv);
++		}
++	}
++
++	return 0;
++}
++
++#if USBHS_DMA_ENABLE
++static void usbhsf_dma_complete(void *arg)
++{
++	struct usbhs_pipe *pipe = arg;
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct device *dev = usbhs_priv_to_dev(priv);
++	int ret;
++
++	ret = usbhsf_pkt_handler(pipe, USBHSF_PKT_DMA_DONE);
++	if (ret < 0)
++		dev_err(dev, "dma_complete run_error %d : %d\n",
++			usbhs_pipe_number(pipe), ret);
++}
++#endif
++
++void usbhs_fifo_clear_dcp(struct usbhs_pipe *pipe)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct usbhs_fifo *fifo = usbhsf_get_cfifo(priv); /* CFIFO */
++
++	/* clear DCP FIFO of transmission */
++	if (usbhsf_fifo_select(pipe, fifo, 1) < 0)
++		return;
++	usbhsf_fifo_clear(pipe, fifo);
++	usbhsf_fifo_unselect(pipe, fifo);
++
++	/* clear DCP FIFO of reception */
++	if (usbhsf_fifo_select(pipe, fifo, 0) < 0)
++		return;
++	usbhsf_fifo_clear(pipe, fifo);
++	usbhsf_fifo_unselect(pipe, fifo);
++}
++
++/*
++ *		fifo init
++ */
++void usbhs_fifo_init(struct usbhs_priv *priv)
++{
++	struct usbhs_mod *mod = usbhs_mod_get_current(priv);
++	struct usbhs_fifo *cfifo = usbhsf_get_cfifo(priv);
++	struct usbhs_fifo *dfifo;
++	int i;
++
++	pr_dbg("+-%s(0x%p)\n", __func__, mod);
++	mod->irq_empty		= usbhsf_irq_empty;
++	mod->irq_ready		= usbhsf_irq_ready;
++	mod->irq_bempsts	= 0;
++	mod->irq_brdysts	= 0;
++
++	cfifo->pipe	= NULL;
++	usbhs_for_each_dfifo(priv, dfifo, i)
++		dfifo->pipe	= NULL;
++}
++
++void usbhs_fifo_quit(struct usbhs_priv *priv)
++{
++	struct usbhs_mod *mod = usbhs_mod_get_current(priv);
++
++	mod->irq_empty		= NULL;
++	mod->irq_ready		= NULL;
++	mod->irq_bempsts	= 0;
++	mod->irq_brdysts	= 0;
++}
++
++#define __USBHS_DFIFO_INIT(priv, fifo, channel, fifo_port)		\
++do {									\
++	fifo = usbhsf_get_dnfifo(priv, channel);			\
++	fifo->name	= "D"#channel"FIFO";				\
++	fifo->port	= fifo_port;					\
++	fifo->sel	= D##channel##FIFOSEL;				\
++	fifo->ctr	= D##channel##FIFOCTR;				\
++	fifo->tx_slave.shdma_slave.slave_id =				\
++			usbhs_get_dparam(priv, d##channel##_tx_id);	\
++	fifo->rx_slave.shdma_slave.slave_id =				\
++			usbhs_get_dparam(priv, d##channel##_rx_id);	\
++	usbhsf_dma_init(priv, fifo, channel);				\
++} while (0)
++
++#define USBHS_DFIFO_INIT(priv, fifo, channel)				\
++		__USBHS_DFIFO_INIT(priv, fifo, channel, D##channel##FIFO)
++#define USBHS_DFIFO_INIT_NO_PORT(priv, fifo, channel)			\
++		__USBHS_DFIFO_INIT(priv, fifo, channel, 0)
++
++int usbhs_fifo_probe(struct usbhs_priv *priv)
++{
++	struct usbhs_fifo *fifo;
++
++	/* CFIFO */
++	fifo = usbhsf_get_cfifo(priv);
++	fifo->name	= "CFIFO";
++	fifo->port	= CFIFO;
++	fifo->sel	= CFIFOSEL;
++	fifo->ctr	= CFIFOCTR;
++
++	/* DFIFO */
++	USBHS_DFIFO_INIT(priv, fifo, 0);
++	USBHS_DFIFO_INIT(priv, fifo, 1);
++	USBHS_DFIFO_INIT_NO_PORT(priv, fifo, 2);
++	USBHS_DFIFO_INIT_NO_PORT(priv, fifo, 3);
++
++	return 0;
++}
++
++void usbhs_fifo_remove(struct usbhs_priv *priv)
++{
++	struct usbhs_fifo *fifo;
++	int i;
++
++	usbhs_for_each_dfifo(priv, fifo, i)
++		usbhsf_dma_quit(priv, fifo);
++}
++
+diff --git a/drivers/usb/gadget/rcar/fifo.h b/drivers/usb/gadget/rcar/fifo.h
+new file mode 100755
+index 0000000000..5ff1a5e52b
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/fifo.h
+@@ -0,0 +1,119 @@
++/*
++ * Renesas USB driver
++ *
++ * Copyright (C) 2011 Renesas Solutions Corp.
++ * Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
++ *
++ * Ported to u-boot
++ * Copyright (C) 2016 GlobalLogic
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ *
++ */
++#ifndef RENESAS_USB_FIFO_H
++#define RENESAS_USB_FIFO_H
++
++#include <linux/list.h>
++#include "pipe.h"
++
++struct shdma_slave {
++	int slave_id;
++};
++
++struct sh_dmae_slave {
++	struct shdma_slave		shdma_slave;	/* Set by the platform */
++};
++
++
++struct usbhs_fifo {
++	char *name;
++	u32 port;	/* xFIFO */
++	u32 sel;	/* xFIFOSEL */
++	u32 ctr;	/* xFIFOCTR */
++
++	void *tx_chan;
++	void *rx_chan;
++
++	struct sh_dmae_slave	tx_slave;
++	struct sh_dmae_slave	rx_slave;
++
++	struct usbhs_pipe	*pipe;
++
++};
++
++#define USBHS_MAX_NUM_DFIFO	4
++struct usbhs_fifo_info {
++	struct usbhs_fifo cfifo;
++	struct usbhs_fifo dfifo[USBHS_MAX_NUM_DFIFO];
++};
++#define usbhsf_get_dnfifo(p, n)	(&((p)->fifo_info.dfifo[n]))
++#define usbhs_for_each_dfifo(priv, dfifo, i)			\
++	for ((i) = 0;						\
++	     ((i) < USBHS_MAX_NUM_DFIFO) &&			\
++		     ((dfifo) = usbhsf_get_dnfifo(priv, (i)));	\
++	     (i)++)
++
++struct usbhs_pkt_handle;
++struct usbhs_pkt {
++	struct list_head node;
++	struct usbhs_pipe *pipe;
++	const struct usbhs_pkt_handle *handler;
++	void (*done)(struct usbhs_priv *priv,
++		     struct usbhs_pkt *pkt);
++	struct work_struct work;
++	void *buf;
++	int length;
++	int trans;
++	int actual;
++	int zero;
++	int sequence;
++};
++
++struct usbhs_pkt_handle {
++	int (*prepare)(struct usbhs_pkt *pkt, int *is_done);
++	int (*try_run)(struct usbhs_pkt *pkt, int *is_done);
++	int (*dma_done)(struct usbhs_pkt *pkt, int *is_done);
++};
++
++/*
++ * fifo
++ */
++int usbhs_fifo_probe(struct usbhs_priv *priv);
++void usbhs_fifo_remove(struct usbhs_priv *priv);
++void usbhs_fifo_init(struct usbhs_priv *priv);
++void usbhs_fifo_quit(struct usbhs_priv *priv);
++void usbhs_fifo_clear_dcp(struct usbhs_pipe *pipe);
++
++/*
++ * packet info
++ */
++extern const struct usbhs_pkt_handle usbhs_fifo_pio_push_handler;
++extern const struct usbhs_pkt_handle usbhs_fifo_pio_pop_handler;
++extern const struct usbhs_pkt_handle usbhs_ctrl_stage_end_handler;
++
++extern const struct usbhs_pkt_handle usbhs_fifo_dma_push_handler;
++extern const struct usbhs_pkt_handle usbhs_fifo_dma_pop_handler;
++
++extern const struct usbhs_pkt_handle usbhs_dcp_status_stage_in_handler;
++extern const struct usbhs_pkt_handle usbhs_dcp_status_stage_out_handler;
++
++extern const struct usbhs_pkt_handle usbhs_dcp_data_stage_in_handler;
++extern const struct usbhs_pkt_handle usbhs_dcp_data_stage_out_handler;
++
++void usbhs_pkt_init(struct usbhs_pkt *pkt);
++void usbhs_pkt_push(struct usbhs_pipe *pipe, struct usbhs_pkt *pkt,
++		    void (*done)(struct usbhs_priv *priv,
++				 struct usbhs_pkt *pkt),
++		    void *buf, int len, int zero, int sequence);
++struct usbhs_pkt *usbhs_pkt_pop(struct usbhs_pipe *pipe, struct usbhs_pkt *pkt);
++void usbhs_pkt_start(struct usbhs_pipe *pipe);
++
++#endif /* RENESAS_USB_FIFO_H */
++
+diff --git a/drivers/usb/gadget/rcar/g2l.c b/drivers/usb/gadget/rcar/g2l.c
+new file mode 100755
+index 0000000000..1b258d21d2
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/g2l.c
+@@ -0,0 +1,46 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Renesas USB driver RZ/A2 initialization and power control
++ *
++ * Copyright (C) 2019 Chris Brandt
++ * Copyright (C) 2019 Renesas Electronics Corporation
++ */
++
++#include <linux/delay.h>
++#include <linux/io.h>
++#include "common.h"
++#include "rza.h"
++
++static int usbhs_g2l_power_ctrl(struct platform_device *pdev,
++				void __iomem *base, int enable)
++{
++	struct usbhs_priv *priv = usbhs_pdev_to_priv(pdev);
++	int retval = 0;
++#if !defined(CONFIG_R9A09G057)
++	if (!priv->phy)
++		return -ENODEV;
++#endif
++
++	if (enable) {
++		//iretval = phy_init(priv->phy);
++		usbhs_bset(priv, SUSPMODE, SUSPM, SUSPM);
++		udelay(100);    /* Wait for PLL to become stable */
++	} else {
++		usbhs_bset(priv, SUSPMODE, SUSPM, 0);
++		//phy_power_off(priv->phy);
++		//phy_exit(priv->phy);
++	}
++
++	return retval;
++}
++
++static int usbhs_g2l_get_id(struct platform_device *pdev)
++{
++	return USBHS_GADGET;
++}
++
++const struct renesas_usbhs_platform_callback usbhs_g2l_ops = {
++	.power_ctrl = usbhs_g2l_power_ctrl,
++	.get_id = usbhs_g2l_get_id,
++};
++
+diff --git a/drivers/usb/gadget/rcar/mod.c b/drivers/usb/gadget/rcar/mod.c
+new file mode 100755
+index 0000000000..460df4585c
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/mod.c
+@@ -0,0 +1,393 @@
++/*
++ * Renesas USB driver
++ *
++ * Copyright (C) 2011 Renesas Solutions Corp.
++ * Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
++  *
++ * Ported to u-boot
++ * Copyright (C) 2016 GlobalLogic
++ *
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ *
++ */
++
++#include "common.h"
++#include "mod.h"
++
++#define usbhs_priv_to_modinfo(priv) (&priv->mod_info)
++#define usbhs_mod_info_call(priv, func, param...)	\
++({						\
++	struct usbhs_mod_info *info;		\
++	info = usbhs_priv_to_modinfo(priv);	\
++	!info->func ? 0 :			\
++	 info->func(param);			\
++})
++
++/*
++ *		autonomy
++ *
++ * these functions are used if platform doesn't have external phy.
++ *  -> there is no "notify_hotplug" callback from platform
++ *  -> call "notify_hotplug" by itself
++ *  -> use own interrupt to connect/disconnect
++ *  -> it mean module clock is always ON
++ *             ~~~~~~~~~~~~~~~~~~~~~~~~~
++ */
++static int usbhsm_autonomy_get_vbus(struct platform_device *pdev)
++{
++	struct usbhs_priv *priv = usbhs_pdev_to_priv(pdev);
++
++	return  VBSTS & usbhs_read(priv, INTSTS0);
++}
++
++void usbhsc_notify_hotplug(struct usbhs_priv *priv);
++
++static int usbhsm_autonomy_irq_vbus(struct usbhs_priv *priv,
++				    struct usbhs_irq_state *irq_state)
++{
++	pr_dbg("This is ++usbhsm_autonomy_irq_vbus++\n ");
++	usbhsc_notify_hotplug(priv);
++
++	return 0;
++}
++
++void usbhs_mod_autonomy_mode(struct usbhs_priv *priv)
++{
++	struct usbhs_mod_info *info = usbhs_priv_to_modinfo(priv);
++
++	pr_dbg("++%s\n", __func__);
++
++	info->irq_vbus		= usbhsm_autonomy_irq_vbus;
++	priv->pfunc.get_vbus	= usbhsm_autonomy_get_vbus;
++
++	usbhs_irq_callback_update(priv, NULL);
++	pr_dbg("--%s\n", __func__);
++}
++
++/*
++ *		host / gadget functions
++ *
++ * renesas_usbhs host/gadget can register itself by below functions.
++ * these functions are called when probe
++ *
++ */
++void usbhs_mod_register(struct usbhs_priv *priv, struct usbhs_mod *mod, int id)
++{
++	struct usbhs_mod_info *info = usbhs_priv_to_modinfo(priv);
++
++	info->mod[id]	= mod;
++	mod->priv	= priv;
++}
++
++struct usbhs_mod *usbhs_mod_get(struct usbhs_priv *priv, int id)
++{
++	struct usbhs_mod_info *info = usbhs_priv_to_modinfo(priv);
++	struct usbhs_mod *ret = NULL;
++
++	switch (id) {
++	case USBHS_HOST:
++	case USBHS_GADGET:
++		ret = info->mod[id];
++		break;
++	}
++
++	return ret;
++}
++
++int usbhs_mod_is_host(struct usbhs_priv *priv)
++{
++	struct usbhs_mod *mod = usbhs_mod_get_current(priv);
++	struct usbhs_mod_info *info = usbhs_priv_to_modinfo(priv);
++
++	if (!mod)
++		return -EINVAL;
++
++	return info->mod[USBHS_HOST] == mod;
++}
++
++struct usbhs_mod *usbhs_mod_get_current(struct usbhs_priv *priv)
++{
++	struct usbhs_mod_info *info = usbhs_priv_to_modinfo(priv);
++
++	return info->curt;
++}
++
++int usbhs_mod_change(struct usbhs_priv *priv, int id)
++{
++	struct usbhs_mod_info *info = usbhs_priv_to_modinfo(priv);
++	struct usbhs_mod *mod = NULL;
++	int ret = 0;
++
++	pr_dbg("++%s(%d)\n", __func__, id);
++
++	/* id < 0 mean no current */
++	switch (id) {
++	case USBHS_HOST:
++	case USBHS_GADGET:
++		mod = info->mod[id];
++		break;
++	default:
++		ret = -EINVAL;
++	}
++	info->curt = mod;
++	pr_dbg("--%s\n", __func__);
++	return ret;
++}
++
++static irqreturn_t usbhs_interrupt(int irq, void *data);
++int usbhs_mod_probe(struct usbhs_priv *priv)
++{
++	struct device *dev = usbhs_priv_to_dev(priv);
++	int ret;
++	pr_dbg("++%s\n", __func__);
++	ret = usbhs_mod_gadget_probe(priv);
++
++	/* irq settings */
++	ret = devm_request_irq(dev, priv->irq, usbhs_interrupt,
++			  priv->irqflags, RCAR3_USBHS_DEVICE, priv);
++
++	pr_dbg("--%s\n", __func__);
++
++	return ret;
++}
++
++void usbhs_mod_remove(struct usbhs_priv *priv)
++{
++	usbhs_mod_gadget_remove(priv);
++}
++
++/*
++ *		status functions
++ */
++int usbhs_status_get_device_state(struct usbhs_irq_state *irq_state)
++{
++	int state = irq_state->intsts0 & DVSQ_MASK;
++
++	switch (state) {
++	case POWER_STATE:
++	case DEFAULT_STATE:
++	case ADDRESS_STATE:
++	case CONFIGURATION_STATE:
++		return state;
++	}
++
++	return -EIO;
++}
++
++int usbhs_status_get_ctrl_stage(struct usbhs_irq_state *irq_state)
++{
++	/*
++	 * return value
++	 *
++	 * IDLE_SETUP_STAGE
++	 * READ_DATA_STAGE
++	 * READ_STATUS_STAGE
++	 * WRITE_DATA_STAGE
++	 * WRITE_STATUS_STAGE
++	 * NODATA_STATUS_STAGE
++	 * SEQUENCE_ERROR
++	 */
++	return (int)irq_state->intsts0 & CTSQ_MASK;
++}
++
++static int usbhs_status_get_each_irq(struct usbhs_priv *priv,
++				     struct usbhs_irq_state *state)
++{
++	struct usbhs_mod *mod = usbhs_mod_get_current(priv);
++	u16 intenb1;
++	unsigned long flags;
++
++	/********************  spin lock ********************/
++	usbhs_lock(priv, flags);
++	state->intsts0 = usbhs_read(priv, INTSTS0);
++
++	if (usbhs_mod_is_host(priv)) {
++		pr_dbg("WARNING! We are in a host mode!\n");
++		state->intsts1 = usbhs_read(priv, INTSTS1);
++		intenb1 = usbhs_read(priv, INTENB1);
++	} else {
++		state->intsts1 = intenb1 = 0;
++	}
++
++	/* mask */
++	if (mod) {
++		state->brdysts = usbhs_read(priv, BRDYSTS);
++		state->nrdysts = usbhs_read(priv, NRDYSTS);
++		state->bempsts = usbhs_read(priv, BEMPSTS);
++
++//We don't need it here, since driver works in pooling mode;
++//		state->bempsts &= mod->irq_bempsts;
++//		state->brdysts &= mod->irq_brdysts;
++	}
++	usbhs_unlock(priv, flags);
++	/********************  spin unlock ******************/
++
++	return 0;
++}
++
++/*
++ *		interrupt
++ */
++#define INTSTS0_MAGIC 0xF800 /* acknowledge magical interrupt sources */
++#define INTSTS1_MAGIC 0xA870 /* acknowledge magical interrupt sources */
++static irqreturn_t usbhs_interrupt(int irq, void *data)
++{
++	struct usbhs_priv *priv = data;
++	struct usbhs_irq_state irq_state;
++
++	if (usbhs_status_get_each_irq(priv, &irq_state) < 0)
++		return IRQ_NONE;
++
++	/*
++	 * clear interrupt
++	 *
++	 * The hardware is _very_ picky to clear interrupt bit.
++	 * Especially INTSTS0_MAGIC, INTSTS1_MAGIC value.
++	 *
++	 * see
++	 *	"Operation"
++	 *	 - "Control Transfer (DCP)"
++	 *	   - Function :: VALID bit should 0
++	 */
++	/*
++	 * call irq callback functions
++	 * see also
++	 *	usbhs_irq_setting_update
++	 */
++
++	/*It appears that it's more appropriate to clear bits one by one for those
++	* interrupts that were handled and avoid writing to BEMPSTS,BRDYSTS and
++	* NRDYSTS if IRQ flag was not altered;
++	*
++	* Such handling doesn't cause USB hang during bulk-out transfer
++	*/
++
++	/* INTSTS0 */
++	if (irq_state.intsts0 & VBINT) {
++		pr_irq("++->VBINT\n");
++		usbhs_write(priv, INTSTS0, ~VBINT  & INTSTS1_MAGIC);
++		usbhs_mod_info_call(priv, irq_vbus, priv, &irq_state);
++	}
++	if (irq_state.intsts0 & DVST) {
++		pr_irq("++->DVST\n");
++		usbhs_write(priv, INTSTS0, ~DVST  & INTSTS1_MAGIC);
++		usbhs_mod_call(priv, irq_dev_state, priv, &irq_state);
++	}
++	if (irq_state.intsts0 & CTRT) {
++		pr_irq("++->CTRT\n");
++		usbhs_write(priv, INTSTS0, ~CTRT  & INTSTS1_MAGIC);
++		usbhs_mod_call(priv, irq_ctrl_stage, priv, &irq_state);
++		pr_irq("--->CTRT\n");
++	}
++	if (irq_state.intsts0 & BEMP) {
++		pr_irq("++->BEMP\n");
++		usbhs_write(priv, BEMPSTS, ~irq_state.bempsts);
++		usbhs_mod_call(priv, irq_empty, priv, &irq_state);
++	}
++	if (irq_state.intsts0 & BRDY) {
++		pr_irq("++->BRDY\n");
++		usbhs_write(priv, BRDYSTS, ~irq_state.brdysts);
++		usbhs_mod_call(priv, irq_ready, priv, &irq_state);
++	}
++	if (irq_state.intsts0 & NRDY) {
++		pr_irq("++->NRDY\n");
++		/*
++		* FIXME: Driver has no handler for such kind of interrupt..
++		* So just clear the register..
++		*/
++		usbhs_write(priv, NRDYSTS, ~irq_state.nrdysts);
++	}
++	if (usbhs_mod_is_host(priv)) {
++		/* INTSTS1 */
++		pr_irq("WARNING! We are in a host mode!\n");
++		usbhs_write(priv, INTSTS1, ~irq_state.intsts1 & INTSTS1_MAGIC);
++	}
++	return IRQ_HANDLED;
++}
++
++void usbhs_irq_callback_update(struct usbhs_priv *priv, struct usbhs_mod *mod)
++{
++	u16 intenb0 = 0;
++	u16 intenb1 = 0;
++	struct usbhs_mod_info *info = usbhs_priv_to_modinfo(priv);
++
++	pr_irq("++%s\n", __func__);
++
++	/*
++	 * BEMPENB/BRDYENB are picky.
++	 * below method is required
++	 *
++	 *  - clear  INTSTS0
++	 *  - update BEMPENB/BRDYENB
++	 *  - update INTSTS0
++	 */
++	usbhs_write(priv, INTENB0, 0);
++	if (usbhs_mod_is_host(priv))
++		usbhs_write(priv, INTENB1, 0);
++
++	usbhs_write(priv, BEMPENB, 0);
++	usbhs_write(priv, BRDYENB, 0);
++
++	/*
++	 * see also
++	 *	usbhs_interrupt
++	 */
++
++	/*
++	 * it don't enable DVSE (intenb0) here
++	 * but "mod->irq_dev_state" will be called.
++	 */
++	if (info->irq_vbus)
++		intenb0 |= VBSE;
++
++	if (mod) {
++		/*
++		 * INTSTS0
++		 */
++		if (mod->irq_ctrl_stage)
++			intenb0 |= CTRE;
++
++		if (mod->irq_empty && mod->irq_bempsts) {
++			usbhs_write(priv, BEMPENB, mod->irq_bempsts);
++			intenb0 |= BEMPE;
++		}
++
++		if (mod->irq_ready && mod->irq_brdysts) {
++			usbhs_write(priv, BRDYENB, mod->irq_brdysts);
++			intenb0 |= BRDYE;
++		}
++
++		if (usbhs_mod_is_host(priv)) {
++			/*
++			 * INTSTS1
++			 */
++			if (mod->irq_attch)
++				intenb1 |= ATTCHE;
++
++			if (mod->irq_dtch)
++				intenb1 |= DTCHE;
++
++			if (mod->irq_sign)
++				intenb1 |= SIGNE;
++
++			if (mod->irq_sack)
++				intenb1 |= SACKE;
++		}
++	}
++
++	if (intenb0)
++		usbhs_write(priv, INTENB0, intenb0);
++
++	if (usbhs_mod_is_host(priv) && intenb1)
++		usbhs_write(priv, INTENB1, intenb1);
++	pr_irq("--%s\n", __func__);
++}
++
+diff --git a/drivers/usb/gadget/rcar/mod.h b/drivers/usb/gadget/rcar/mod.h
+new file mode 100755
+index 0000000000..d887ccaddd
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/mod.h
+@@ -0,0 +1,148 @@
++/*
++ * Renesas USB driver
++ *
++ * Copyright (C) 2011 Renesas Solutions Corp.
++ * Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
++ *
++ * Ported to u-boot
++ * Copyright (C) 2016 GlobalLogic
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ *
++ */
++#ifndef RENESAS_USB_MOD_H
++#define RENESAS_USB_MOD_H
++
++#include "renesas_usb.h"
++#include "common.h"
++
++/*
++ *	struct
++ */
++struct usbhs_irq_state {
++	u16 intsts0;
++	u16 intsts1;
++	u16 brdysts;
++	u16 nrdysts;
++	u16 bempsts;
++};
++
++struct usbhs_mod {
++	char *name;
++
++	/*
++	 * entry point from common.c
++	 */
++	int (*start)(struct usbhs_priv *priv);
++	int (*stop)(struct usbhs_priv *priv);
++
++	/*
++	 * INTSTS0
++	 */
++
++	/* DVST (DVSQ) */
++	int (*irq_dev_state)(struct usbhs_priv *priv,
++			     struct usbhs_irq_state *irq_state);
++
++	/* CTRT (CTSQ) */
++	int (*irq_ctrl_stage)(struct usbhs_priv *priv,
++			      struct usbhs_irq_state *irq_state);
++
++	/* BEMP / BEMPSTS */
++	int (*irq_empty)(struct usbhs_priv *priv,
++			 struct usbhs_irq_state *irq_state);
++	u16 irq_bempsts;
++
++	/* BRDY / BRDYSTS */
++	int (*irq_ready)(struct usbhs_priv *priv,
++			 struct usbhs_irq_state *irq_state);
++	u16 irq_brdysts;
++
++	/*
++	 * INTSTS1
++	 */
++
++	/* ATTCHE */
++	int (*irq_attch)(struct usbhs_priv *priv,
++			 struct usbhs_irq_state *irq_state);
++
++	/* DTCHE */
++	int (*irq_dtch)(struct usbhs_priv *priv,
++			struct usbhs_irq_state *irq_state);
++
++	/* SIGN */
++	int (*irq_sign)(struct usbhs_priv *priv,
++			struct usbhs_irq_state *irq_state);
++
++	/* SACK */
++	int (*irq_sack)(struct usbhs_priv *priv,
++			struct usbhs_irq_state *irq_state);
++
++	struct usbhs_priv *priv;
++};
++
++struct usbhs_mod_info {
++	struct usbhs_mod *mod[USBHS_MAX];
++	struct usbhs_mod *curt; /* current mod */
++
++	/*
++	 * INTSTS0 :: VBINT
++	 *
++	 * This function will be used as autonomy mode
++	 * when platform cannot call notify_hotplug.
++	 *
++	 * This callback cannot be member of "struct usbhs_mod"
++	 * because it will be used even though
++	 * host/gadget has not been selected.
++	 */
++	int (*irq_vbus)(struct usbhs_priv *priv,
++			struct usbhs_irq_state *irq_state);
++};
++
++/*
++ *		for host/gadget module
++ */
++struct usbhs_mod *usbhs_mod_get(struct usbhs_priv *priv, int id);
++struct usbhs_mod *usbhs_mod_get_current(struct usbhs_priv *priv);
++void usbhs_mod_register(struct usbhs_priv *priv, struct usbhs_mod *usb, int id);
++int usbhs_mod_is_host(struct usbhs_priv *priv);
++int usbhs_mod_change(struct usbhs_priv *priv, int id);
++int usbhs_mod_probe(struct usbhs_priv *priv);
++void usbhs_mod_remove(struct usbhs_priv *priv);
++
++void usbhs_mod_autonomy_mode(struct usbhs_priv *priv);
++
++/*
++ *		status functions
++ */
++int usbhs_status_get_device_state(struct usbhs_irq_state *irq_state);
++int usbhs_status_get_ctrl_stage(struct usbhs_irq_state *irq_state);
++
++/*
++ *		callback functions
++ */
++void usbhs_irq_callback_update(struct usbhs_priv *priv, struct usbhs_mod *mod);
++
++
++#define usbhs_mod_call(priv, func, param...)		\
++	({						\
++		struct usbhs_mod *mod;			\
++		mod = usbhs_mod_get_current(priv);	\
++		!mod		? -ENODEV :		\
++		!mod->func	? 0 :			\
++		 mod->func(param);			\
++	})
++
++
++extern int usbhs_mod_gadget_probe(struct usbhs_priv *priv);
++extern void usbhs_mod_gadget_remove(struct usbhs_priv *priv);
++
++#endif /* RENESAS_USB_MOD_H */
++
+diff --git a/drivers/usb/gadget/rcar/mod_gadget.c b/drivers/usb/gadget/rcar/mod_gadget.c
+new file mode 100755
+index 0000000000..98500b260b
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/mod_gadget.c
+@@ -0,0 +1,1148 @@
++/*
++ * Renesas USB driver
++ *
++ * Copyright (C) 2011 Renesas Solutions Corp.
++ * Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
++ *
++ * Ported to u-boot
++ * Copyright (C) 2016 GlobalLogic
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ *
++ */
++#include <asm/io.h>
++#include "common.h"
++
++#include <linux/usb/ch9.h>
++#include <linux/usb/gadget.h>
++
++
++/*
++ *		struct
++ */
++struct usbhsg_request {
++	struct usb_request	req;
++	struct usbhs_pkt	pkt;
++};
++
++#define EP_NAME_SIZE 8
++struct usbhsg_gpriv;
++struct usbhsg_uep {
++	struct usb_ep		 ep;
++	struct usbhs_pipe	*pipe;
++
++	char ep_name[EP_NAME_SIZE];
++
++	struct usbhsg_gpriv *gpriv;
++};
++
++struct usbhsg_gpriv {
++	struct usb_gadget	 gadget;
++	struct usbhs_mod	 mod;
++
++	struct usbhsg_uep	*uep;
++	int			 uep_size;
++
++	struct usb_gadget_driver	*driver;
++	bool			 vbus_active;
++
++	u32	status;
++#define USBHSG_STATUS_STARTED		(1 << 0)
++#define USBHSG_STATUS_REGISTERD		(1 << 1)
++#define USBHSG_STATUS_WEDGE		(1 << 2)
++#define USBHSG_STATUS_SELF_POWERED	(1 << 3)
++#define USBHSG_STATUS_SOFT_CONNECT	(1 << 4)
++};
++
++struct usbhsg_recip_handle {
++	char *name;
++	int (*device)(struct usbhs_priv *priv, struct usbhsg_uep *uep,
++		      struct usb_ctrlrequest *ctrl);
++	int (*interface)(struct usbhs_priv *priv, struct usbhsg_uep *uep,
++			 struct usb_ctrlrequest *ctrl);
++	int (*endpoint)(struct usbhs_priv *priv, struct usbhsg_uep *uep,
++			struct usb_ctrlrequest *ctrl);
++};
++
++/*
++ *		macro
++ */
++#define usbhsg_priv_to_gpriv(priv)			\
++	container_of(					\
++		usbhs_mod_get(priv, USBHS_GADGET),	\
++		struct usbhsg_gpriv, mod)
++
++#define __usbhsg_for_each_uep(start, pos, g, i)	\
++	for ((i) = start;					\
++	     ((i) < (g)->uep_size) && ((pos) = (g)->uep + (i));	\
++	     (i)++)
++
++#define usbhsg_for_each_uep(pos, gpriv, i)	\
++	__usbhsg_for_each_uep(1, pos, gpriv, i)
++
++#define usbhsg_for_each_uep_with_dcp(pos, gpriv, i)	\
++	__usbhsg_for_each_uep(0, pos, gpriv, i)
++
++#define usbhsg_gadget_to_gpriv(g)\
++	container_of(g, struct usbhsg_gpriv, gadget)
++
++#define usbhsg_req_to_ureq(r)\
++	container_of(r, struct usbhsg_request, req)
++
++#define usbhsg_ep_to_uep(e)		container_of(e, struct usbhsg_uep, ep)
++#define usbhsg_gpriv_to_dev(gp)		usbhs_priv_to_dev((gp)->mod.priv)
++#define usbhsg_gpriv_to_priv(gp)	((gp)->mod.priv)
++#define usbhsg_gpriv_to_dcp(gp)		((gp)->uep)
++#define usbhsg_gpriv_to_nth_uep(gp, i)	((gp)->uep + i)
++#define usbhsg_uep_to_gpriv(u)		((u)->gpriv)
++#define usbhsg_uep_to_pipe(u)		((u)->pipe)
++#define usbhsg_pipe_to_uep(p)		((p)->mod_private)
++#define usbhsg_is_dcp(u)		((u) == usbhsg_gpriv_to_dcp((u)->gpriv))
++
++#define usbhsg_ureq_to_pkt(u)		(&(u)->pkt)
++#define usbhsg_pkt_to_ureq(i)	\
++	container_of(i, struct usbhsg_request, pkt)
++
++#define usbhsg_is_not_connected(gp) ((gp)->gadget.speed == USB_SPEED_UNKNOWN)
++
++/* status */
++#define usbhsg_status_init(gp)   do {(gp)->status = 0; } while (0)
++#define usbhsg_status_set(gp, b) (gp->status |=  b)
++#define usbhsg_status_clr(gp, b) (gp->status &= ~b)
++#define usbhsg_status_has(gp, b) (gp->status &   b)
++
++/**
++ * usb_gadget_giveback_request - give the request back to the gadget layer
++ * Context: in_interrupt()
++ *
++ * This is called by device controller drivers in order to return the
++ * completed request back to the gadget layer.
++ */
++void usb_gadget_giveback_request(struct usb_ep *ep,
++		struct usb_request *req)
++{
++	req->complete(ep, req);
++}
++
++
++/*
++ *		queue push/pop
++ */
++static void __usbhsg_queue_pop(struct usbhsg_uep *uep,
++			       struct usbhsg_request *ureq,
++			       int status)
++{
++	struct usbhs_pipe *pipe = usbhsg_uep_to_pipe(uep);
++	struct device *dev __attribute__((unused));
++	struct usbhs_priv *priv __attribute__((unused));
++
++	if (pipe)
++		dev_dbg(dev, "pipe %d : queue pop\n", usbhs_pipe_number(pipe));
++
++	ureq->req.status = status;
++	spin_unlock(usbhs_priv_to_lock(priv));
++	usb_gadget_giveback_request(&uep->ep, &ureq->req);
++	spin_lock(usbhs_priv_to_lock(priv));
++}
++
++static void usbhsg_queue_pop(struct usbhsg_uep *uep,
++			     struct usbhsg_request *ureq,
++			     int status)
++{
++	struct usbhs_priv *priv __attribute__((unused));
++	unsigned long flags;
++
++	usbhs_lock(priv, flags);
++	__usbhsg_queue_pop(uep, ureq, status);
++	usbhs_unlock(priv, flags);
++}
++
++static void usbhsg_queue_done(struct usbhs_priv *priv, struct usbhs_pkt *pkt)
++{
++	struct usbhs_pipe *pipe = pkt->pipe;
++	struct usbhsg_uep *uep = usbhsg_pipe_to_uep(pipe);
++	struct usbhsg_request *ureq = usbhsg_pkt_to_ureq(pkt);
++	unsigned long flags;
++
++	ureq->req.actual = pkt->actual;
++
++	usbhs_lock(priv, flags);
++	if (uep)
++		__usbhsg_queue_pop(uep, ureq, 0);
++	usbhs_unlock(priv, flags);
++}
++
++static void usbhsg_queue_push(struct usbhsg_uep *uep,
++			      struct usbhsg_request *ureq)
++{
++	struct device *dev __attribute__((unused));
++	struct usbhs_pipe *pipe = usbhsg_uep_to_pipe(uep);
++	struct usbhs_pkt *pkt = usbhsg_ureq_to_pkt(ureq);
++	struct usb_request *req = &ureq->req;
++
++	req->actual = 0;
++	req->status = -EINPROGRESS;
++	usbhs_pkt_push(pipe, pkt, usbhsg_queue_done,
++		       req->buf, req->length, req->zero, -1);
++	usbhs_pkt_start(pipe);
++
++	dev_dbg(dev, "pipe %d : queue push (%d)\n",
++		usbhs_pipe_number(pipe),
++		req->length);
++}
++
++/*
++ *		dma map/unmap
++ */
++static int usbhsg_dma_map_ctrl(struct usbhs_pkt *pkt, int map)
++{
++	return -1;
++}
++
++/*
++ *		USB_TYPE_STANDARD / clear feature functions
++ */
++static int usbhsg_recip_handler_std_control_done(struct usbhs_priv *priv,
++						 struct usbhsg_uep *uep,
++						 struct usb_ctrlrequest *ctrl)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_priv_to_gpriv(priv);
++	struct usbhsg_uep *dcp = usbhsg_gpriv_to_dcp(gpriv);
++	struct usbhs_pipe *pipe = usbhsg_uep_to_pipe(dcp);
++
++	usbhs_dcp_control_transfer_done(pipe);
++
++	return 0;
++}
++
++static int usbhsg_recip_handler_std_clear_endpoint(struct usbhs_priv *priv,
++						   struct usbhsg_uep *uep,
++						   struct usb_ctrlrequest *ctrl)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_uep_to_gpriv(uep);
++	struct usbhs_pipe *pipe = usbhsg_uep_to_pipe(uep);
++
++	if (!usbhsg_status_has(gpriv, USBHSG_STATUS_WEDGE)) {
++		usbhs_pipe_disable(pipe);
++		usbhs_pipe_sequence_data0(pipe);
++		usbhs_pipe_enable(pipe);
++	}
++
++	usbhsg_recip_handler_std_control_done(priv, uep, ctrl);
++
++	usbhs_pkt_start(pipe);
++
++	return 0;
++}
++
++static struct usbhsg_recip_handle req_clear_feature = {
++	.name		= "clear feature",
++	.device		= usbhsg_recip_handler_std_control_done,
++	.interface	= usbhsg_recip_handler_std_control_done,
++	.endpoint	= usbhsg_recip_handler_std_clear_endpoint,
++};
++
++/*
++ *		USB_TYPE_STANDARD / set feature functions
++ */
++static int usbhsg_recip_handler_std_set_device(struct usbhs_priv *priv,
++						 struct usbhsg_uep *uep,
++						 struct usb_ctrlrequest *ctrl)
++{
++	switch (le16_to_cpu(ctrl->wValue)) {
++	case USB_DEVICE_TEST_MODE:
++		usbhsg_recip_handler_std_control_done(priv, uep, ctrl);
++		udelay(100);
++		usbhs_sys_set_test_mode(priv, le16_to_cpu(ctrl->wIndex >> 8));
++		break;
++	default:
++		usbhsg_recip_handler_std_control_done(priv, uep, ctrl);
++		break;
++	}
++
++	return 0;
++}
++
++static int usbhsg_recip_handler_std_set_endpoint(struct usbhs_priv *priv,
++						 struct usbhsg_uep *uep,
++						 struct usb_ctrlrequest *ctrl)
++{
++	struct usbhs_pipe *pipe = usbhsg_uep_to_pipe(uep);
++
++	usbhs_pipe_stall(pipe);
++
++	usbhsg_recip_handler_std_control_done(priv, uep, ctrl);
++
++	return 0;
++}
++
++static struct usbhsg_recip_handle req_set_feature = {
++	.name		= "set feature",
++	.device		= usbhsg_recip_handler_std_set_device,
++	.interface	= usbhsg_recip_handler_std_control_done,
++	.endpoint	= usbhsg_recip_handler_std_set_endpoint,
++};
++
++/*
++ *		USB_TYPE_STANDARD / get status functions
++ */
++static void __usbhsg_recip_send_complete(struct usb_ep *ep,
++					 struct usb_request *req)
++{
++	struct usbhsg_request *ureq = usbhsg_req_to_ureq(req);
++
++	/* free allocated recip-buffer/usb_request */
++	kfree(ureq->pkt.buf);
++	usb_ep_free_request(ep, req);
++}
++
++static void __usbhsg_recip_send_status(struct usbhsg_gpriv *gpriv,
++				       unsigned short status)
++{
++	struct usbhsg_uep *dcp = usbhsg_gpriv_to_dcp(gpriv);
++	struct usbhs_pipe *pipe = usbhsg_uep_to_pipe(dcp);
++	struct device *dev __attribute__((unused));
++	struct usb_request *req;
++	unsigned short *buf;
++
++	/* alloc new usb_request for recip */
++	req = usb_ep_alloc_request(&dcp->ep, GFP_ATOMIC);
++	if (!req) {
++		dev_err(dev, "recip request allocation fail\n");
++		return;
++	}
++
++	/* alloc recip data buffer */
++	buf = kmalloc(sizeof(*buf), GFP_ATOMIC);
++	if (!buf) {
++		usb_ep_free_request(&dcp->ep, req);
++		dev_err(dev, "recip data allocation fail\n");
++		return;
++	}
++
++	/* recip data is status */
++	*buf = cpu_to_le16(status);
++
++	/* allocated usb_request/buffer will be freed */
++	req->complete	= __usbhsg_recip_send_complete;
++	req->buf	= buf;
++	req->length	= sizeof(*buf);
++	req->zero	= 0;
++
++	/* push packet */
++	pipe->handler = &usbhs_fifo_pio_push_handler;
++	usbhsg_queue_push(dcp, usbhsg_req_to_ureq(req));
++}
++
++static int usbhsg_recip_handler_std_get_device(struct usbhs_priv *priv,
++					       struct usbhsg_uep *uep,
++					       struct usb_ctrlrequest *ctrl)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_uep_to_gpriv(uep);
++	unsigned short status = 0;
++
++	if (usbhsg_status_has(gpriv, USBHSG_STATUS_SELF_POWERED))
++		status = 1 << USB_DEVICE_SELF_POWERED;
++
++	__usbhsg_recip_send_status(gpriv, status);
++
++	return 0;
++}
++
++static int usbhsg_recip_handler_std_get_interface(struct usbhs_priv *priv,
++						  struct usbhsg_uep *uep,
++						  struct usb_ctrlrequest *ctrl)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_uep_to_gpriv(uep);
++	unsigned short status = 0;
++
++	__usbhsg_recip_send_status(gpriv, status);
++
++	return 0;
++}
++
++static int usbhsg_recip_handler_std_get_endpoint(struct usbhs_priv *priv,
++						 struct usbhsg_uep *uep,
++						 struct usb_ctrlrequest *ctrl)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_uep_to_gpriv(uep);
++	struct usbhs_pipe *pipe = usbhsg_uep_to_pipe(uep);
++	unsigned short status = 0;
++
++	if (usbhs_pipe_is_stall(pipe))
++		status = 1 << USB_ENDPOINT_HALT;
++
++	__usbhsg_recip_send_status(gpriv, status);
++
++	return 0;
++}
++
++static struct usbhsg_recip_handle req_get_status = {
++	.name		= "get status",
++	.device		= usbhsg_recip_handler_std_get_device,
++	.interface	= usbhsg_recip_handler_std_get_interface,
++	.endpoint	= usbhsg_recip_handler_std_get_endpoint,
++};
++
++/*
++ *		USB_TYPE handler
++ */
++static int usbhsg_recip_run_handle(struct usbhs_priv *priv,
++				   struct usbhsg_recip_handle *handler,
++				   struct usb_ctrlrequest *ctrl)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_priv_to_gpriv(priv);
++	struct device *dev __attribute__((unused));
++	struct usbhsg_uep *uep;
++	struct usbhs_pipe *pipe;
++	int recip = ctrl->bRequestType & USB_RECIP_MASK;
++	int nth = le16_to_cpu(ctrl->wIndex) & USB_ENDPOINT_NUMBER_MASK;
++	int ret = 0;
++	int (*func)(struct usbhs_priv *priv, struct usbhsg_uep *uep,
++		    struct usb_ctrlrequest *ctrl);
++	char *msg;
++
++	pr_dbg("++%s(%d)\n", __func__, nth);
++
++	uep = usbhsg_gpriv_to_nth_uep(gpriv, nth);
++	pipe = usbhsg_uep_to_pipe(uep);
++	if (!pipe) {
++		dev_err(dev, "wrong recip request\n");
++		return -EINVAL;
++	}
++	pr_dbg("recip =  %d\n", recip);
++	switch (recip) {
++	case USB_RECIP_DEVICE:
++		msg	= "DEVICE";
++		func	= handler->device;
++		break;
++	case USB_RECIP_INTERFACE:
++		msg	= "INTERFACE";
++		func	= handler->interface;
++		break;
++	case USB_RECIP_ENDPOINT:
++		msg	= "ENDPOINT";
++		func	= handler->endpoint;
++		break;
++	default:
++		dev_info(dev, "unsupported RECIP(%d)\n", recip);
++		func = NULL;
++		ret = -EINVAL;
++	}
++	pr_dbg("func =  0x%p\n", func);
++	if (func) {
++		dev_dbg(dev, "%s (pipe %d :%s)\n", handler->name, nth, msg);
++		ret = func(priv, uep, ctrl);
++	}
++	pr_dbg("--%s\n", __func__);
++
++	return ret;
++}
++
++/*
++ *		irq functions
++ *
++ * it will be called from usbhs_interrupt
++ */
++static int usbhsg_irq_dev_state(struct usbhs_priv *priv,
++				struct usbhs_irq_state *irq_state)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_priv_to_gpriv(priv);
++	struct device *dev __attribute__((unused));
++
++	pr_dbg("++%s\n", __func__);
++
++	gpriv->gadget.speed = usbhs_bus_get_speed(priv);
++
++	dev_dbg(dev, "state = %x : speed : %d\n",
++		usbhs_status_get_device_state(irq_state),
++		gpriv->gadget.speed);
++	pr_dbg("--%s\n", __func__);
++
++	return 0;
++}
++
++static int usbhsg_irq_ctrl_stage(struct usbhs_priv *priv,
++				 struct usbhs_irq_state *irq_state)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_priv_to_gpriv(priv);
++	struct usbhsg_uep *dcp = usbhsg_gpriv_to_dcp(gpriv);
++	struct usbhs_pipe *pipe = usbhsg_uep_to_pipe(dcp);
++	struct device *dev __attribute__((unused));
++	struct usb_ctrlrequest ctrl;
++	struct usbhsg_recip_handle *recip_handler = NULL;
++	int stage = usbhs_status_get_ctrl_stage(irq_state);
++	int ret = 0;
++
++	pr_dbg("++%s\n", __func__);
++
++	dev_dbg(dev, "stage = %d\n", stage);
++
++	pr_dbg("Stage = %d\n", stage);
++
++	/*
++	 * see Manual
++	 *
++	 *  "Operation"
++	 *  - "Interrupt Function"
++	 *    - "Control Transfer Stage Transition Interrupt"
++	 *      - Fig. "Control Transfer Stage Transitions"
++	 */
++
++	switch (stage) {
++	case READ_DATA_STAGE:
++		pipe->handler = &usbhs_fifo_pio_push_handler;
++		break;
++	case WRITE_DATA_STAGE:
++		pipe->handler = &usbhs_fifo_pio_pop_handler;
++		break;
++	case NODATA_STATUS_STAGE:
++		pipe->handler = &usbhs_ctrl_stage_end_handler;
++		break;
++	case READ_STATUS_STAGE:
++	case WRITE_STATUS_STAGE:
++		usbhs_dcp_control_transfer_done(pipe);
++	default:
++		pr_dbg("--%s(-1)\n", __func__);
++		return ret;
++	}
++
++	/*
++	 * get usb request
++	 */
++	usbhs_usbreq_get_val(priv, &ctrl);
++
++	pr_dbg("ReqType = %d\n", ctrl.bRequestType);
++	pr_dbg("bRequest = %d\n", ctrl.bRequest);
++	switch (ctrl.bRequestType & USB_TYPE_MASK) {
++	case USB_TYPE_STANDARD:
++		switch (ctrl.bRequest) {
++		case USB_REQ_CLEAR_FEATURE:
++			recip_handler = &req_clear_feature;
++			break;
++		case USB_REQ_SET_FEATURE:
++			recip_handler = &req_set_feature;
++			break;
++		case USB_REQ_GET_STATUS:
++			recip_handler = &req_get_status;
++			break;
++		}
++	}
++
++	/*
++	 * setup stage / run recip
++	 */
++	if (recip_handler)
++		ret = usbhsg_recip_run_handle(priv, recip_handler, &ctrl);
++	else {
++		pr_dbg("++->gpriv->driver->setup(0x%p)\n", gpriv->driver->setup);
++		ret = gpriv->driver->setup(&gpriv->gadget, &ctrl);
++	}
++
++	if (ret < 0)
++		usbhs_pipe_stall(pipe);
++
++	pr_dbg("--%s\n", __func__);
++
++	return ret;
++}
++
++/*
++ *
++ *		usb_dcp_ops
++ *
++ */
++static int usbhsg_pipe_disable(struct usbhsg_uep *uep)
++{
++	struct usbhs_pipe *pipe = usbhsg_uep_to_pipe(uep);
++	struct usbhs_pkt *pkt;
++
++	while (1) {
++		pkt = usbhs_pkt_pop(pipe, NULL);
++		if (!pkt)
++			break;
++
++		usbhsg_queue_pop(uep, usbhsg_pkt_to_ureq(pkt), -ESHUTDOWN);
++	}
++
++	usbhs_pipe_disable(pipe);
++
++	return 0;
++}
++
++/*
++ *
++ *		usb_ep_ops
++ *
++ */
++static int usbhsg_ep_enable(struct usb_ep *ep,
++			 const struct usb_endpoint_descriptor *desc)
++{
++	struct usbhsg_uep *uep   = usbhsg_ep_to_uep(ep);
++	struct usbhsg_gpriv *gpriv = usbhsg_uep_to_gpriv(uep);
++	struct usbhs_priv *priv = usbhsg_gpriv_to_priv(gpriv);
++	struct usbhs_pipe *pipe;
++	int ret = -EIO;
++
++	/*
++	 * if it already have pipe,
++	 * nothing to do
++	 */
++	pr_dbg("++%s\n", __func__);
++	if (uep->pipe) {
++		usbhs_pipe_clear(uep->pipe);
++		usbhs_pipe_sequence_data0(uep->pipe);
++		return 0;
++	}
++
++	pipe = usbhs_pipe_malloc(priv,
++				 usb_endpoint_type(desc),
++				 usb_endpoint_dir_in(desc));
++	if (pipe) {
++		uep->pipe		= pipe;
++		pipe->mod_private	= uep;
++
++		/* set epnum / maxp */
++		usbhs_pipe_config_update(pipe, 0,
++					 usb_endpoint_num(desc),
++					 usb_endpoint_maxp(desc));
++
++		/*
++		 * usbhs_fifo_dma_push/pop_handler try to
++		 * use dmaengine if possible.
++		 * It will use pio handler if impossible.
++		 */
++		if (usb_endpoint_dir_in(desc))
++			pipe->handler = &usbhs_fifo_dma_push_handler;
++		else
++			pipe->handler = &usbhs_fifo_dma_pop_handler;
++
++		ret = 0;
++	}
++	pr_dbg("--%s\n", __func__);
++
++	return ret;
++}
++
++static int usbhsg_ep_disable(struct usb_ep *ep)
++{
++	struct usbhsg_uep *uep = usbhsg_ep_to_uep(ep);
++	struct usbhs_pipe *pipe = usbhsg_uep_to_pipe(uep);
++
++	pr_dbg("++%s\n", __func__);
++	if (!pipe)
++		return -EINVAL;
++
++	usbhsg_pipe_disable(uep);
++	usbhs_pipe_free(pipe);
++
++	uep->pipe->mod_private	= NULL;
++	uep->pipe		= NULL;
++	pr_dbg("--%s\n", __func__);
++
++	return 0;
++}
++
++static struct usb_request *usbhsg_ep_alloc_request(struct usb_ep *ep,
++						   gfp_t gfp_flags)
++{
++	struct usbhsg_request *ureq;
++
++	pr_dbg("++%s\n", __func__);
++	ureq = kzalloc(sizeof *ureq, gfp_flags);
++	if (!ureq)
++		return NULL;
++
++	usbhs_pkt_init(usbhsg_ureq_to_pkt(ureq));
++	pr_dbg("--%s\n", __func__);
++
++	return &ureq->req;
++}
++
++static void usbhsg_ep_free_request(struct usb_ep *ep,
++				   struct usb_request *req)
++{
++	struct usbhsg_request *ureq = usbhsg_req_to_ureq(req);
++	pr_dbg("++%s\n", __func__);
++
++	WARN_ON(!list_empty(&ureq->pkt.node));
++	kfree(ureq);
++	pr_dbg("--%s\n", __func__);
++}
++
++static int usbhsg_ep_queue(struct usb_ep *ep, struct usb_request *req,
++			  gfp_t gfp_flags)
++{
++	struct usbhsg_uep *uep = usbhsg_ep_to_uep(ep);
++	struct usbhsg_gpriv *gpriv = usbhsg_uep_to_gpriv(uep);
++	struct usbhsg_request *ureq = usbhsg_req_to_ureq(req);
++	struct usbhs_pipe *pipe = usbhsg_uep_to_pipe(uep);
++
++	/* param check */
++	pr_irq("++%s(%d)\n", __func__, req->length);
++	if (usbhsg_is_not_connected(gpriv)	||
++	    unlikely(!gpriv->driver)		||
++	    unlikely(!pipe))
++		return -ESHUTDOWN;
++
++	usbhsg_queue_push(uep, ureq);
++	pr_irq("--%s\n", __func__);
++
++	return 0;
++}
++
++static int usbhsg_ep_dequeue(struct usb_ep *ep, struct usb_request *req)
++{
++	struct usbhsg_uep *uep = usbhsg_ep_to_uep(ep);
++	struct usbhsg_request *ureq = usbhsg_req_to_ureq(req);
++	struct usbhs_pipe *pipe = usbhsg_uep_to_pipe(uep);
++
++	pr_dbg("++%s\n", __func__);
++	if (pipe)
++		usbhs_pkt_pop(pipe, usbhsg_ureq_to_pkt(ureq));
++
++	/*
++	 * To dequeue a request, this driver should call the usbhsg_queue_pop()
++	 * even if the pipe is NULL.
++	 */
++	usbhsg_queue_pop(uep, ureq, -ECONNRESET);
++	pr_dbg("--%s\n", __func__);
++
++	return 0;
++}
++
++static int __usbhsg_ep_set_halt_wedge(struct usb_ep *ep, int halt, int wedge)
++{
++	struct usbhsg_uep *uep = usbhsg_ep_to_uep(ep);
++	struct usbhs_pipe *pipe = usbhsg_uep_to_pipe(uep);
++	struct usbhsg_gpriv *gpriv = usbhsg_uep_to_gpriv(uep);
++	struct usbhs_priv *priv __attribute__((unused));
++	struct device *dev __attribute__((unused));
++	unsigned long flags;
++
++	usbhsg_pipe_disable(uep);
++
++	dev_dbg(dev, "set halt %d (pipe %d)\n",
++		halt, usbhs_pipe_number(pipe));
++
++	/********************  spin lock ********************/
++	usbhs_lock(priv, flags);
++
++	if (halt)
++		usbhs_pipe_stall(pipe);
++	else
++		usbhs_pipe_disable(pipe);
++
++	if (halt && wedge)
++		usbhsg_status_set(gpriv, USBHSG_STATUS_WEDGE);
++	else
++		usbhsg_status_clr(gpriv, USBHSG_STATUS_WEDGE);
++
++	usbhs_unlock(priv, flags);
++	/********************  spin unlock ******************/
++
++	return 0;
++}
++
++static int usbhsg_ep_set_halt(struct usb_ep *ep, int value)
++{
++	return __usbhsg_ep_set_halt_wedge(ep, value, 0);
++}
++
++static struct usb_ep_ops usbhsg_ep_ops = {
++	.enable		= usbhsg_ep_enable,
++	.disable	= usbhsg_ep_disable,
++
++	.alloc_request	= usbhsg_ep_alloc_request,
++	.free_request	= usbhsg_ep_free_request,
++
++	.queue		= usbhsg_ep_queue,
++	.dequeue	= usbhsg_ep_dequeue,
++
++	.set_halt	= usbhsg_ep_set_halt,
++};
++
++/*
++ *		pullup control
++ */
++static int usbhsg_can_pullup(struct usbhs_priv *priv)
++{
++	return 1;
++}
++
++static void usbhsg_update_pullup(struct usbhs_priv *priv)
++{
++	pr_dbg("++%s\n", __func__);
++	if (usbhsg_can_pullup(priv))
++		usbhs_sys_function_pullup(priv, 1);
++	else
++		usbhs_sys_function_pullup(priv, 0);
++	pr_dbg("--%s\n", __func__);
++}
++
++/*
++ *		usb module start/end
++ */
++static int usbhsg_try_start(struct usbhs_priv *priv, u32 status)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_priv_to_gpriv(priv);
++	struct usbhsg_uep *dcp = usbhsg_gpriv_to_dcp(gpriv);
++	struct usbhs_mod *mod = usbhs_mod_get_current(priv);
++	struct device *dev __attribute__((unused));
++	unsigned long flags;
++	int ret = 0;
++
++	pr_dbg("++%s(%d)\n", __func__, usbhsg_status_has(gpriv, 0xFFFFFFFF));
++	/********************  spin lock ********************/
++	usbhs_lock(priv, flags);
++
++	usbhsg_status_set(gpriv, status);
++	if (!(usbhsg_status_has(gpriv, USBHSG_STATUS_STARTED) &&
++	      usbhsg_status_has(gpriv, USBHSG_STATUS_REGISTERD)))
++		ret = -1; /* not ready */
++
++	usbhs_unlock(priv, flags);
++	/********************  spin unlock ********************/
++	if (ret < 0)
++		pr_dbg("..not ready(0x%x)\n", usbhsg_status_has(gpriv, 0xFFFFFFFF));
++
++	/*
++	 * enable interrupt and systems if ready
++	 */
++	dev_dbg(dev, "start gadget\n");
++
++	/*
++	 * pipe initialize and enable DCP
++	 */
++	usbhs_fifo_init(priv);
++	usbhs_pipe_init(priv,
++			usbhsg_dma_map_ctrl);
++
++	/* dcp init instead of usbhsg_ep_enable() */
++	dcp->pipe		= usbhs_dcp_malloc(priv);
++	dcp->pipe->mod_private	= dcp;
++	usbhs_pipe_config_update(dcp->pipe, 0, 0, 64);
++
++	/*
++	 * system config enble
++	 * - HI speed
++	 * - function
++	 * - usb module
++	 */
++	usbhs_sys_function_ctrl(priv, 1);
++	usbhsg_update_pullup(priv);
++
++	/*
++	 * enable irq callback
++	 */
++	mod->irq_dev_state	= usbhsg_irq_dev_state;
++	mod->irq_ctrl_stage	= usbhsg_irq_ctrl_stage;
++	usbhs_irq_callback_update(priv, mod);
++	pr_dbg("--%s\n", __func__);
++
++	return 0;
++}
++
++static int usbhsg_try_stop(struct usbhs_priv *priv, u32 status)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_priv_to_gpriv(priv);
++	struct usbhs_mod *mod = usbhs_mod_get_current(priv);
++	struct usbhsg_uep *dcp = usbhsg_gpriv_to_dcp(gpriv);
++	struct device *dev __attribute__((unused));
++	unsigned long flags;
++	int ret = 0;
++
++	pr_dbg("++%s\n", __func__);
++
++	/********************  spin lock ********************/
++	usbhs_lock(priv, flags);
++
++	usbhsg_status_clr(gpriv, status);
++	if (!usbhsg_status_has(gpriv, USBHSG_STATUS_STARTED) &&
++	    !usbhsg_status_has(gpriv, USBHSG_STATUS_REGISTERD))
++		ret = -1; /* already done */
++
++	usbhs_unlock(priv, flags);
++	/********************  spin unlock ********************/
++
++	if (ret < 0)
++		return 0; /* already done is not error */
++
++	/*
++	 * disable interrupt and systems if 1st try
++	 */
++	usbhs_fifo_quit(priv);
++
++	/* disable all irq */
++	mod->irq_dev_state	= NULL;
++	mod->irq_ctrl_stage	= NULL;
++	usbhs_irq_callback_update(priv, mod);
++
++	gpriv->gadget.speed = USB_SPEED_UNKNOWN;
++
++	/* disable sys */
++	usbhs_sys_set_test_mode(priv, 0);
++	usbhs_sys_function_ctrl(priv, 0);
++
++	usbhsg_ep_disable(&dcp->ep);
++
++	dev_dbg(dev, "stop gadget\n");
++	pr_dbg("--%s\n", __func__);
++
++
++	return 0;
++}
++
++/*
++ * VBUS provided by the PHY
++ */
++static int usbhsm_phy_get_vbus(struct platform_device *pdev)
++{
++	struct usbhs_priv *priv = usbhs_pdev_to_priv(pdev);
++	struct usbhsg_gpriv *gpriv = usbhsg_priv_to_gpriv(priv);
++
++	return  gpriv->vbus_active;
++}
++
++static void usbhs_mod_phy_mode(struct usbhs_priv *priv)
++{
++	struct usbhs_mod_info *info = &priv->mod_info;
++
++	info->irq_vbus		= NULL;
++	priv->pfunc.get_vbus	= usbhsm_phy_get_vbus;
++
++	usbhs_irq_callback_update(priv, NULL);
++}
++
++/*
++ *
++ *		linux usb function
++ *
++ */
++static int usbhsg_gadget_start(struct usb_gadget *gadget,
++		struct usb_gadget_driver *driver)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_gadget_to_gpriv(gadget);
++	struct usbhs_priv *priv = usbhsg_gpriv_to_priv(gpriv);
++	struct device *dev __attribute__((unused));
++
++	pr_dbg("++%s\n", __func__);
++	if (!driver		||
++	    !driver->setup)
++		return -EINVAL;
++
++	/* get vbus using phy versions */
++	usbhs_mod_phy_mode(priv);
++
++	/* first hook up the driver ... */
++	gpriv->driver = driver;
++	pr_dbg("--%s\n", __func__);
++	return usbhsg_try_start(priv, USBHSG_STATUS_REGISTERD);
++}
++
++static int usbhsg_get_frame(struct usb_gadget *gadget)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_gadget_to_gpriv(gadget);
++	struct usbhs_priv *priv = usbhsg_gpriv_to_priv(gpriv);
++
++	return usbhs_frame_get_num(priv);
++}
++
++static int usbhsg_pullup(struct usb_gadget *gadget, int is_on)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_gadget_to_gpriv(gadget);
++	struct usbhs_priv *priv = usbhsg_gpriv_to_priv(gpriv);
++	unsigned long flags;
++
++	pr_dbg("++%s\n", __func__);
++	usbhs_lock(priv, flags);
++	if (is_on)
++		usbhsg_status_set(gpriv, USBHSG_STATUS_SOFT_CONNECT);
++	else
++		usbhsg_status_clr(gpriv, USBHSG_STATUS_SOFT_CONNECT);
++	usbhsg_update_pullup(priv);
++	usbhs_unlock(priv, flags);
++	pr_dbg("-%s\n", __func__);
++
++	return 0;
++}
++
++static int usbhsg_set_selfpowered(struct usb_gadget *gadget, int is_self)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_gadget_to_gpriv(gadget);
++
++	if (is_self)
++		usbhsg_status_set(gpriv, USBHSG_STATUS_SELF_POWERED);
++	else
++		usbhsg_status_clr(gpriv, USBHSG_STATUS_SELF_POWERED);
++
++	return 0;
++}
++
++static int usbhsg_vbus_session(struct usb_gadget *gadget, int is_active)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_gadget_to_gpriv(gadget);
++//	struct usbhs_priv *priv = usbhsg_gpriv_to_priv(gpriv);
++//	struct platform_device *pdev = usbhs_priv_to_pdev(priv);
++
++	gpriv->vbus_active = !!is_active;
++//FIXME: Currently not implemented
++//	renesas_usbhs_call_notify_hotplug(pdev);
++
++	return 0;
++}
++
++static const struct usb_gadget_ops usbhsg_gadget_ops = {
++	.get_frame		= usbhsg_get_frame,
++	.set_selfpowered	= usbhsg_set_selfpowered,
++	.pullup			= usbhsg_pullup,
++	.vbus_session		= usbhsg_vbus_session,
++};
++
++static int usbhsg_start(struct usbhs_priv *priv)
++{
++	pr_dbg("+-%s\n", __func__);
++	return usbhsg_try_start(priv, USBHSG_STATUS_STARTED);
++}
++
++static int usbhsg_stop(struct usbhs_priv *priv)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_priv_to_gpriv(priv);
++
++	/* cable disconnect */
++	if (gpriv->driver &&
++	    gpriv->driver->disconnect)
++		gpriv->driver->disconnect(&gpriv->gadget);
++
++	return usbhsg_try_stop(priv, USBHSG_STATUS_STARTED);
++}
++
++int usbhs_mod_gadget_probe(struct usbhs_priv *priv)
++{
++	struct usbhsg_gpriv *gpriv;
++	struct usbhsg_uep *uep;
++	struct device *dev = usbhs_priv_to_dev(priv);
++	int pipe_size = usbhs_get_dparam(priv, pipe_size);
++	int i;
++	int ret;
++
++	pr_dbg("++%s\n", __func__);
++
++	gpriv = kzalloc(sizeof(struct usbhsg_gpriv), GFP_KERNEL);
++	if (!gpriv) {
++		dev_err(dev, "Could not allocate gadget priv\n");
++		return -ENOMEM;
++	}
++
++	uep = kzalloc(sizeof(struct usbhsg_uep) * pipe_size, GFP_KERNEL);
++	if (!uep) {
++		dev_err(dev, "Could not allocate ep\n");
++		ret = -ENOMEM;
++		goto usbhs_mod_gadget_probe_err_gpriv;
++	}
++	/*
++	 * CAUTION
++	 *
++	 * There is no guarantee that it is possible to access usb module here.
++	 * Don't accesses to it.
++	 * The accesse will be enable after "usbhsg_start"
++	 */
++
++	/*
++	 * register itself
++	 */
++	usbhs_mod_register(priv, &gpriv->mod, USBHS_GADGET);
++
++	usbhs_mod_change(priv,USBHS_GADGET);
++
++	/* init gpriv */
++	gpriv->mod.name		= "gadget";
++	gpriv->mod.start	= usbhsg_start;
++	gpriv->mod.stop		= usbhsg_stop;
++	gpriv->uep		= uep;
++	gpriv->uep_size		= pipe_size;
++	usbhsg_status_init(gpriv);
++
++	/*
++	 * init gadget
++	 */
++	gpriv->gadget.dev.parent	= dev;
++	gpriv->gadget.name		= "renesas_usbhs_udc";
++	gpriv->gadget.ops		= &usbhsg_gadget_ops;
++	gpriv->gadget.is_dualspeed = 1;
++	gpriv->gadget.speed = USB_SPEED_HIGH;
++
++	INIT_LIST_HEAD(&gpriv->gadget.ep_list);
++
++	/*
++	 * init usb_ep
++	 */
++	usbhsg_for_each_uep_with_dcp(uep, gpriv, i) {
++		uep->gpriv	= gpriv;
++		uep->pipe	= NULL;
++		snprintf(uep->ep_name, EP_NAME_SIZE, "ep%d", i);
++
++		uep->ep.name		= uep->ep_name;
++		uep->ep.ops		= &usbhsg_ep_ops;
++		INIT_LIST_HEAD(&uep->ep.ep_list);
++		pr_dbg("i = %d, ep.name = %s\n", i, uep->ep_name);
++		/* init DCP */
++		if (usbhsg_is_dcp(uep)) {
++			gpriv->gadget.ep0 = &uep->ep;
++			uep->ep.maxpacket = 64;
++		} else {
++			/* init normal pipe */
++			uep->ep.maxpacket = 512;
++			list_add_tail(&uep->ep.ep_list, &gpriv->gadget.ep_list);
++		}
++	}
++
++	usbhsg_start(priv);
++
++	dev_info(dev, "gadget probed\n");
++	pr_dbg("--%s\n", __func__);
++
++	return 0;
++
++usbhs_mod_gadget_probe_err_gpriv:
++	kfree(gpriv);
++	pr_dbg("--%s(-1)\n",__func__);
++
++	return ret;
++}
++
++void usbhs_mod_gadget_remove(struct usbhs_priv *priv)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_priv_to_gpriv(priv);
++
++	kfree(gpriv->uep);
++	kfree(gpriv);
++}
++
++
++struct usb_gadget *usbhsg_get_gadget(struct usbhs_priv *priv)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_priv_to_gpriv(priv);
++	return &gpriv->gadget;
++}
++
++int usbhsg_register_gadget(struct usbhs_priv *priv, struct usb_gadget_driver *driver)
++{
++	struct usbhsg_gpriv *gpriv = usbhsg_priv_to_gpriv(priv);
++	return usbhsg_gadget_start(&gpriv->gadget, driver);
++}
++
++int usbhsg_unregister_gadget(struct usbhs_priv *priv)
++{
++//	struct usbhsg_gpriv *gpriv = usbhsg_priv_to_gpriv(priv);
++	return usbhsg_stop(priv);
++//	return usbhsg_gadget_stop(&gpriv->gadget);
++}
++
+diff --git a/drivers/usb/gadget/rcar/phy.c b/drivers/usb/gadget/rcar/phy.c
+new file mode 100755
+index 0000000000..2de5362cb4
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/phy.c
+@@ -0,0 +1,308 @@
++/*
++ * Renesas R-Car Gen3 for USB2.0 PHY driver
++ *
++ * Copyright (C) 2015 Renesas Electronics Corporation
++ *
++ * This is based on the phy-rcar-gen2 driver:
++ * Copyright (C) 2014 Renesas Solutions Corp.
++ * Copyright (C) 2014 Cogent Embedded, Inc.
++ *
++ * Ported to u-boot
++ * Copyright (C) 2016 GlobalLogic
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++
++#include "common.h"
++#include <asm/io.h>
++
++
++/******* USB2.0 Host registers (original offset is +0x200) *******/
++#define USB2_INT_ENABLE		0x000
++#define USB2_USBCTR		0x00c
++#define USB2_SPD_RSM_TIMSET	0x10c
++#define USB2_OC_TIMSET		0x110
++#define USB2_COMMCTRL		0x600
++#define USB2_OBINTSTA		0x604
++#define USB2_OBINTEN		0x608
++#define USB2_VBCTRL		0x60c
++#define USB2_LINECTRL1		0x610
++#define USB2_ADPCTRL		0x630
++
++/* INT_ENABLE */
++#define USB2_INT_ENABLE_UCOM_INTEN	BIT(3)
++#define USB2_INT_ENABLE_USBH_INTB_EN	BIT(2)
++#define USB2_INT_ENABLE_USBH_INTA_EN	BIT(1)
++#define USB2_INT_ENABLE_INIT		(USB2_INT_ENABLE_UCOM_INTEN | \
++					 USB2_INT_ENABLE_USBH_INTB_EN | \
++					 USB2_INT_ENABLE_USBH_INTA_EN)
++
++/* USBCTR */
++#define USB2_USBCTR_DIRPD	BIT(2)
++#define USB2_USBCTR_PLL_RST	BIT(1)
++
++/* SPD_RSM_TIMSET */
++#define USB2_SPD_RSM_TIMSET_INIT	0x014e029b
++
++/* OC_TIMSET */
++#define USB2_OC_TIMSET_INIT		0x000209ab
++
++/* COMMCTRL */
++#define USB2_COMMCTRL_OTG_PERI		BIT(31)	/* 1 = Peripheral mode */
++
++/* OBINTSTA and OBINTEN */
++#define USB2_OBINT_SESSVLDCHG		BIT(12)
++#define USB2_OBINT_IDDIGCHG		BIT(11)
++#define USB2_OBINT_BITS			(USB2_OBINT_SESSVLDCHG | \
++					 USB2_OBINT_IDDIGCHG)
++
++/* VBCTRL */
++#define USB2_VBCTRL_DRVVBUSSEL		BIT(8)
++
++/* LINECTRL1 */
++#define USB2_LINECTRL1_DPRPD_EN		BIT(19)
++#define USB2_LINECTRL1_DP_RPD		BIT(18)
++#define USB2_LINECTRL1_DMRPD_EN		BIT(17)
++#define USB2_LINECTRL1_DM_RPD		BIT(16)
++
++/* ADPCTRL */
++#define USB2_ADPCTRL_OTGSESSVLD		BIT(20)
++#define USB2_ADPCTRL_IDDIG		BIT(19)
++#define USB2_ADPCTRL_IDPULLUP		BIT(5)	/* 1 = ID sampling is enabled */
++#define USB2_ADPCTRL_DRVVBUS		BIT(4)
++
++static void rcar_gen3_set_host_mode(struct rcar_gen3_chan *ch, int host)
++{
++	void __iomem *usb2_base = ch->usb2.base;
++	u32 val = readl(usb2_base + USB2_COMMCTRL);
++
++	dev_vdbg(&ch->phy->dev, "%s: %08x, %d\n", __func__, val, host);
++	if (host)
++		val &= ~USB2_COMMCTRL_OTG_PERI;
++	else
++		val |= USB2_COMMCTRL_OTG_PERI;
++	writel(val, usb2_base + USB2_COMMCTRL);
++}
++
++static void rcar_gen3_set_linectrl(struct rcar_gen3_chan *ch, int dp, int dm)
++{
++	void __iomem *usb2_base = ch->usb2.base;
++	u32 val = readl(usb2_base + USB2_LINECTRL1);
++
++	dev_vdbg(&ch->phy->dev, "%s: %08x, %d, %d\n", __func__, val, dp, dm);
++	val &= ~(USB2_LINECTRL1_DP_RPD | USB2_LINECTRL1_DM_RPD);
++	if (dp)
++		val |= USB2_LINECTRL1_DP_RPD;
++	if (dm)
++		val |= USB2_LINECTRL1_DM_RPD;
++	writel(val, usb2_base + USB2_LINECTRL1);
++}
++
++static void rcar_gen3_enable_vbus_ctrl(struct rcar_gen3_chan *ch, int vbus)
++{
++	void __iomem *usb2_base = ch->usb2.base;
++	u32 val = readl(usb2_base + USB2_ADPCTRL);
++
++	dev_vdbg(&ch->phy->dev, "%s: %08x, %d\n", __func__, val, vbus);
++	if (vbus)
++		val |= USB2_ADPCTRL_DRVVBUS;
++	else
++		val &= ~USB2_ADPCTRL_DRVVBUS;
++	writel(val, usb2_base + USB2_ADPCTRL);
++}
++
++static void rcar_gen3_init_for_host(struct rcar_gen3_chan *ch)
++{
++	pr_dbg("++%s\n", __func__);
++	rcar_gen3_set_linectrl(ch, 1, 1);
++	rcar_gen3_set_host_mode(ch, 1);
++	rcar_gen3_enable_vbus_ctrl(ch, 1);
++	pr_dbg("--%s\n", __func__);
++}
++
++static void rcar_gen3_init_for_peri(struct rcar_gen3_chan *ch)
++{
++	pr_dbg("++%s\n", __func__);
++
++	rcar_gen3_set_linectrl(ch, 0, 1);
++	rcar_gen3_set_host_mode(ch, 0);
++	rcar_gen3_enable_vbus_ctrl(ch, 0);
++
++	pr_dbg("--%s\n", __func__);
++}
++
++static bool rcar_gen3_check_vbus(struct rcar_gen3_chan *ch)
++{
++	pr_dbg("+-%s\n", __func__);
++
++	return !!(readl(ch->usb2.base + USB2_ADPCTRL) &
++		  USB2_ADPCTRL_OTGSESSVLD);
++}
++
++static bool rcar_gen3_check_id(struct rcar_gen3_chan *ch)
++{
++	pr_dbg("+-%s\n", __func__);
++	return !!(readl(ch->usb2.base + USB2_ADPCTRL) & USB2_ADPCTRL_IDDIG);
++}
++
++static void rcar_gen3_device_recognition(struct rcar_gen3_chan *ch)
++{
++	bool is_host = true;
++
++	pr_dbg("++%s\n", __func__);
++
++	/* B-device? */
++	if (rcar_gen3_check_id(ch) && rcar_gen3_check_vbus(ch))
++		is_host = false;
++
++	/* FIXME: RZ/G2L does NOT have vbus control.
++	 * So the checking always return host mode.
++	 * We only use peripheral mode. So we just force
++	 * set is_host to false */
++	is_host = false;
++	if (is_host)
++		rcar_gen3_init_for_host(ch);
++	else
++		rcar_gen3_init_for_peri(ch);
++	pr_dbg("--%s\n", __func__);
++}
++
++static void rcar_gen3_init_otg(struct rcar_gen3_chan *ch)
++{
++	void __iomem *usb2_base = ch->usb2.base;
++	u32 val;
++
++	pr_dbg("++%s\n", __func__);
++
++	val = readl(usb2_base + USB2_VBCTRL);
++	writel(val | USB2_VBCTRL_DRVVBUSSEL, usb2_base + USB2_VBCTRL);
++	writel(USB2_OBINT_BITS, usb2_base + USB2_OBINTSTA);
++	val = readl(usb2_base + USB2_OBINTEN);
++	writel(val | USB2_OBINT_BITS, usb2_base + USB2_OBINTEN);
++	val = readl(usb2_base + USB2_ADPCTRL);
++	writel(val | USB2_ADPCTRL_IDPULLUP, usb2_base + USB2_ADPCTRL);
++	val = readl(usb2_base + USB2_LINECTRL1);
++	rcar_gen3_set_linectrl(ch, 0, 0);
++	writel(val | USB2_LINECTRL1_DPRPD_EN | USB2_LINECTRL1_DMRPD_EN,
++	       usb2_base + USB2_LINECTRL1);
++
++	rcar_gen3_device_recognition(ch);
++	pr_dbg("--%s\n", __func__);
++}
++
++static int rcar_gen3_phy_usb2_init(struct phy *p)
++{
++	struct rcar_gen3_chan *channel = phy_get_drvdata(p);
++	void __iomem *usb2_base = channel->usb2.base;
++
++	pr_dbg("++%s\n", __func__);
++
++	/* Initialize USB2 part */
++	writel(USB2_INT_ENABLE_INIT, usb2_base + USB2_INT_ENABLE);
++	writel(USB2_SPD_RSM_TIMSET_INIT, usb2_base + USB2_SPD_RSM_TIMSET);
++	writel(USB2_OC_TIMSET_INIT, usb2_base + USB2_OC_TIMSET);
++
++	/* Initialize otg part */
++	if (channel->has_otg)
++		rcar_gen3_init_otg(channel);
++
++	pr_dbg("--%s\n", __func__);
++
++	return 0;
++}
++
++static int rcar_gen3_phy_usb2_exit(struct phy *p)
++{
++	struct rcar_gen3_chan *channel = phy_get_drvdata(p);
++
++	pr_dbg("+-%s\n", __func__);
++
++	writel(0, channel->usb2.base + USB2_INT_ENABLE);
++
++	return 0;
++}
++
++static int rcar_gen3_phy_usb2_power_on(struct phy *p)
++{
++	struct rcar_gen3_chan *channel = phy_get_drvdata(p);
++	void __iomem *usb2_base = channel->usb2.base;
++	u32 val;
++
++	pr_dbg("++%s\n", __func__);
++
++	val = readl(usb2_base + USB2_USBCTR);
++	val |= USB2_USBCTR_PLL_RST;
++	writel(val, usb2_base + USB2_USBCTR);
++	val &= ~USB2_USBCTR_PLL_RST;
++	writel(val, usb2_base + USB2_USBCTR);
++
++	pr_dbg("--%s\n", __func__);
++
++	return 0;
++}
++
++static struct phy_ops rcar_gen3_phy_usb2_ops = {
++	.init		= rcar_gen3_phy_usb2_init,
++	.exit		= rcar_gen3_phy_usb2_exit,
++	.power_on	= rcar_gen3_phy_usb2_power_on,
++	.owner		= THIS_MODULE,
++};
++
++static irqreturn_t rcar_gen3_phy_usb2_irq(int irq, void *_ch)
++{
++	struct rcar_gen3_chan *ch = _ch;
++	void __iomem *usb2_base = ch->usb2.base;
++	u32 status = readl(usb2_base + USB2_OBINTSTA);
++	irqreturn_t ret = IRQ_NONE;
++
++	if (status & USB2_OBINT_BITS) {
++		dev_vdbg(&ch->phy->dev, "%s: %08x\n", __func__, status);
++		writel(USB2_OBINT_BITS, usb2_base + USB2_OBINTSTA);
++		rcar_gen3_device_recognition(ch);
++		ret = IRQ_HANDLED;
++	}
++
++	return ret;
++}
++
++int rcar_gen3_phy_usb2_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct rcar_gen3_chan *channel;
++	int irq = 0;
++
++	pr_dbg("++ %s(%s)\n", __func__, pdev->name);
++
++	channel = kzalloc(sizeof(*channel), GFP_KERNEL);
++	if (!channel)
++		return -ENOMEM;
++
++	channel->usb2.base = (void *)PHY_BASE;
++	channel->has_otg = true;
++	irq = devm_request_irq(dev, irq, rcar_gen3_phy_usb2_irq,
++			       0, RCAR3_PHY_DEVICE, channel);
++	if (irq < 0)
++		dev_err(dev, "No irq handler (%d)\n", irq);
++	channel->has_otg = true;
++
++	/* devm_phy_create() will call pm_runtime_enable(dev); */
++
++	channel->phy = devm_phy_create(dev, NULL, &rcar_gen3_phy_usb2_ops);
++	if (IS_ERR(channel->phy)) {
++		dev_err(dev, "Failed to create USB2 PHY\n");
++		return PTR_ERR(channel->phy);
++	}
++
++	phy_set_drvdata(channel->phy, channel);
++	pdev->dev_platform_data = (void *)channel;
++
++	pr_dbg("--%s\n", __func__);
++	return 0;
++}
++
++MODULE_LICENSE("GPL v2");
++MODULE_DESCRIPTION("Renesas R-Car Gen3 USB 2.0 PHY");
++MODULE_AUTHOR("Yoshihiro Shimoda <yoshihiro.shimoda.uh@renesas.com>");
++
+diff --git a/drivers/usb/gadget/rcar/pipe.c b/drivers/usb/gadget/rcar/pipe.c
+new file mode 100755
+index 0000000000..e7d822a286
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/pipe.c
+@@ -0,0 +1,835 @@
++/*
++ * Renesas USB driver
++ *
++ * Copyright (C) 2011 Renesas Solutions Corp.
++ * Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
++ *
++ * Ported to u-boot
++ * Copyright (C) 2016 GlobalLogic
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ *
++ */
++#include "common.h"
++#include "pipe.h"
++
++/*
++ *		macros
++ */
++#define usbhsp_addr_offset(p)	((usbhs_pipe_number(p) - 1) * 2)
++
++#define usbhsp_flags_set(p, f)	((p)->flags |=  USBHS_PIPE_FLAGS_##f)
++#define usbhsp_flags_clr(p, f)	((p)->flags &= ~USBHS_PIPE_FLAGS_##f)
++#define usbhsp_flags_has(p, f)	((p)->flags &   USBHS_PIPE_FLAGS_##f)
++#define usbhsp_flags_init(p)	do {(p)->flags = 0; } while (0)
++
++/*
++ * for debug
++ */
++static char *usbhsp_pipe_name[] = {
++	[USB_ENDPOINT_XFER_CONTROL]	= "DCP",
++	[USB_ENDPOINT_XFER_BULK]	= "BULK",
++	[USB_ENDPOINT_XFER_INT]		= "INT",
++	[USB_ENDPOINT_XFER_ISOC]	= "ISO",
++};
++
++char *usbhs_pipe_name(struct usbhs_pipe *pipe)
++{
++	return usbhsp_pipe_name[usbhs_pipe_type(pipe)];
++}
++
++static struct renesas_usbhs_driver_pipe_config
++*usbhsp_get_pipe_config(struct usbhs_priv *priv, int pipe_num)
++{
++	struct renesas_usbhs_driver_pipe_config *pipe_configs =
++					usbhs_get_dparam(priv, pipe_configs);
++
++	return &pipe_configs[pipe_num];
++}
++
++/*
++ *		DCPCTR/PIPEnCTR functions
++ */
++static void usbhsp_pipectrl_set(struct usbhs_pipe *pipe, u16 mask, u16 val)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	int offset = usbhsp_addr_offset(pipe);
++
++	if (usbhs_pipe_is_dcp(pipe))
++		usbhs_bset(priv, DCPCTR, mask, val);
++	else
++		usbhs_bset(priv, PIPEnCTR + offset, mask, val);
++}
++
++static u16 usbhsp_pipectrl_get(struct usbhs_pipe *pipe)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	int offset = usbhsp_addr_offset(pipe);
++
++	if (usbhs_pipe_is_dcp(pipe))
++		return usbhs_read(priv, DCPCTR);
++	else
++		return usbhs_read(priv, PIPEnCTR + offset);
++}
++
++/*
++ *		DCP/PIPE functions
++ */
++static void __usbhsp_pipe_xxx_set(struct usbhs_pipe *pipe,
++				  u16 dcp_reg, u16 pipe_reg,
++				  u16 mask, u16 val)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++
++	if (usbhs_pipe_is_dcp(pipe))
++		usbhs_bset(priv, dcp_reg, mask, val);
++	else
++		usbhs_bset(priv, pipe_reg, mask, val);
++}
++
++static u16 __usbhsp_pipe_xxx_get(struct usbhs_pipe *pipe,
++				 u16 dcp_reg, u16 pipe_reg)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++
++	if (usbhs_pipe_is_dcp(pipe))
++		return usbhs_read(priv, dcp_reg);
++	else
++		return usbhs_read(priv, pipe_reg);
++}
++
++/*
++ *		DCPCFG/PIPECFG functions
++ */
++static void usbhsp_pipe_cfg_set(struct usbhs_pipe *pipe, u16 mask, u16 val)
++{
++	__usbhsp_pipe_xxx_set(pipe, DCPCFG, PIPECFG, mask, val);
++}
++
++static u16 usbhsp_pipe_cfg_get(struct usbhs_pipe *pipe)
++{
++	return __usbhsp_pipe_xxx_get(pipe, DCPCFG, PIPECFG);
++}
++
++/*
++ *		PIPEnTRN/PIPEnTRE functions
++ */
++static void usbhsp_pipe_trn_set(struct usbhs_pipe *pipe, u16 mask, u16 val)
++{
++	struct device *dev __attribute__((unused));
++	int num = usbhs_pipe_number(pipe);
++	u16 reg;
++
++	/*
++	 * It is impossible to calculate address,
++	 * since PIPEnTRN addresses were mapped randomly.
++	 */
++#define CASE_PIPExTRN(a)		\
++	case 0x ## a:			\
++		reg = PIPE ## a ## TRN;	\
++		break;
++
++	switch (num) {
++	CASE_PIPExTRN(1);
++	CASE_PIPExTRN(2);
++	CASE_PIPExTRN(3);
++	CASE_PIPExTRN(4);
++	CASE_PIPExTRN(5);
++	CASE_PIPExTRN(B);
++	CASE_PIPExTRN(C);
++	CASE_PIPExTRN(D);
++	CASE_PIPExTRN(E);
++	CASE_PIPExTRN(F);
++	CASE_PIPExTRN(9);
++	CASE_PIPExTRN(A);
++	default:
++		dev_err(dev, "unknown pipe (%d)\n", num);
++		return;
++	}
++	__usbhsp_pipe_xxx_set(pipe, 0, reg, mask, val);
++}
++
++static void usbhsp_pipe_tre_set(struct usbhs_pipe *pipe, u16 mask, u16 val)
++{
++	struct device *dev __attribute__((unused));
++	int num = usbhs_pipe_number(pipe);
++	u16 reg;
++
++	/*
++	 * It is impossible to calculate address,
++	 * since PIPEnTRE addresses were mapped randomly.
++	 */
++#define CASE_PIPExTRE(a)			\
++	case 0x ## a:				\
++		reg = PIPE ## a ## TRE;		\
++		break;
++
++	switch (num) {
++	CASE_PIPExTRE(1);
++	CASE_PIPExTRE(2);
++	CASE_PIPExTRE(3);
++	CASE_PIPExTRE(4);
++	CASE_PIPExTRE(5);
++	CASE_PIPExTRE(B);
++	CASE_PIPExTRE(C);
++	CASE_PIPExTRE(D);
++	CASE_PIPExTRE(E);
++	CASE_PIPExTRE(F);
++	CASE_PIPExTRE(9);
++	CASE_PIPExTRE(A);
++	default:
++		dev_err(dev, "unknown pipe (%d)\n", num);
++		return;
++	}
++
++	__usbhsp_pipe_xxx_set(pipe, 0, reg, mask, val);
++}
++
++/*
++ *		PIPEBUF
++ */
++static void usbhsp_pipe_buf_set(struct usbhs_pipe *pipe, u16 mask, u16 val)
++{
++	if (usbhs_pipe_is_dcp(pipe))
++		return;
++
++	__usbhsp_pipe_xxx_set(pipe, 0, PIPEBUF, mask, val);
++}
++
++/*
++ *		DCPMAXP/PIPEMAXP
++ */
++static void usbhsp_pipe_maxp_set(struct usbhs_pipe *pipe, u16 mask, u16 val)
++{
++	__usbhsp_pipe_xxx_set(pipe, DCPMAXP, PIPEMAXP, mask, val);
++}
++
++/*
++ *		pipe control functions
++ */
++static void usbhsp_pipe_select(struct usbhs_pipe *pipe)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++
++	/*
++	 * On pipe, this is necessary before
++	 * accesses to below registers.
++	 *
++	 * PIPESEL	: usbhsp_pipe_select
++	 * PIPECFG	: usbhsp_pipe_cfg_xxx
++	 * PIPEBUF	: usbhsp_pipe_buf_xxx
++	 * PIPEMAXP	: usbhsp_pipe_maxp_xxx
++	 * PIPEPERI
++	 */
++
++	/*
++	 * if pipe is dcp, no pipe is selected.
++	 * it is no problem, because dcp have its register
++	 */
++	usbhs_write(priv, PIPESEL, 0xF & usbhs_pipe_number(pipe));
++}
++
++static int usbhsp_pipe_barrier(struct usbhs_pipe *pipe)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	int timeout = 1024;
++	u16 mask = usbhs_mod_is_host(priv) ? (CSSTS | PID_MASK) : PID_MASK;
++
++	/*
++	 * make sure....
++	 *
++	 * Modify these bits when CSSTS = 0, PID = NAK, and no pipe number is
++	 * specified by the CURPIPE bits.
++	 * When changing the setting of this bit after changing
++	 * the PID bits for the selected pipe from BUF to NAK,
++	 * check that CSSTS = 0 and PBUSY = 0.
++	 */
++
++	/*
++	 * CURPIPE bit = 0
++	 *
++	 * see also
++	 *  "Operation"
++	 *  - "Pipe Control"
++	 *   - "Pipe Control Registers Switching Procedure"
++	 */
++	usbhs_write(priv, CFIFOSEL, 0);
++	usbhs_pipe_disable(pipe);
++
++	do {
++		if (!(usbhsp_pipectrl_get(pipe) & mask))
++			return 0;
++
++		udelay(10);
++
++	} while (timeout--);
++
++	return -EBUSY;
++}
++
++int usbhs_pipe_is_accessible(struct usbhs_pipe *pipe)
++{
++	u16 val;
++
++	val = usbhsp_pipectrl_get(pipe);
++	if (val & BSTS)
++		return 0;
++
++	return -EBUSY;
++}
++
++/*
++ *		PID ctrl
++ */
++static void __usbhsp_pid_try_nak_if_stall(struct usbhs_pipe *pipe)
++{
++	u16 pid = usbhsp_pipectrl_get(pipe);
++
++	pid &= PID_MASK;
++
++	/*
++	 * see
++	 * "Pipe n Control Register" - "PID"
++	 */
++	switch (pid) {
++	case PID_STALL11:
++		usbhsp_pipectrl_set(pipe, PID_MASK, PID_STALL10);
++		/* fall-through */
++	case PID_STALL10:
++		usbhsp_pipectrl_set(pipe, PID_MASK, PID_NAK);
++	}
++}
++
++void usbhs_pipe_disable(struct usbhs_pipe *pipe)
++{
++	int timeout = 1024;
++	u16 val;
++
++	/* see "Pipe n Control Register" - "PID" */
++	__usbhsp_pid_try_nak_if_stall(pipe);
++
++	usbhsp_pipectrl_set(pipe, PID_MASK, PID_NAK);
++
++	do {
++		val  = usbhsp_pipectrl_get(pipe);
++		val &= PBUSY;
++		if (!val)
++			break;
++
++		udelay(10);
++	} while (timeout--);
++}
++
++void usbhs_pipe_enable(struct usbhs_pipe *pipe)
++{
++	/* see "Pipe n Control Register" - "PID" */
++	__usbhsp_pid_try_nak_if_stall(pipe);
++
++	usbhsp_pipectrl_set(pipe, PID_MASK, PID_BUF);
++}
++
++void usbhs_pipe_stall(struct usbhs_pipe *pipe)
++{
++	u16 pid = usbhsp_pipectrl_get(pipe);
++
++	pr_dbg("++%s\n", __func__);
++
++	pid &= PID_MASK;
++
++	/*
++	 * see
++	 * "Pipe n Control Register" - "PID"
++	 */
++	switch (pid) {
++	case PID_NAK:
++		usbhsp_pipectrl_set(pipe, PID_MASK, PID_STALL10);
++		break;
++	case PID_BUF:
++		usbhsp_pipectrl_set(pipe, PID_MASK, PID_STALL11);
++		break;
++	}
++	pr_dbg("--%s\n", __func__);
++}
++
++int usbhs_pipe_is_stall(struct usbhs_pipe *pipe)
++{
++	u16 pid = usbhsp_pipectrl_get(pipe) & PID_MASK;
++
++	return (int)(pid == PID_STALL10 || pid == PID_STALL11);
++}
++
++void usbhs_pipe_set_trans_count_if_bulk(struct usbhs_pipe *pipe, int len)
++{
++	if (!usbhs_pipe_type_is(pipe, USB_ENDPOINT_XFER_BULK))
++		return;
++
++	/*
++	 * clear and disable transfer counter for IN/OUT pipe
++	 */
++	usbhsp_pipe_tre_set(pipe, TRCLR | TRENB, TRCLR);
++
++	/*
++	 * Only IN direction bulk pipe can use transfer count.
++	 * Without using this function,
++	 * received data will break if it was large data size.
++	 * see PIPEnTRN/PIPEnTRE for detail
++	 */
++	if (usbhs_pipe_is_dir_in(pipe)) {
++		int maxp = usbhs_pipe_get_maxpacket(pipe);
++
++		usbhsp_pipe_trn_set(pipe, 0xffff, DIV_ROUND_UP(len, maxp));
++		usbhsp_pipe_tre_set(pipe, TRENB, TRENB); /* enable */
++	}
++}
++
++
++/*
++ *		pipe setup
++ */
++static u16 usbhsp_setup_pipecfg(struct usbhs_pipe *pipe,
++				int is_host,
++				int dir_in)
++{
++	u16 type = 0;
++	u16 bfre = 0;
++	u16 dblb = 0;
++	u16 cntmd = 0;
++	u16 dir = 0;
++	u16 epnum = 0;
++	u16 shtnak = 0;
++	u16 type_array[] = {
++		[USB_ENDPOINT_XFER_BULK] = TYPE_BULK,
++		[USB_ENDPOINT_XFER_INT]  = TYPE_INT,
++		[USB_ENDPOINT_XFER_ISOC] = TYPE_ISO,
++	};
++
++	if (usbhs_pipe_is_dcp(pipe))
++		return -EINVAL;
++
++	/*
++	 * PIPECFG
++	 *
++	 * see
++	 *  - "Register Descriptions" - "PIPECFG" register
++	 *  - "Features"  - "Pipe configuration"
++	 *  - "Operation" - "Pipe Control"
++	 */
++
++	/* TYPE */
++	type = type_array[usbhs_pipe_type(pipe)];
++
++	/* BFRE */
++	if (usbhs_pipe_type_is(pipe, USB_ENDPOINT_XFER_ISOC) ||
++	    usbhs_pipe_type_is(pipe, USB_ENDPOINT_XFER_BULK))
++		bfre = 0; /* FIXME */
++
++	/* DBLB: see usbhs_pipe_config_update() */
++
++	/* CNTMD */
++	if (usbhs_pipe_type_is(pipe, USB_ENDPOINT_XFER_BULK))
++		cntmd = 0; /* FIXME */
++
++	/* DIR */
++	if (dir_in)
++		usbhsp_flags_set(pipe, IS_DIR_HOST);
++
++	if (!!is_host ^ !!dir_in)
++		dir |= DIR_OUT;
++
++	if (!dir)
++		usbhsp_flags_set(pipe, IS_DIR_IN);
++
++	/* SHTNAK */
++	if (usbhs_pipe_type_is(pipe, USB_ENDPOINT_XFER_BULK) &&
++	    !dir)
++		shtnak = SHTNAK;
++
++	/* EPNUM */
++	epnum = 0; /* see usbhs_pipe_config_update() */
++
++	return	type	|
++		bfre	|
++		dblb	|
++		cntmd	|
++		dir	|
++		shtnak	|
++		epnum;
++}
++
++static u16 usbhsp_setup_pipebuff(struct usbhs_pipe *pipe)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	struct device *dev __attribute__((unused));
++	int pipe_num = usbhs_pipe_number(pipe);
++	u16 buff_size;
++	u16 bufnmb;
++	u16 bufnmb_cnt;
++	struct renesas_usbhs_driver_pipe_config *pipe_config =
++					usbhsp_get_pipe_config(priv, pipe_num);
++
++	/*
++	 * PIPEBUF
++	 *
++	 * see
++	 *  - "Register Descriptions" - "PIPEBUF" register
++	 *  - "Features"  - "Pipe configuration"
++	 *  - "Operation" - "FIFO Buffer Memory"
++	 *  - "Operation" - "Pipe Control"
++	 */
++	buff_size = pipe_config->bufsize;
++	bufnmb = pipe_config->bufnum;
++
++	/* change buff_size to register value */
++	bufnmb_cnt = (buff_size / 64) - 1;
++
++	dev_dbg(dev, "pipe : %d : buff_size 0x%x: bufnmb 0x%x\n",
++		pipe_num, buff_size, bufnmb);
++
++	return	(0x1f & bufnmb_cnt)	<< 10 |
++		(0xff & bufnmb)		<<  0;
++}
++
++void usbhs_pipe_config_update(struct usbhs_pipe *pipe, u16 devsel,
++			      u16 epnum, u16 maxp)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++	int pipe_num = usbhs_pipe_number(pipe);
++	struct renesas_usbhs_driver_pipe_config *pipe_config =
++					usbhsp_get_pipe_config(priv, pipe_num);
++	u16 dblb = pipe_config->double_buf ? DBLB : 0;
++
++	if (devsel > 0xA) {
++		struct device *dev __attribute__((unused));
++
++		dev_err(dev, "devsel error %d\n", devsel);
++
++		devsel = 0;
++	}
++
++	usbhsp_pipe_barrier(pipe);
++
++	pipe->maxp = maxp;
++
++	usbhsp_pipe_select(pipe);
++	usbhsp_pipe_maxp_set(pipe, 0xFFFF,
++			     (devsel << 12) |
++			     maxp);
++
++	if (!usbhs_pipe_is_dcp(pipe))
++		usbhsp_pipe_cfg_set(pipe,  0x000F | DBLB, epnum | dblb);
++}
++
++/*
++ *		pipe control
++ */
++int usbhs_pipe_get_maxpacket(struct usbhs_pipe *pipe)
++{
++	/*
++	 * see
++	 *	usbhs_pipe_config_update()
++	 *	usbhs_dcp_malloc()
++	 */
++	return pipe->maxp;
++}
++
++int usbhs_pipe_is_dir_in(struct usbhs_pipe *pipe)
++{
++	return usbhsp_flags_has(pipe, IS_DIR_IN);
++}
++
++int usbhs_pipe_is_dir_host(struct usbhs_pipe *pipe)
++{
++	return usbhsp_flags_has(pipe, IS_DIR_HOST);
++}
++
++int usbhs_pipe_is_running(struct usbhs_pipe *pipe)
++{
++	return usbhsp_flags_has(pipe, IS_RUNNING);
++}
++
++void usbhs_pipe_running(struct usbhs_pipe *pipe, int running)
++{
++	if (running)
++		usbhsp_flags_set(pipe, IS_RUNNING);
++	else
++		usbhsp_flags_clr(pipe, IS_RUNNING);
++}
++
++void usbhs_pipe_data_sequence(struct usbhs_pipe *pipe, int sequence)
++{
++	u16 mask = (SQCLR | SQSET);
++	u16 val;
++
++	/*
++	 * sequence
++	 *  0  : data0
++	 *  1  : data1
++	 *  -1 : no change
++	 */
++	switch (sequence) {
++	case 0:
++		val = SQCLR;
++		break;
++	case 1:
++		val = SQSET;
++		break;
++	default:
++		return;
++	}
++
++	usbhsp_pipectrl_set(pipe, mask, val);
++}
++
++static int usbhs_pipe_get_data_sequence(struct usbhs_pipe *pipe)
++{
++	return !!(usbhsp_pipectrl_get(pipe) & SQMON);
++}
++
++void usbhs_pipe_clear(struct usbhs_pipe *pipe)
++{
++	if (usbhs_pipe_is_dcp(pipe)) {
++		usbhs_fifo_clear_dcp(pipe);
++	} else {
++		usbhsp_pipectrl_set(pipe, ACLRM, ACLRM);
++		usbhsp_pipectrl_set(pipe, ACLRM, 0);
++	}
++}
++
++void usbhs_pipe_config_change_bfre(struct usbhs_pipe *pipe, int enable)
++{
++	int sequence;
++
++	if (usbhs_pipe_is_dcp(pipe))
++		return;
++
++	usbhsp_pipe_select(pipe);
++	/* check if the driver needs to change the BFRE value */
++	if (!(enable ^ !!(usbhsp_pipe_cfg_get(pipe) & BFRE)))
++		return;
++
++	sequence = usbhs_pipe_get_data_sequence(pipe);
++	usbhsp_pipe_cfg_set(pipe, BFRE, enable ? BFRE : 0);
++	usbhs_pipe_clear(pipe);
++	usbhs_pipe_data_sequence(pipe, sequence);
++}
++
++static struct usbhs_pipe *usbhsp_get_pipe(struct usbhs_priv *priv, u32 type)
++{
++	struct usbhs_pipe *pos, *pipe;
++	int i;
++
++	/*
++	 * find target pipe
++	 */
++	pipe = NULL;
++	usbhs_for_each_pipe_with_dcp(pos, priv, i) {
++		if (!usbhs_pipe_type_is(pos, type))
++			continue;
++		if (usbhsp_flags_has(pos, IS_USED))
++			continue;
++
++		pipe = pos;
++		break;
++	}
++
++	if (!pipe)
++		return NULL;
++
++	/*
++	 * initialize pipe flags
++	 */
++	usbhsp_flags_init(pipe);
++	usbhsp_flags_set(pipe, IS_USED);
++
++	return pipe;
++}
++
++static void usbhsp_put_pipe(struct usbhs_pipe *pipe)
++{
++	usbhsp_flags_init(pipe);
++}
++
++void usbhs_pipe_init(struct usbhs_priv *priv,
++		     int (*dma_map_ctrl)(struct usbhs_pkt *pkt, int map))
++{
++	struct usbhs_pipe_info *info = usbhs_priv_to_pipeinfo(priv);
++	struct usbhs_pipe *pipe;
++	int i;
++
++	usbhs_for_each_pipe_with_dcp(pipe, priv, i) {
++		usbhsp_flags_init(pipe);
++		pipe->fifo = NULL;
++		pipe->mod_private = NULL;
++		INIT_LIST_HEAD(&pipe->list);
++
++		/* pipe force init */
++		usbhs_pipe_clear(pipe);
++	}
++
++	info->dma_map_ctrl = dma_map_ctrl;
++}
++
++struct usbhs_pipe *usbhs_pipe_malloc(struct usbhs_priv *priv,
++				     int endpoint_type,
++				     int dir_in)
++{
++	struct device *dev __attribute__((unused));
++	struct usbhs_pipe *pipe;
++	int is_host = usbhs_mod_is_host(priv);
++	int ret;
++	u16 pipecfg, pipebuf;
++
++	pipe = usbhsp_get_pipe(priv, endpoint_type);
++	if (!pipe) {
++		dev_err(dev, "can't get pipe (%s)\n",
++			usbhsp_pipe_name[endpoint_type]);
++		return NULL;
++	}
++
++	INIT_LIST_HEAD(&pipe->list);
++
++	usbhs_pipe_disable(pipe);
++
++	/* make sure pipe is not busy */
++	ret = usbhsp_pipe_barrier(pipe);
++	if (ret < 0) {
++		dev_err(dev, "pipe setup failed %d\n", usbhs_pipe_number(pipe));
++		return NULL;
++	}
++
++	pipecfg  = usbhsp_setup_pipecfg(pipe, is_host, dir_in);
++	pipebuf  = usbhsp_setup_pipebuff(pipe);
++
++	usbhsp_pipe_select(pipe);
++	usbhsp_pipe_cfg_set(pipe, 0xFFFF, pipecfg);
++	usbhsp_pipe_buf_set(pipe, 0xFFFF, pipebuf);
++	usbhs_pipe_clear(pipe);
++
++	usbhs_pipe_sequence_data0(pipe);
++
++	dev_dbg(dev, "enable pipe %d : %s (%s)\n",
++		usbhs_pipe_number(pipe),
++		usbhs_pipe_name(pipe),
++		usbhs_pipe_is_dir_in(pipe) ? "in" : "out");
++
++	/*
++	 * epnum / maxp are still not set to this pipe.
++	 * call usbhs_pipe_config_update() after this function !!
++	 */
++
++	return pipe;
++}
++
++void usbhs_pipe_free(struct usbhs_pipe *pipe)
++{
++	usbhsp_put_pipe(pipe);
++}
++
++void usbhs_pipe_select_fifo(struct usbhs_pipe *pipe, struct usbhs_fifo *fifo)
++{
++	if (pipe->fifo)
++		pipe->fifo->pipe = NULL;
++
++	pipe->fifo = fifo;
++
++	if (fifo)
++		fifo->pipe = pipe;
++}
++
++
++/*
++ *		dcp control
++ */
++struct usbhs_pipe *usbhs_dcp_malloc(struct usbhs_priv *priv)
++{
++	struct usbhs_pipe *pipe;
++
++	pipe = usbhsp_get_pipe(priv, USB_ENDPOINT_XFER_CONTROL);
++	if (!pipe)
++		return NULL;
++
++	INIT_LIST_HEAD(&pipe->list);
++
++	/*
++	 * call usbhs_pipe_config_update() after this function !!
++	 */
++
++	return pipe;
++}
++
++void usbhs_dcp_control_transfer_done(struct usbhs_pipe *pipe)
++{
++	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
++
++	WARN_ON(!usbhs_pipe_is_dcp(pipe));
++
++	usbhs_pipe_enable(pipe);
++
++	if (!usbhs_mod_is_host(priv)) /* funconly */
++		usbhsp_pipectrl_set(pipe, CCPL, CCPL);
++}
++
++void usbhs_dcp_dir_for_host(struct usbhs_pipe *pipe, int dir_out)
++{
++	usbhsp_pipe_cfg_set(pipe, DIR_OUT,
++			    dir_out ? DIR_OUT : 0);
++}
++
++/*
++ *		pipe module function
++ */
++int usbhs_pipe_probe(struct usbhs_priv *priv)
++{
++	struct usbhs_pipe_info *info = usbhs_priv_to_pipeinfo(priv);
++	struct usbhs_pipe *pipe;
++	struct device *dev __attribute__((unused));
++	struct renesas_usbhs_driver_pipe_config *pipe_configs =
++					usbhs_get_dparam(priv, pipe_configs);
++	int pipe_size = usbhs_get_dparam(priv, pipe_size);
++	int i;
++
++	pr_dbg("++%s\n", __func__);
++	/* This driver expects 1st pipe is DCP */
++	if (pipe_configs[0].type != USB_ENDPOINT_XFER_CONTROL) {
++		dev_err(dev, "1st PIPE is not DCP\n");
++		return -EINVAL;
++	}
++
++	info->pipe = kzalloc(sizeof(struct usbhs_pipe) * pipe_size, GFP_KERNEL);
++	if (!info->pipe) {
++		dev_err(dev, "Could not allocate pipe\n");
++		return -ENOMEM;
++	}
++	info->size = pipe_size;
++
++	/*
++	 * init pipe
++	 */
++	usbhs_for_each_pipe_with_dcp(pipe, priv, i) {
++		pipe->priv = priv;
++
++		usbhs_pipe_type(pipe) =
++			pipe_configs[i].type & USB_ENDPOINT_XFERTYPE_MASK;
++
++		pr_dbg( "pipe %x\t: %s\n",
++			i, usbhsp_pipe_name[pipe_configs[i].type]);
++	}
++	pr_dbg("--%s\n", __func__);
++
++	return 0;
++}
++
++void usbhs_pipe_remove(struct usbhs_priv *priv)
++{
++	struct usbhs_pipe_info *info = usbhs_priv_to_pipeinfo(priv);
++
++	kfree(info->pipe);
++}
++
+diff --git a/drivers/usb/gadget/rcar/pipe.h b/drivers/usb/gadget/rcar/pipe.h
+new file mode 100755
+index 0000000000..cc3ff79e76
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/pipe.h
+@@ -0,0 +1,122 @@
++/*
++ * Renesas USB driver
++ *
++ * Copyright (C) 2011 Renesas Solutions Corp.
++ * Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ *
++ */
++#ifndef RENESAS_USB_PIPE_H
++#define RENESAS_USB_PIPE_H
++
++#include "common.h"
++#include "fifo.h"
++
++/*
++ *	struct
++ */
++struct usbhs_pipe {
++	u32 pipe_type;	/* USB_ENDPOINT_XFER_xxx */
++
++	struct usbhs_priv *priv;
++	struct usbhs_fifo *fifo;
++	struct list_head list;
++
++	int maxp;
++
++	u32 flags;
++#define USBHS_PIPE_FLAGS_IS_USED		(1 << 0)
++#define USBHS_PIPE_FLAGS_IS_DIR_IN		(1 << 1)
++#define USBHS_PIPE_FLAGS_IS_DIR_HOST		(1 << 2)
++#define USBHS_PIPE_FLAGS_IS_RUNNING		(1 << 3)
++
++	const struct usbhs_pkt_handle *handler;
++
++	void *mod_private;
++};
++
++struct usbhs_pipe_info {
++	struct usbhs_pipe *pipe;
++	int size;	/* array size of "pipe" */
++
++	int (*dma_map_ctrl)(struct usbhs_pkt *pkt, int map);
++};
++
++/*
++ * pipe list
++ */
++#define __usbhs_for_each_pipe(start, pos, info, i)	\
++	for ((i) = start;						\
++	     ((i) < (info)->size) && ((pos) = (info)->pipe + (i));	\
++	     (i)++)
++
++#define usbhs_for_each_pipe(pos, priv, i)			\
++	__usbhs_for_each_pipe(1, pos, &((priv)->pipe_info), i)
++
++#define usbhs_for_each_pipe_with_dcp(pos, priv, i)		\
++	__usbhs_for_each_pipe(0, pos, &((priv)->pipe_info), i)
++
++/*
++ * data
++ */
++#define usbhs_priv_to_pipeinfo(pr)	(&(pr)->pipe_info)
++
++/*
++ * pipe control
++ */
++char *usbhs_pipe_name(struct usbhs_pipe *pipe);
++struct usbhs_pipe
++*usbhs_pipe_malloc(struct usbhs_priv *priv, int endpoint_type, int dir_in);
++void usbhs_pipe_free(struct usbhs_pipe *pipe);
++int usbhs_pipe_probe(struct usbhs_priv *priv);
++void usbhs_pipe_remove(struct usbhs_priv *priv);
++int usbhs_pipe_is_dir_in(struct usbhs_pipe *pipe);
++int usbhs_pipe_is_dir_host(struct usbhs_pipe *pipe);
++int usbhs_pipe_is_running(struct usbhs_pipe *pipe);
++void usbhs_pipe_running(struct usbhs_pipe *pipe, int running);
++
++void usbhs_pipe_init(struct usbhs_priv *priv,
++		     int (*dma_map_ctrl)(struct usbhs_pkt *pkt, int map));
++int usbhs_pipe_get_maxpacket(struct usbhs_pipe *pipe);
++void usbhs_pipe_clear(struct usbhs_pipe *pipe);
++int usbhs_pipe_is_accessible(struct usbhs_pipe *pipe);
++void usbhs_pipe_enable(struct usbhs_pipe *pipe);
++void usbhs_pipe_disable(struct usbhs_pipe *pipe);
++void usbhs_pipe_stall(struct usbhs_pipe *pipe);
++int usbhs_pipe_is_stall(struct usbhs_pipe *pipe);
++void usbhs_pipe_set_trans_count_if_bulk(struct usbhs_pipe *pipe, int len);
++void usbhs_pipe_select_fifo(struct usbhs_pipe *pipe, struct usbhs_fifo *fifo);
++void usbhs_pipe_config_update(struct usbhs_pipe *pipe, u16 devsel,
++			      u16 epnum, u16 maxp);
++void usbhs_pipe_config_change_bfre(struct usbhs_pipe *pipe, int enable);
++
++#define usbhs_pipe_sequence_data0(pipe)	usbhs_pipe_data_sequence(pipe, 0)
++#define usbhs_pipe_sequence_data1(pipe)	usbhs_pipe_data_sequence(pipe, 1)
++void usbhs_pipe_data_sequence(struct usbhs_pipe *pipe, int data);
++
++#define usbhs_pipe_to_priv(p)	((p)->priv)
++#define usbhs_pipe_number(p)	(int)((p) - (p)->priv->pipe_info.pipe)
++#define usbhs_pipe_is_dcp(p)	((p)->priv->pipe_info.pipe == (p))
++#define usbhs_pipe_to_fifo(p)	((p)->fifo)
++#define usbhs_pipe_is_busy(p)	usbhs_pipe_to_fifo(p)
++
++#define usbhs_pipe_type(p)		((p)->pipe_type)
++#define usbhs_pipe_type_is(p, t)	((p)->pipe_type == t)
++
++/*
++ * dcp control
++ */
++struct usbhs_pipe *usbhs_dcp_malloc(struct usbhs_priv *priv);
++void usbhs_dcp_control_transfer_done(struct usbhs_pipe *pipe);
++void usbhs_dcp_dir_for_host(struct usbhs_pipe *pipe, int dir_out);
++
++#endif /* RENESAS_USB_PIPE_H */
++
+diff --git a/drivers/usb/gadget/rcar/rcar3.c b/drivers/usb/gadget/rcar/rcar3.c
+new file mode 100755
+index 0000000000..6c8ec41ea6
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/rcar3.c
+@@ -0,0 +1,62 @@
++/*
++ * Renesas USB driver R-Car Gen. 3 initialization and power control
++ *
++ * Copyright (C) 2016 Renesas Electronics Corporation
++ *
++ * Ported to u-boot
++ * Copyright (C) 2016 GlobalLogic
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ *
++ */
++
++#include <asm/io.h>
++#include "common.h"
++#include "rcar3.h"
++
++#define LPSTS		0x102
++#define UGCTRL2		0x184	/* 32-bit register */
++
++/* Low Power Status register (LPSTS) */
++#define LPSTS_SUSPM	0x4000
++
++/* USB General control register 2 (UGCTRL2), bit[31:6] should be 0 */
++#define UGCTRL2_RESERVED_3	0x00000001	/* bit[3:0] should be B'0001 */
++#define UGCTRL2_USB0SEL_OTG	0x00000030
++
++void usbhs_write32(struct usbhs_priv *priv, u32 reg, u32 data)
++{
++	writel(data, priv->base + reg);
++}
++
++static int usbhs_rcar3_power_ctrl(struct platform_device *pdev,
++				void __iomem *base, int enable)
++{
++	struct usbhs_priv *priv = usbhs_pdev_to_priv(pdev);
++
++	pr_dbg("++%s\n", __func__);
++
++	usbhs_write32(priv, UGCTRL2, UGCTRL2_RESERVED_3 | UGCTRL2_USB0SEL_OTG);
++
++	if (enable)
++		usbhs_bset(priv, LPSTS, LPSTS_SUSPM, LPSTS_SUSPM);
++	else
++		usbhs_bset(priv, LPSTS, LPSTS_SUSPM, 0);
++
++	pr_dbg("--%s\n", __func__);
++
++	return 0;
++}
++
++static int usbhs_rcar3_get_id(struct platform_device *pdev)
++{
++	return USBHS_GADGET;
++}
++
++const struct renesas_usbhs_platform_callback usbhs_rcar3_ops = {
++	.power_ctrl = usbhs_rcar3_power_ctrl,
++	.get_id = usbhs_rcar3_get_id,
++};
++
+diff --git a/drivers/usb/gadget/rcar/rcar3.h b/drivers/usb/gadget/rcar/rcar3.h
+new file mode 100755
+index 0000000000..8784f2b190
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/rcar3.h
+@@ -0,0 +1,4 @@
++#include "common.h"
++
++extern const struct renesas_usbhs_platform_callback usbhs_rcar3_ops;
++
+diff --git a/drivers/usb/gadget/rcar/renesas_usb.h b/drivers/usb/gadget/rcar/renesas_usb.h
+new file mode 100755
+index 0000000000..bce9e8b547
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/renesas_usb.h
+@@ -0,0 +1,421 @@
++/*
++ * Renesas USB
++ *
++ * Copyright (C) 2011 Renesas Solutions Corp.
++ * Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
++ *
++ *
++ * Ported to u-boot
++ * Copyright (C) 2016 GlobalLogic
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ *
++ */
++#ifndef RENESAS_USB_H
++#define RENESAS_USB_H
++#include <linux/usb/ch9.h>
++#include <common.h>
++#include <dm.h>
++#include <dm/device_compat.h>
++
++typedef unsigned long uintptr_t;
++
++//#define USBHS_DEBUG_IRQ
++#ifdef USBHS_DEBUG_IRQ
++#define pr_irq  printf
++#else
++#define pr_irq(...)  do{}while(0)
++#endif
++
++
++// #define USBHS_DEBUG
++
++#ifdef USBHS_DEBUG
++#define pr_dbg  printf
++#else
++#define pr_dbg(...)  do{}while(0)
++#endif
++
++
++#define iowrite32_rep __raw_writesl
++#define ioread32_rep __raw_readsl
++#define iowrite8 writeb
++#define ioread32 readl
++
++#define GENMASK(h, l) \
++	(((~0UL) << (l)) & (~0UL >> (BITS_PER_LONG - 1 - (h))))
++
++
++struct platform_device {
++	const char	*name;
++	int		id;
++	struct device	dev;
++	u32		num_resources;
++	struct resource	*resource;
++
++	char *driver_override; /* Driver name to force a match */
++
++	/* MFD cell pointer */
++	struct mfd_cell *mfd_cell;
++
++	/* arch specific additions */
++	void *dev_platform_data;
++};
++
++
++/*
++ * module type
++ *
++ * it will be return value from get_id
++ */
++enum {
++	USBHS_HOST = 0,
++	USBHS_GADGET,
++	USBHS_MAX,
++};
++
++/*
++ * callback functions table for driver
++ *
++ * These functions are called from platform for driver.
++ * Callback function's pointer will be set before
++ * renesas_usbhs_platform_callback :: hardware_init was called
++ */
++struct renesas_usbhs_driver_callback {
++	int (*notify_hotplug)(void *pdev);
++};
++
++/*
++ * callback functions for platform
++ *
++ * These functions are called from driver for platform
++ */
++struct renesas_usbhs_platform_callback {
++
++	/*
++	 * option:
++	 *
++	 * Hardware init function for platform.
++	 * it is called when driver was probed.
++	 */
++	int (*hardware_init)(struct platform_device *pdev);
++
++	/*
++	 * option:
++	 *
++	 * Hardware exit function for platform.
++	 * it is called when driver was removed
++	 */
++	int (*hardware_exit)(struct platform_device *pdev);
++
++	/*
++	 * option:
++	 *
++	 * for board specific clock control
++	 */
++	int (*power_ctrl)(struct platform_device *pdev,
++			   void __iomem *base, int enable);
++
++	/*
++	 * option:
++	 *
++	 * Phy reset for platform
++	 */
++	int (*phy_reset)(struct platform_device *pdev);
++
++	/*
++	 * get USB ID function
++	 *  - USBHS_HOST
++	 *  - USBHS_GADGET
++	 */
++	int (*get_id)(struct platform_device *pdev);
++
++	/*
++	 * get VBUS status function.
++	 */
++	int (*get_vbus)(struct platform_device *pdev);
++
++	/*
++	 * option:
++	 *
++	 * VBUS control is needed for Host
++	 */
++	int (*set_vbus)(struct platform_device *pdev, int enable);
++};
++
++/*
++ * parameters for renesas usbhs
++ *
++ * some register needs USB chip specific parameters.
++ * This struct show it to driver
++ */
++
++struct renesas_usbhs_driver_pipe_config {
++	u8 type;	/* USB_ENDPOINT_XFER_xxx */
++	u16 bufsize;
++	u8 bufnum;
++	bool double_buf;
++};
++#define RENESAS_USBHS_PIPE(_type, _size, _num, _double_buf)	{	\
++			.type = (_type),		\
++			.bufsize = (_size),		\
++			.bufnum = (_num),		\
++			.double_buf = (_double_buf),	\
++	}
++
++struct renesas_usbhs_driver_param {
++	/*
++	 * pipe settings
++	 */
++	struct renesas_usbhs_driver_pipe_config *pipe_configs;
++	int pipe_size; /* pipe_configs array size */
++
++	/*
++	 * option:
++	 *
++	 * for BUSWAIT :: BWAIT
++	 * see
++	 *	renesas_usbhs/common.c :: usbhsc_set_buswait()
++	 * */
++	int buswait_bwait;
++
++	/*
++	 * option:
++	 *
++	 * delay time from notify_hotplug callback
++	 */
++	int detection_delay; /* msec */
++
++	/*
++	 * option:
++	 *
++	 * dma id for dmaengine
++	 * The data transfer direction on D0FIFO/D1FIFO should be
++	 * fixed for keeping consistency.
++	 * So, the platform id settings will be..
++	 *	.d0_tx_id = xx_TX,
++	 *	.d1_rx_id = xx_RX,
++	 * or
++	 *	.d1_tx_id = xx_TX,
++	 *	.d0_rx_id = xx_RX,
++	 */
++	int d0_tx_id;
++	int d0_rx_id;
++	int d1_tx_id;
++	int d1_rx_id;
++	int d2_tx_id;
++	int d2_rx_id;
++	int d3_tx_id;
++	int d3_rx_id;
++
++	/*
++	 * option:
++	 *
++	 * pio <--> dma border.
++	 */
++	int pio_dma_border; /* default is 64byte */
++
++	uintptr_t type;
++	u32 enable_gpio;
++
++	/*
++	 * option:
++	 */
++	u32 has_otg:1; /* for controlling PWEN/EXTLP */
++	u32 has_sudmac:1; /* for SUDMAC */
++	u32 has_usb_dmac:1; /* for USB-DMAC */
++	u32 has_cnen:1;
++	u32 cfifo_byte_addr:1; /* CFIFO is byte addressable */
++#define USBHS_USB_DMAC_XFER_SIZE	32	/* hardcode the xfer size */
++};
++
++#define USBHS_TYPE_RCAR_GEN2	1
++#define USBHS_TYPE_RCAR_GEN3	2
++#define USBHS_TYPE_G2L		5
++
++/*
++ * option:
++ *
++ * platform information for renesas_usbhs driver.
++ */
++struct renesas_usbhs_platform_info {
++	/*
++	 * option:
++	 *
++	 * platform set these functions before
++	 * call platform_add_devices if needed
++	 */
++	struct renesas_usbhs_platform_callback	platform_callback;
++
++	/*
++	 * driver set these callback functions pointer.
++	 * platform can use it on callback functions
++	 */
++	struct renesas_usbhs_driver_callback	driver_callback;
++
++	/*
++	 * option:
++	 *
++	 * driver use these param for some register
++	 */
++	struct renesas_usbhs_driver_param	driver_param;
++};
++
++
++/*
++* Migrated from Device.h
++*/
++#ifdef dev_get_drvdata
++#undef dev_get_drvdata
++#endif
++
++
++/*
++* Migrated from Phy.c
++*/
++
++struct phy;
++
++/**
++ * struct phy_ops - set of function pointers for performing phy operations
++ * @init: operation to be performed for initializing phy
++ * @exit: operation to be performed while exiting
++ * @power_on: powering on the phy
++ * @power_off: powering off the phy
++ * @owner: the module owner containing the ops
++ */
++struct phy_ops {
++	int	(*init)(struct phy *phy);
++	int	(*exit)(struct phy *phy);
++	int	(*power_on)(struct phy *phy);
++	int	(*power_off)(struct phy *phy);
++	struct module *owner;
++};
++
++/**
++ * struct phy_attrs - represents phy attributes
++ * @bus_width: Data path width implemented by PHY
++ */
++struct phy_attrs {
++	u32			bus_width;
++};
++
++/**
++ * struct phy - represents the phy device
++ * @dev: phy device
++ * @id: id of the phy device
++ * @ops: function pointers for performing phy operations
++ * @init_data: list of PHY consumers (non-dt only)
++ * @mutex: mutex to protect phy_ops
++ * @init_count: used to protect when the PHY is used by multiple consumers
++ * @power_count: used to protect when the PHY is used by multiple consumers
++ * @phy_attrs: used to specify PHY specific attributes
++ */
++struct phy {
++	struct device		dev;
++	int			id;
++	const struct phy_ops	*ops;
++	struct mutex		mutex;
++	int			init_count;
++	int			power_count;
++	struct phy_attrs	attrs;
++//	struct regulator	*pwr;
++};
++
++struct rcar_gen3_data {
++	void __iomem *base;
++	struct clk *clk;
++};
++
++struct rcar_gen3_chan {
++	struct rcar_gen3_data usb2;
++	struct phy *phy;
++	bool has_otg;
++};
++
++
++static inline void *dev_get_drvdata(const struct device *dev)
++{
++	return dev->driver_data;
++}
++
++#ifdef dev_set_drvdata
++#undef dev_set_drvdata
++#endif
++
++static inline void dev_set_drvdata(struct device *dev, void *data)
++{
++	dev->driver_data = data;
++}
++
++/*
++* Migrated from Platform.h
++*/
++
++#ifdef platform_set_drvdata
++#undef platform_set_drvdata
++#endif
++
++static inline void platform_set_drvdata(struct platform_device *pdev,
++					void *data)
++{
++	dev_set_drvdata(&pdev->dev, data);
++}
++
++static inline void *platform_get_drvdata(struct platform_device *pdev)
++{
++	return dev_get_drvdata(&pdev->dev);
++}
++
++static inline void phy_set_drvdata(struct phy *phy, void *data)
++{
++	dev_set_drvdata(&phy->dev, data);
++}
++
++static inline void *phy_get_drvdata(struct phy *phy)
++{
++	return dev_get_drvdata(&phy->dev);
++}
++
++
++/*
++ * macro for platform
++ */
++#define renesas_usbhs_get_info(pdev)\
++	((struct renesas_usbhs_platform_info *)(pdev)->dev_platform_data)
++
++#define renesas_usbhs_call_notify_hotplug(pdev)				\
++	({								\
++		struct renesas_usbhs_driver_callback *dc;		\
++		dc = &(renesas_usbhs_get_info(pdev)->driver_callback);	\
++		if (dc && dc->notify_hotplug)				\
++			dc->notify_hotplug(pdev);			\
++	})
++
++
++#define PHY_BASE	0x11C50200
++#define RCAR3_PHY_DEVICE "RZG2L-PHY "
++#define USBHS_BASE	0x11C60000
++#define RCAR3_USBHS_DEVICE "RZG2L-USBHS "
++
++
++typedef irqreturn_t (*irq_handler_t)(int, void *);
++
++int
++devm_request_irq(struct device *dev, unsigned int irq, irq_handler_t handler,
++		 unsigned long irqflags, const char *devname, void *dev_id);
++
++struct phy *devm_phy_create(struct device *dev, void *node,
++			    const struct phy_ops *ops);
++
++
++
++#endif /* RENESAS_USB_H */
++
+diff --git a/drivers/usb/gadget/rcar/rza.h b/drivers/usb/gadget/rcar/rza.h
+new file mode 100755
+index 0000000000..d886a82a61
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/rza.h
+@@ -0,0 +1,6 @@
++// SPDX-License-Identifier: GPL-2.0
++#include "common.h"
++
++extern const struct renesas_usbhs_platform_callback usbhs_rza1_ops;
++extern const struct renesas_usbhs_platform_callback usbhs_g2l_ops;
++
+diff --git a/drivers/usb/gadget/rcar/usbhs_gadget.c b/drivers/usb/gadget/rcar/usbhs_gadget.c
+new file mode 100755
+index 0000000000..389248e671
+--- /dev/null
++++ b/drivers/usb/gadget/rcar/usbhs_gadget.c
+@@ -0,0 +1,152 @@
++/*
++* This is porting layer for Renesas USBHS driver
++* Copyright (C) 2016 GlobalLogic
++
++* This program is free software; you can redistribute it and/or modify
++* it under the terms of the GNU General Public License version 2 as
++* published by the Free Software Foundation.
++*/
++
++
++
++#include "common.h"
++#include <usb.h>
++#include <linux/usb/ch9.h>
++#include <linux/usb/gadget.h>
++#include "ehci-rcar.h"
++
++struct platform_usbhs {
++	void *usbhs;
++	irq_handler_t irq;
++	struct platform_device pdev;
++	void *priv;
++};
++
++static struct platform_usbhs phy_dev;
++static struct platform_usbhs usbhs_dev;
++
++/*External functions*/
++
++int usb_gadget_register_driver(struct usb_gadget_driver *driver);
++int usb_gadget_unregister_driver(struct usb_gadget_driver *driver);
++int usbhsg_register_gadget(struct usbhs_priv *priv, struct usb_gadget_driver *driver);
++int usbhsg_unregister_gadget(struct usbhs_priv *priv);
++struct usb_gadget *usbhsg_get_gadget(struct usbhs_priv *priv);
++int rcar_gen3_phy_usb2_probe(struct platform_device *pdev);
++
++
++struct phy *devm_phy_create(struct device *dev, void *node,
++			    const struct phy_ops *ops)
++{
++	struct phy *ph;
++
++	ph = kzalloc(sizeof(struct phy), GFP_KERNEL);
++	if (!ph)
++		return NULL;
++	ph->ops = ops;
++	phy_dev.usbhs = ph;
++	return ph;
++}
++
++
++int
++devm_request_irq(struct device *dev, unsigned int irq, irq_handler_t handler,
++		 unsigned long irqflags, const char *devname, void *dev_id)
++{
++	struct platform_usbhs *pdev = NULL;
++	if (!handler)
++		return -EINVAL;
++
++	if (0 == strcmp(devname, RCAR3_PHY_DEVICE)) {
++		pdev = &phy_dev;
++	}  else if (0 == strcmp(devname, RCAR3_USBHS_DEVICE)) {
++		pdev = &usbhs_dev;
++	}
++
++	if (!pdev)
++		return EINVAL;
++
++	dev_info((struct device *)NULL, "Setting interrupt handler for device %s\n", devname);
++	pdev->irq = handler;
++	pdev->priv = dev_id;
++	return 0;
++}
++
++#define USB_DEVICE_PORT 0
++int usb_gadget_register_driver(struct usb_gadget_driver *driver)
++{
++	int ret = -EINVAL;
++	struct phy *ph;
++	struct usbhs_priv *priv;
++	struct usb_gadget *gadget;
++
++	if (!driver    || !driver->bind || !driver->setup) {
++		puts("usbhs: bad parameter.\n");
++		return -EINVAL;
++	}
++
++	ret = rcar_gen3_phy_usb2_probe(&phy_dev.pdev);
++	if (ret <0)
++		return ret;
++
++	ph = (struct phy *)phy_dev.usbhs;
++	if ((ph) && (ph->ops)) {
++		ret = ph->ops->init(ph);
++		phy_dev.irq(0, phy_dev.priv);
++		ret = ph->ops->power_on(ph);
++	}else
++		ret = -EINVAL;
++
++	if (ret < 0) {
++		printf("Phy init failed\n");
++		return ret;
++	}
++
++	/*Register usbhs driver*/
++
++	ret = usbhs_probe(&usbhs_dev.pdev);
++	if (ret<0) {
++		printf("Probe failed with error: %d\n", ret);
++		return ret;
++	}
++
++	priv = platform_get_drvdata(&usbhs_dev.pdev);
++	ret = usbhsg_register_gadget(priv, driver);
++	if (ret<0) {
++		printf("Register gadget failed with error: %d\n", ret);
++		return ret;
++	}
++	gadget = usbhsg_get_gadget(priv);
++
++	ret = driver->bind(gadget);
++	if (ret)
++		printf("usbhs: driver->bind() returned %d\n", ret);
++
++	return ret;
++}
++
++int usb_gadget_unregister_driver(struct usb_gadget_driver *driver)
++{
++	struct usbhs_priv *priv;
++	struct usb_gadget *gadget;
++	struct phy *ph = (struct phy *)phy_dev.usbhs;
++
++	priv = platform_get_drvdata(&usbhs_dev.pdev);
++	gadget = usbhsg_get_gadget(priv);
++	usbhsg_unregister_gadget(priv);
++	driver->unbind(gadget);
++	usbhs_remove (&usbhs_dev.pdev);
++
++	if ((ph) && (ph->ops)) {
++		ph->ops->exit(ph);
++	}
++	return 0;
++}
++
++int usb_gadget_handle_interrupts(int index)
++{
++	phy_dev.irq(0, phy_dev.priv);
++	usbhs_dev.irq(0, usbhs_dev.priv);
++	return 0;
++}
++
