@@ -1,16 +1,7 @@
 diff --git a/arch/arm/dts/smarc-rzg2l.dts b/arch/arm/dts/smarc-rzg2l.dts
-index 61ff3688b0..d6618c73fd 100644
+index 61ff3688b0..bf2e087747 100644
 --- a/arch/arm/dts/smarc-rzg2l.dts
 +++ b/arch/arm/dts/smarc-rzg2l.dts
-@@ -79,7 +79,7 @@
- 	 * The SD0_PWR_EN pin is associated with P4_1.
- 	 * A HIGH signal on SD0_PWR_EN will enable supply voltage for SD card.
- 	*/
--	bus-width = <8>;
-+	bus-width = <4>;
- 	status = "okay";
- 	/* This is used for interface that support both eMMC and SD in board */
- 	mutual-channel;
 @@ -145,6 +145,16 @@
  	status = "okay";
  };
