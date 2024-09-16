@@ -19,7 +19,7 @@ And of course Google 'to your heart's content' on all the different uses of inti
 ## Why this is useful for programming new boards
 --------------------------------------------------------------------------------
 When you make a board, all the flash parts are blank.
-For the RZ/G2, there is a utility (flash writer) to at least program the bootloader over a serial link.
+For the RZ/G2, RZ/G3 and RZ/V2, there is a utility (flash writer) to at least program the bootloader over a serial link.
 However, trying to program an entire eMMC over a UART serial link would be quite painful (take a lot time).
 
 But, you could easily use your normal kernel with a file system that is contained entirely in ram (ie, intiramfs) and then use Linux to load your eMMC however you like.
@@ -114,6 +114,30 @@ Then to boot your system after reset, you only need to type this:
 
 10. done. enjoy.
 
+## Start dropbear (SSH server)
+--------------------------------------------------------------------------------
+If you want to start and use the SSH server (dropbear), you will need to do the follow after you boot.
+<pre>
+# Enable the Ethernet conenction
+ifconfig eth0 up
+
+# Use DHCP to get an IP address
+udhcpc eth0
+
+# Find out what IP address you were given    
+ifconfig
+
+# need to add a password for root to make SSH happy. Just set it to '1234'
+passwd
+
+# Start SSH Server
+dropbear
+
+# Mount your eMMC flash so you can browse it with WinSCP
+mkdir -p /mnt/mmcblk0p1 ; mount /dev/mmcblk0p1 /mnt/mmcblk0p1
+   
+</pre>
+
 
 # Use Buildroot to create your rootfs to use a initramfs
 --------------------------------------------------------------------------------
@@ -122,17 +146,36 @@ We first need to create a separate mini file system.
 I would not recommended using Yoto for this because it would way to complicated and big for what you really want.
 Instead, I would just use Buildroot. It's simple and small and will get the job done quite nicely.
 
-## Download and build Buildroot for RZ/G2
+## Download and build Buildroot for RZ
 --------------------------------------------------------------------------------
 Get the latest stable version of Buildroot. (https://buildroot.org/)
-I happened to use Buildroot 2020.02.1
+I happened to use Buildroot 2024.02.6
 
-    $ wget https://buildroot.org/downloads/buildroot-2020.02.1.tar.bz2
-    $ tar xf buildroot-2020.02.1.tar.bz2
+    $ wget https://buildroot.org/downloads/buildroot-2024.02.6.tar.gz
+    $ tar xf buildroot-2024.02.6.tar.gz
+    $ cd buildroot-2024.02.6
 
-Copy in buildroot_rzg2_defconfig to the base of your Buildroot  directory and rename it to .config
+Create a file .config
+    $ touch .config
+Open .config in a text editro
+    $ gedit .config
 
- * NOTE: The packages dosfstools (for mkfs.fat) and e2fsprogs (for mkfs.ext4) were added because they are helpful in setting up a eMMC. You can see them set inside the buildroot_rzg2_defconfig file.
+Copy/Paste the following:
+<pre>
+BR2_aarch64=y
+BR2_cortex_a55=y
+BR2_TOOLCHAIN_EXTERNAL=y
+BR2_TARGET_GENERIC_GETTY_PORT="ttySC0"
+BR2_PACKAGE_DOSFSTOOLS=y
+BR2_PACKAGE_DOSFSTOOLS_MKFS_FAT=y
+BR2_PACKAGE_E2FSPROGS=y
+BR2_PACKAGE_DROPBEAR=y
+</pre>
+
+ * NOTE: The packages dosfstools (for mkfs.fat) and e2fsprogs (for mkfs.ext4) were added because they are helpful in setting up a eMMC.
+ * NOTE: The pacakge dropbear is a SSH server which will allow you to copy file across the network to your board
+ * NOTE: If you are using RZ/G2H, you BR2_cortex_a57_a53=y
+ * NOTE: If you are using RZ/G2E, you BR2_cortex_a53=y
 
 Do an initial build of Buildroot. All you should have to do is just run 'make' in the Buildroot directory. Buildroot will take care of downloading a toolchain and the appropriate source packages.
 
@@ -161,16 +204,13 @@ Honestly, unless someone tells you, you could spend hours trying to figure these
 
 ## Extract your Buildroot output
 --------------------------------------------------------------------------------
-Extract your buildroot/output/images/rootfs.tar file someplace on your PC.
+Extract your buildroot/output/images/rootfs.tar file someplace on your PC so you can configure it be used as an initramfs.
 If you exact this with 'sudo', then all your files will be owned by root, which will make more sense to your board since it will run as root.
 
     (assumes you start in the Buildroot directory)
-    $ cd ..
-    $ mkdir rootfs
-    $ cd rootfs
-    $ sudo ../buildroot/output/images/rootfs.tar
-
-Now you will have a directory 'rootfs' at the same level as your buildroot directory.
+    $ mkdir -p output/initramfs/rootfs
+    $ cd output/initramfs/rootfs
+    $ sudo tar xf ../../images/rootfs.tar
 
 
 ## Add console and null to /dev
@@ -203,7 +243,8 @@ So to fix this, we need to modify the default init script that Buildroot creates
 
        $ sudo gedit etc/inittab
 
-2. Add a coomand to 'mount -t devtmpfs' as the first operation to do, even before mounting /proc
+2. Add a comamnd to 'mount -t devtmpfs' as the first operation to do, even before mounting /proc
+   Add the line below "# Startup the system"
 
 For Example:
 
