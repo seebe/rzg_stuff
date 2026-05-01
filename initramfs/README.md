@@ -156,8 +156,11 @@ I happened to use Buildroot 2024.02.6
     $ cd buildroot-2024.02.6
 
 Create a file .config
+
     $ touch .config
-Open .config in a text editro
+
+Open .config in a text editor
+
     $ gedit .config
 
 Copy/Paste the following:
